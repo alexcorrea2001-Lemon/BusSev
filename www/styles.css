@@ -915,3 +915,29 @@ html.repinta body { transform: translateZ(0); }
 /* Barra de progreso de la descarga de la actualización */
 .upd-barra { height: 10px; border-radius: 999px; background: var(--surface-2); overflow: hidden; margin: 12px 0 4px; }
 .upd-barra i { display: block; height: 100%; width: 0; background: var(--accent); border-radius: 999px; transition: width .3s ease; }
+
+/* ================= Días especiales de Navidad ================= */
+:root[data-dia="nochevieja"] .saludo-fiesta, :root[data-dia="anonuevo"] .saludo-fiesta { background: linear-gradient(120deg, #0e1530, #23306b 60%, #6b4a0e); color: #ffe7a3; }
+:root[data-dia="reyes"] .saludo-fiesta { background: linear-gradient(120deg, #3b1663, #7a2a8e 55%, #b8860b); color: #fff3c4; }
+/* Un dibujo grande que cruza la pantalla de vez en cuando (trineo de Papá Noel, camellos de los Reyes) */
+.fiesta .f-cruza { position: absolute; top: 16vh; left: 0; width: 220px; height: 70px; opacity: .9; will-change: transform; animation: cruzar 26s linear infinite; animation-delay: -4s; filter: drop-shadow(0 3px 3px rgb(0 0 0 / .35)); }
+.fiesta .f-cruza svg { width: 100%; height: 100%; display: block; animation: botar 1.4s ease-in-out infinite alternate; }
+.fiesta .f-cruza.izq { animation-name: cruzar-izq; }
+@keyframes cruzar { 0% { transform: translate3d(-240px, 0, 0); } 45%, 100% { transform: translate3d(calc(100vw + 20px), -6vh, 0); } }
+@keyframes cruzar-izq { 0% { transform: translate3d(calc(100vw + 20px), 0, 0); } 45%, 100% { transform: translate3d(-240px, -6vh, 0); } }
+@keyframes botar { from { transform: translateY(-4px); } to { transform: translateY(4px); } }
+/* Fuegos artificiales (Nochevieja y Año Nuevo) */
+.fiesta .f-fuego { position: absolute; width: 90px; height: 90px; margin: -45px 0 0 -45px; opacity: 0; animation: estallar 6.5s ease-out infinite; }
+.fiesta .f-fuego svg { width: 100%; height: 100%; filter: drop-shadow(0 0 6px var(--c)); }
+@keyframes estallar { 0% { transform: scale(.15); opacity: 0; } 6% { opacity: 1; } 28% { transform: scale(1.15); opacity: .9; } 42%, 100% { transform: scale(1.3); opacity: 0; } }
+html.oculta .fiesta .f-cruza, html.oculta .fiesta .f-cruza svg, html.oculta .fiesta .f-fuego { animation-play-state: paused; }
+/* Vista previa de los días especiales en Ajustes */
+.dia-prueba { display: grid; gap: 4px; padding: 10px 12px; margin: 4px 0 10px; border-radius: 12px; background: var(--surface-2); }
+.dia-prueba small { color: var(--muted); font-size: 13px; }
+.dia-prueba .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+
+/* ================= Vehículos de fiesta: Halloween y el «Butano» ================= */
+.busmk.veh-butano .busmk-img { width: 78px; height: 23px; }
+/* dibujos que miran a la izquierda: se giran al revés que el autobús */
+.busmk .busmk-img[data-izq] { transform: scaleX(-1); }
+.busmk.izq .busmk-img[data-izq] { transform: none; }
