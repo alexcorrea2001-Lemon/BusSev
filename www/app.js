@@ -248,9 +248,10 @@ function fiesta(tem, dia = null) {
   let capa = document.getElementById('fiesta');
   const f = (dia && FIESTA_DIAS[dia]) || FIESTA[tem];
   const clave = `${tem}|${dia || ''}`;
-  if (!f || quieto()) { capa?.remove(); return; }
+  const cielo = document.getElementById('fiesta-cielo');
+  if (!f || quieto()) { capa?.remove(); cielo?.remove(); return; }
   if (capa?.dataset.t === clave) return;
-  capa?.remove();
+  capa?.remove(); cielo?.remove();
   capa = document.createElement('div');
   capa.id = 'fiesta'; capa.className = `fiesta f-${f.modo}`; capa.dataset.t = clave; capa.setAttribute('aria-hidden', 'true');
   const n = 11;
@@ -263,13 +264,21 @@ function fiesta(tem, dia = null) {
     const dentro = f.img ? `<img class="fiesta-img" src="/img/${f.img}/${c}.webp" alt="" loading="lazy">` : (PIEZAS[c] || c);
     h += `<span style="left:${x}%;font-size:${Math.round(tam * 0.8)}px;width:${tam}px;height:${tam}px;animation-duration:${dur}s;animation-delay:${del}s;--dx:${dx}px;--r:${r}deg">${dentro}</span>`;
   }
-  if (f.cruza) h += `<div class="f-cruza${f.haciaIzq ? ' izq' : ''}">${PIEZAS[f.cruza]}</div>`;
   if (f.fuegos) for (let i = 0; i < 5; i++) {
     h += `<i class="f-fuego" style="left:${Math.round(8 + Math.random() * 78)}%;top:${Math.round(10 + Math.random() * 45)}%;animation-delay:${(i * 1.3 + Math.random()).toFixed(1)}s;--c:${['#ffd54a', '#ff6f91', '#7fe0ff', '#b7ff6a', '#ffffff'][i]}">${PIEZAS.fuego}</i>`;
   }
   capa.innerHTML = h;
   // Detrás del contenido: se ve en los huecos, no tapa los textos
   (document.querySelector('main') || document.body).prepend(capa);
+  // El trineo de Papá Noel y los camellos de los Reyes cruzan por la barra de arriba, por DELANTE (para que se
+  // vean bien) pero sin tapar nunca los tiempos ni las paradas; los toques pasan a través.
+  const barra = document.querySelector('.topbar');
+  if (f.cruza && barra) {
+    const c = document.createElement('div');
+    c.id = 'fiesta-cielo'; c.setAttribute('aria-hidden', 'true');
+    c.innerHTML = `<div class="f-cruza${f.haciaIzq ? ' izq' : ''}">${PIEZAS[f.cruza]}</div>`;
+    barra.append(c);
+  }
 }
 function saludoFiestaHTML() {
   const tem = tematicaActiva();
