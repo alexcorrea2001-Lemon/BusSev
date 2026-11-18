@@ -970,7 +970,38 @@ const ESTILOS_FAV = [
   ['cristal', 'Cristal'], ['panel', 'Panel de parada'], ['azulejo', 'Azulejo'], ['retro', 'Retro'],
   ['semanasanta', 'Semana Santa'], ['feria', 'Feria'],
 ];
-const EMOJIS_FAV = ['🏠', '💼', '🏫', '🎓', '🏥', '🛒', '❤️', '👵', '👶', '⚽', '🏋️', '🍻', '☕', '🎭', '🌳', '⛪', '🚉', '✈️', '⭐', '🐶'];
+/* Iconos de sitio (dibujados, todos con el mismo trazo): para las paradas favoritas y las tarjetas */
+const ICONOS_SITIO = {
+  casa: ['Casa', '<path d="M3 11l9-7 9 7"/><path d="M5 9.5V20a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V9.5"/>'],
+  trabajo: ['Trabajo', '<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8.5 7V5.5A1.5 1.5 0 0 1 10 4h4a1.5 1.5 0 0 1 1.5 1.5V7"/><path d="M3 12.5h18"/>'],
+  cole: ['Cole', '<path d="M12 7c-2-1.6-5-2-8-1.5V19c3-.5 6 0 8 1.5 2-1.5 5-2 8-1.5V5.5C17 5 14 5.4 12 7z"/><path d="M12 7v13.5"/>'],
+  uni: ['Universidad', '<path d="M2 9l10-5 10 5-10 5z"/><path d="M6 11v5c3.5 2.5 8.5 2.5 12 0v-5"/><path d="M22 9v6"/>'],
+  salud: ['Médico', '<rect x="3" y="3" width="18" height="18" rx="5"/><path d="M12 8v8M8 12h8"/>'],
+  compras: ['Compras', '<path d="M3 4h2.2l2.3 11h10.8L20.5 7.5H6.4"/><circle cx="9.5" cy="19" r="1.4"/><circle cx="17" cy="19" r="1.4"/>'],
+  deporte: ['Deporte', '<path d="M6.5 7v10M3.5 9.5v5M17.5 7v10M20.5 9.5v5M6.5 12h11"/>'],
+  cafe: ['Café', '<path d="M4 9h13v4.5A5.5 5.5 0 0 1 11.5 19h-2A5.5 5.5 0 0 1 4 13.5z"/><path d="M17 10.5h1.5a2.5 2.5 0 0 1 0 5H17"/><path d="M8.5 3.5c-.8 1.2.8 2.2 0 3.5M12.5 3.5c-.8 1.2.8 2.2 0 3.5"/>'],
+  comida: ['Comer', '<path d="M6 3v6.5a2 2 0 0 0 4 0V3M8 11.5V21"/><path d="M17 21V3c-2.2 1.2-3.5 3.8-3.5 7.5H17"/>'],
+  ocio: ['Ocio', '<path d="M4 6.5h16v3.2a2.3 2.3 0 0 0 0 4.6v3.2H4v-3.2a2.3 2.3 0 0 0 0-4.6z"/><path d="M10 7v10" stroke-dasharray="2 2"/>'],
+  parque: ['Parque', '<path d="M12 21.5V15"/><path d="M12 3a4.8 4.8 0 0 0-4.6 6.2A4 4 0 0 0 8.5 16.5h7a4 4 0 0 0 1.1-7.3A4.8 4.8 0 0 0 12 3z"/>'],
+  iglesia: ['Iglesia', '<path d="M12 2v5M9.8 4h4.4"/><path d="M5.5 21.5V11.5L12 7l6.5 4.5v10z"/><path d="M10 21.5v-3.5a2 2 0 0 1 4 0v3.5"/>'],
+  estacion: ['Estación', '<rect x="5" y="3" width="14" height="14" rx="3.5"/><path d="M5 10.5h14"/><path d="M9 21l2-4M15 21l-2-4"/><circle cx="9" cy="13.8" r=".6"/><circle cx="15" cy="13.8" r=".6"/>'],
+  aeropuerto: ['Aeropuerto', '<path d="M12 3c.9 0 1.5.8 1.5 1.8v4.7l7 4v2l-7-2.2v4.2l2 1.5V21L12 20l-3.5 1v-2l2-1.5v-4.2l-7 2.2v-2l7-4V4.8C10.5 3.8 11.1 3 12 3z"/>'],
+  centro: ['Centro', '<path d="M3 21h18M5.5 21v-9M10 21v-9M14 21v-9M18.5 21v-9"/><path d="M3 10l9-6 9 6z"/>'],
+  corazon: ['Familia', '<path d="M12 20s-7.5-4.6-9.2-9.3A4.8 4.8 0 0 1 12 7.2a4.8 4.8 0 0 1 9.2 3.5C19.5 15.4 12 20 12 20z"/>'],
+  estrella: ['Favorita', '<path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1 5.8L12 16.8l-5.2 2.8 1-5.8L3.5 9.7l5.9-.8z"/>'],
+  persona: ['Persona', '<circle cx="12" cy="8" r="4"/><path d="M4.5 21a7.5 7.5 0 0 1 15 0"/>'],
+  tarjeta: ['Tarjeta', '<rect x="3" y="5.5" width="18" height="13" rx="2.5"/><path d="M3 10h18M7 15h4"/>'],
+  bus: ['Autobús', '<path d="M6.5 3h11A2.5 2.5 0 0 1 20 5.5V17H4V5.5A2.5 2.5 0 0 1 6.5 3z"/><path d="M4 11h16M7.5 21v-4M16.5 21v-4"/><circle cx="8" cy="14" r=".7"/><circle cx="16" cy="14" r=".7"/>'],
+};
+const ICONOS_PARADA = ['casa', 'trabajo', 'cole', 'uni', 'salud', 'compras', 'deporte', 'cafe', 'comida', 'ocio', 'parque', 'iglesia', 'estacion', 'aeropuerto', 'centro', 'corazon', 'estrella'];
+// Los que se guardaron como emoji en la versión anterior
+const EMOJI_A_ICONO = { '🏠': 'casa', '💼': 'trabajo', '🏫': 'cole', '🎓': 'uni', '🏥': 'salud', '🛒': 'compras', '🏋️': 'deporte', '☕': 'cafe', '🎭': 'ocio', '🌳': 'parque', '⛪': 'iglesia', '🚉': 'estacion', '✈️': 'aeropuerto', '❤️': 'corazon', '⭐': 'estrella', '💳': 'tarjeta', '⚽': 'deporte', '🍻': 'comida', '🙋': 'persona', '👩': 'persona', '👨': 'persona', '👵': 'persona', '👴': 'persona', '👧': 'persona', '👦': 'persona' };
+const claveIcono = (v) => (ICONOS_SITIO[v] ? v : EMOJI_A_ICONO[v] || '');
+function iconoSitioSVG(v, cls = 'ico-sitio') {
+  const k = claveIcono(v);
+  if (!k) return '';
+  return `<span class="${cls}" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONOS_SITIO[k][1]}</svg></span>`;
+}
 function stopCardHTML(p, { tiempos, status, distancia, limit = 4, fav = null }) {
   const ocultar = !!fav?.ocultarDir;
   const sub = [distancia != null ? `🚶 ${Math.max(1, Math.round(distancia * 1.25 / 75))} min (${fmtDist(distancia)})` : '', ocultar ? '' : (p.direccion_completa || p.calle || '')].filter(Boolean).join(' · ');
@@ -978,7 +1009,8 @@ function stopCardHTML(p, { tiempos, status, distancia, limit = 4, fav = null }) 
   const filtered = fav?.lineas?.length ? filtrarLineas(tiempos, fav) : tiempos;
   const estilo = fav ? (ESTILOS_FAV.some(([k]) => k === fav.estilo) ? fav.estilo : 'clasico') : '';
   const clases = `card${fav ? ` fav est-${estilo}` : ''}${fav?.compacta ? ' compacta' : ''}${fav?.animar ? ' animar-llegando' : ''}`;
-  const etiqueta = fav?.alias || fav?.emoji ? `<div class="fav-alias">${fav.emoji ? `<span class="fav-emoji">${esc(fav.emoji)}</span>` : ''}${esc(fav.alias || '')}</div>` : '';
+  const ico = iconoSitioSVG(fav?.emoji);
+  const etiqueta = fav?.alias || ico ? `<div class="fav-alias">${ico}${esc(fav.alias || '')}</div>` : '';
   const editar = `<button type="button" class="fav-edit" data-edit-fav="${esc(p.codigo)}" aria-label="Personalizar esta parada">${ICON.edit}</button>`;
   // Compacta: una sola línea con el nombre y el próximo autobús
   if (fav?.compacta) {
@@ -993,11 +1025,11 @@ function stopCardHTML(p, { tiempos, status, distancia, limit = 4, fav = null }) 
       <span class="stop-num" aria-label="Parada número ${esc(p.codigo)}">${esc(p.codigo)}</span>
       <div class="card-title">${etiqueta}<h3>${esc(p.nombre)}</h3>${sub ? `<p>${esc(sub)}</p>` : ''}
         ${fav?.lineas?.length && !ocultar ? `<p>Solo líneas ${fav.lineas.map(esc).join(', ')}</p>` : ''}</div>
-      ${ICON.chev}
-    </a>
+      ${fav ? '' : ICON.chev}
+    </a>${fav ? editar : ''}
     ${fav && settings.avisosTarjetas !== false ? (window.avisosTussam?.favAvisoHTML?.(p.codigo, fav.lineas) || '') : ''}
     ${tiempos === undefined ? '<div class="board-empty">Cargando tiempos…</div>' : boardHTML(filtered, status, { limit, filtrado: !!fav?.lineas?.length, codigo: p.codigo })}
-    ${fav ? `<div class="card-tools">${settings.voz ? `<button type="button" data-speak="${esc(p.codigo)}">🔊 Escuchar</button>` : ''}${editar}</div>` : ''}
+    ${fav && settings.voz ? `<div class="card-tools"><button type="button" data-speak="${esc(p.codigo)}">🔊 Escuchar</button></div>` : ''}
   </article>`;
 }
 const emptyHTML = (icon, title, text, actions = '') => `<div class="empty">${icon}<h2>${title}</h2><p>${text}</p>${actions}</div>`;
@@ -1081,47 +1113,88 @@ function favButton(p, onChange) {
       };
     } };
 }
+/* Miniatura de un estilo de tarjeta: una tarjetita de verdad, con el mismo CSS que la de Favoritas */
+const miniEstiloHTML = (k, codigo, color) => `<span class="est-mini card fav est-${k}" style="--fc:${color}" aria-hidden="true">
+  <span class="card-head"><span class="stop-num">${esc(codigo)}</span><span class="em-l"></span></span>
+  <span class="em-b"><span class="em-l s"></span><span class="t-main">5<small>min</small></span></span></span>`;
+const OPCIONES_FAV = [
+  ['compacta', 'Compacta', 'Solo el próximo bus', '<rect x="3" y="8" width="18" height="8" rx="2.5"/><path d="M6.5 12h4M15 12h2.5"/>'],
+  ['ocultarDir', 'Sin dirección', 'Oculta la calle', '<path d="M4 7h11M4 12h16"/><path d="M4 17h9" stroke-dasharray="1.5 2.5"/><path d="M16 15l4 4M20 15l-4 4"/>'],
+  ['animar', '«Llegando» animado', 'Late cuando llega', '<circle cx="12" cy="12" r="3.2"/><path d="M6.3 6.3a8 8 0 0 0 0 11.4M17.7 6.3a8 8 0 0 1 0 11.4"/>'],
+];
 async function editFavorite(codigo, onDone) {
   const fav = favs.get(codigo);
   if (!fav) return;
   await getLineas().catch(() => null);
   const lineas = await api(`/paradas/${encodeURIComponent(codigo)}/lineas`).catch(() => []);
-  let elegidas = new Set(fav.lineas?.length ? fav.lineas : lineas);
-  let color = fav.color || '', emoji = fav.emoji || '', estilo = fav.estilo || 'clasico';
+  const elegidas = new Set(fav.lineas?.length ? fav.lineas : lineas);
+  const d = { color: fav.color || '', emoji: claveIcono(fav.emoji), estilo: ESTILOS_FAV.some(([k]) => k === fav.estilo) ? fav.estilo : 'clasico',
+    compacta: !!fav.compacta, ocultarDir: !!fav.ocultarDir, animar: !!fav.animar };
   const grupos = [...new Set(favs.list().map((f) => (f.grupo || '').trim()).filter(Boolean))];
-  openModal(`<h2>Personalizar parada</h2>
-    <p class="help">${esc(fav.nombre)} · parada ${esc(codigo)}</p>
-    <div class="field"><label for="fv-alias">Nombre</label><input id="fv-alias" maxlength="30" placeholder="Por ejemplo: Casa, Trabajo, Facultad" value="${esc(fav.alias || '')}"></div>
-    <div class="field"><label>Icono</label><div class="emoji-picks"><button type="button" class="emoji-pick ninguno" data-em="" aria-pressed="${!emoji}">Ninguno</button>${EMOJIS_FAV.map((e) => `<button type="button" class="emoji-pick" data-em="${e}" aria-pressed="${emoji === e}">${e}</button>`).join('')}</div></div>
-    <div class="field"><label>Color</label>${swatchesHTML(color, 'data-fc')}</div>
-    <div class="field"><label>Estilo de la tarjeta</label><div class="estilo-picks">${ESTILOS_FAV.map(([k, n]) => `<button type="button" class="estilo-pick card fav est-${k}" data-est="${k}" aria-pressed="${estilo === k}" style="--fc:${safeColor(color || TAGS[0])}"><span class="ep-num">${esc(codigo)}</span><span class="ep-nom">${n}</span></button>`).join('')}</div></div>
-    <div class="field"><label for="fv-grupo">Grupo <span class="muted small">(opcional)</span></label><input id="fv-grupo" maxlength="24" placeholder="Por ejemplo: 🏠 Casa, 💼 Trabajo" value="${esc(fav.grupo || '')}">
-      ${grupos.length ? `<div class="chips-wrap" style="margin-top:6px">${grupos.map((g) => `<button type="button" class="chip" data-gr="${esc(g)}">${esc(g)}</button>`).join('')}</div>` : ''}
-      <p class="help">Las paradas del mismo grupo salen juntas en Favoritas, bajo ese título.</p></div>
-    <div class="switch-row"><div><h3>Tarjeta compacta</h3><p>Una sola línea con el nombre y el próximo autobús.</p></div><input class="switch" type="checkbox" id="fv-cmp" ${fav.compacta ? 'checked' : ''} aria-label="Tarjeta compacta"></div>
-    <div class="switch-row"><div><h3>Ocultar la dirección</h3><p>Sin la calle ni «Solo líneas…» debajo del nombre.</p></div><input class="switch" type="checkbox" id="fv-dir" ${fav.ocultarDir ? 'checked' : ''} aria-label="Ocultar la dirección"></div>
-    <div class="switch-row"><div><h3>«Llegando» animado</h3><p>Cuando el autobús está llegando, el aviso late para que se vea más.</p></div><input class="switch" type="checkbox" id="fv-anim" ${fav.animar ? 'checked' : ''} aria-label="Llegando animado"></div>
-    <div class="field"><label>Líneas que quieres ver</label>
-      <p class="help">En Favoritas solo saldrán los tiempos de las líneas marcadas. Sirve para no ver autobuses que nunca coges en esta parada. Si las dejas todas marcadas, se ven todas.</p>
-      <div class="line-picks">${[...lineas].sort(ordenLineas).map((n) => `<button class="line-pick" type="button" data-ln="${esc(n)}" aria-pressed="${elegidas.has(n)}">${badge(etiquetaLinea(lineaFor(n)?.numero || n), lineaFor(n)?.color)}</button>`).join('') || '<span class="help">Sin datos de líneas.</span>'}</div></div>
-    ${favs.list().length > 1 ? `<div class="field"><label>Posición en Favoritas <span class="orden-pos" id="fv-pos"></span></label>
-      <div class="orden-box"><ol class="orden-lista" id="fv-orden"></ol>
-        <div class="orden-btns"><button class="btn ghost" type="button" data-mv="-1">${ICON.arriba}Subir</button><button class="btn ghost" type="button" data-mv="1">${ICON.abajo}Bajar</button></div></div></div>` : ''}
-    <div class="actions"><button class="btn danger" type="button" id="fv-del">Quitar de favoritas</button><button class="btn" type="button" id="fv-ok">Guardar</button></div>`,
+  const parada = cache.paradaByCode.get(codigo) || { codigo, nombre: fav.nombre };
+  // Para la vista previa: los últimos tiempos de verdad, o unos de ejemplo con las líneas de la parada
+  const reales = ultimosTiempos.get(codigo);
+  const ejemplo = reales?.length ? reales : [...lineas].sort(ordenLineas).slice(0, 2).flatMap((n, i) => {
+    const l = lineaFor(n);
+    return [{ linea: etiquetaLinea(l?.numero || n), color: l?.color, destino: l?.nombre?.split(/\s*-\s*/).pop() || 'Destino', tiempo_minutos: i ? 7 : 0 }, { linea: etiquetaLinea(l?.numero || n), color: l?.color, destino: l?.nombre?.split(/\s*-\s*/).pop() || 'Destino', tiempo_minutos: i ? 19 : 12 }];
+  });
+  const colorFc = () => safeColor(d.color || TAGS[0]);
+  const borrador = () => {
+    const sel = lineas.filter((n) => elegidas.has(n));
+    return { ...fav, ...d, alias: ($('#fv-alias')?.value ?? fav.alias ?? '').trim().slice(0, 30), lineas: sel.length && sel.length < lineas.length ? sel : null };
+  };
+  const ok = '<span class="sel-ok" aria-hidden="true"></span>';
+  openModal(`<div class="pz-top">
+      <div class="pz-tit"><h2>Personalizar parada</h2><span class="pz-sub">${esc(fav.nombre)} · ${esc(codigo)}</span></div>
+      <div class="pz-prev" id="fv-prev" inert></div>
+      <div class="seg pz-tabs" role="tablist"><button type="button" data-tab="aspecto" aria-pressed="true">Aspecto</button><button type="button" data-tab="mostrar" aria-pressed="false">Qué mostrar</button><button type="button" data-tab="orden" aria-pressed="false">Orden</button></div>
+    </div>
+    <div class="pz-panel" data-panel="aspecto">
+      <section class="pz-sec"><h3>Nombre</h3><input id="fv-alias" maxlength="30" placeholder="Por ejemplo: Casa, Trabajo, Facultad" value="${esc(fav.alias || '')}"></section>
+      <section class="pz-sec"><h3>Icono</h3><div class="ico-picks"><button type="button" class="ico-pick" data-em="" aria-pressed="${!d.emoji}" aria-label="Sin icono"><span class="ico-sitio"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="8"/><path d="M6.5 17.5l11-11"/></svg></span></button>${ICONOS_PARADA.map((k) => `<button type="button" class="ico-pick" data-em="${k}" aria-pressed="${d.emoji === k}" aria-label="${ICONOS_SITIO[k][0]}" title="${ICONOS_SITIO[k][0]}">${iconoSitioSVG(k)}</button>`).join('')}</div></section>
+      <section class="pz-sec"><h3>Color</h3>${swatchesHTML(d.color, 'data-fc')}</section>
+      <section class="pz-sec"><h3>Estilo</h3><div class="est-tiles">${ESTILOS_FAV.map(([k, n]) => `<button type="button" class="est-tile" data-est="${k}" aria-pressed="${d.estilo === k}">${miniEstiloHTML(k, codigo, colorFc())}<span class="est-n">${n}</span>${ok}</button>`).join('')}</div></section>
+    </div>
+    <div class="pz-panel" data-panel="mostrar" hidden>
+      <section class="pz-sec"><h3>Tarjeta</h3><div class="opt-tiles">${OPCIONES_FAV.map(([k, t, sub, svg]) => `<button type="button" class="opt-tile" data-opt="${k}" aria-pressed="${d[k]}"><span class="opt-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${svg}</svg></span><b>${t}</b><small>${sub}</small>${ok}</button>`).join('')}</div></section>
+      <section class="pz-sec"><h3>Líneas</h3><p class="help">Toca para quitar las que nunca coges aquí. Con todas marcadas se ven todas.</p>
+        <div class="line-picks">${[...lineas].sort(ordenLineas).map((n) => `<button class="line-pick" type="button" data-ln="${esc(n)}" aria-pressed="${elegidas.has(n)}">${badge(etiquetaLinea(lineaFor(n)?.numero || n), lineaFor(n)?.color)}</button>`).join('') || '<span class="help">Sin datos de líneas.</span>'}</div></section>
+    </div>
+    <div class="pz-panel" data-panel="orden" hidden>
+      <section class="pz-sec"><h3>Grupo</h3><input id="fv-grupo" maxlength="24" placeholder="Por ejemplo: Casa, Trabajo" value="${esc(fav.grupo || '')}">
+        ${grupos.length ? `<div class="chips-wrap">${grupos.map((g) => `<button type="button" class="chip" data-gr="${esc(g)}">${esc(g)}</button>`).join('')}</div>` : ''}
+        <p class="help">Las paradas del mismo grupo salen juntas en Favoritas, bajo ese título.</p></section>
+      ${favs.list().length > 1 ? `<section class="pz-sec"><h3>Posición <span class="orden-pos" id="fv-pos"></span></h3>
+        <div class="orden-box"><ol class="orden-lista" id="fv-orden"></ol>
+          <div class="orden-btns"><button class="btn ghost" type="button" data-mv="-1">${ICON.arriba}Subir</button><button class="btn ghost" type="button" data-mv="1">${ICON.abajo}Bajar</button></div></div></section>` : ''}
+    </div>
+    <div class="actions pz-acc"><button class="btn ghost" type="button" id="fv-no">Cancelar</button><button class="btn" type="button" id="fv-ok">Guardar</button></div>`,
   (m, close) => {
-    m.querySelectorAll('[data-fc]').forEach((b) => { b.onclick = () => {
-      color = color === b.dataset.fc ? '' : b.dataset.fc;
-      m.querySelectorAll('[data-fc]').forEach((x) => { const on = x.dataset.fc === color; x.setAttribute('aria-pressed', on); x.innerHTML = on ? ICON.check : ''; });
-      m.querySelectorAll('[data-est]').forEach((x) => x.style.setProperty('--fc', safeColor(color || TAGS[0])));
+    m.classList.add('pz');
+    const prev = $('#fv-prev', m);
+    const pintarPrev = () => { prev.innerHTML = stopCardHTML(parada, { tiempos: ejemplo, status: 'ok', limit: 2, fav: borrador() }); };
+    const marcar = (sel, attr, val) => m.querySelectorAll(sel).forEach((x) => x.setAttribute('aria-pressed', x.dataset[attr] === val));
+    m.querySelectorAll('[data-tab]').forEach((b) => { b.onclick = () => {
+      marcar('[data-tab]', 'tab', b.dataset.tab);
+      m.querySelectorAll('[data-panel]').forEach((p) => { p.hidden = p.dataset.panel !== b.dataset.tab; });
+      if (b.dataset.tab === 'orden') pintarOrden(false);
     }; });
-    m.querySelectorAll('[data-em]').forEach((b) => { b.onclick = () => { emoji = b.dataset.em; m.querySelectorAll('[data-em]').forEach((x) => x.setAttribute('aria-pressed', x.dataset.em === emoji)); vibrar(10); }; });
-    m.querySelectorAll('[data-est]').forEach((b) => { b.onclick = () => { estilo = b.dataset.est; m.querySelectorAll('[data-est]').forEach((x) => x.setAttribute('aria-pressed', x.dataset.est === estilo)); vibrar(10); }; });
+    m.querySelectorAll('[data-fc]').forEach((b) => { b.onclick = () => {
+      d.color = d.color === b.dataset.fc ? '' : b.dataset.fc;
+      m.querySelectorAll('[data-fc]').forEach((x) => { const on = x.dataset.fc === d.color; x.setAttribute('aria-pressed', on); x.innerHTML = on ? ICON.check : ''; });
+      m.querySelectorAll('.est-mini').forEach((x) => x.style.setProperty('--fc', colorFc()));
+      pintarPrev();
+    }; });
+    m.querySelectorAll('[data-em]').forEach((b) => { b.onclick = () => { d.emoji = b.dataset.em; marcar('[data-em]', 'em', d.emoji); vibrar(10); pintarPrev(); }; });
+    m.querySelectorAll('[data-est]').forEach((b) => { b.onclick = () => { d.estilo = b.dataset.est; marcar('[data-est]', 'est', d.estilo); vibrar(10); pintarPrev(); }; });
+    m.querySelectorAll('[data-opt]').forEach((b) => { b.onclick = () => { const k = b.dataset.opt; d[k] = !d[k]; b.setAttribute('aria-pressed', d[k]); vibrar(10); pintarPrev(); }; });
+    $('#fv-alias', m).oninput = pintarPrev;
     m.querySelectorAll('[data-gr]').forEach((b) => { b.onclick = () => { $('#fv-grupo', m).value = b.dataset.gr; }; });
     m.querySelectorAll('[data-ln]').forEach((b) => { b.onclick = () => {
       const n = b.dataset.ln; if (elegidas.has(n)) elegidas.delete(n); else elegidas.add(n);
-      b.setAttribute('aria-pressed', elegidas.has(n));
+      b.setAttribute('aria-pressed', elegidas.has(n)); pintarPrev();
     }; });
-    /* Lista en miniatura: ves dónde queda la parada al subirla o bajarla */
+    /* Lista en miniatura: ves dónde queda la parada al subirla o bajarla (solo se mueve la lista, no la ventana) */
     const pintarOrden = (animar) => {
       const box = $('#fv-orden', m);
       if (!box) return;
@@ -1132,17 +1205,22 @@ async function editFavorite(codigo, onDone) {
       const [sube, baja] = [m.querySelector('[data-mv="-1"]'), m.querySelector('[data-mv="1"]')];
       if (sube) sube.disabled = i <= 0;
       if (baja) baja.disabled = i >= l.length - 1;
-      box.querySelector('.yo')?.scrollIntoView({ block: 'nearest', behavior: animar && !settings.menosAnimaciones ? 'smooth' : 'auto' });
+      const yo = box.querySelector('.yo');
+      if (yo) {
+        const top = Math.max(0, yo.offsetTop - (box.clientHeight - yo.offsetHeight) / 2);
+        if (box.scrollTo) box.scrollTo({ top, behavior: animar && !settings.menosAnimaciones ? 'smooth' : 'auto' }); else box.scrollTop = top;
+      }
     };
-    pintarOrden(false);
     m.querySelectorAll('[data-mv]').forEach((b) => { b.onclick = () => { favs.move(codigo, Number(b.dataset.mv)); vibrar(15); pintarOrden(true); onDone?.(); }; });
-    $('#fv-del', m).onclick = () => { favs.remove(codigo); close(); toast('Quitada de favoritas'); onDone?.(); };
+    $('#fv-no', m).onclick = close;
     $('#fv-ok', m).onclick = () => {
-      const sel = lineas.filter((n) => elegidas.has(n));
-      favs.update(codigo, { alias: $('#fv-alias', m).value.trim().slice(0, 30), color, lineas: sel.length && sel.length < lineas.length ? sel : null,
-        emoji, estilo, grupo: $('#fv-grupo', m).value.trim().slice(0, 24), compacta: $('#fv-cmp', m).checked, ocultarDir: $('#fv-dir', m).checked, animar: $('#fv-anim', m).checked });
+      const b = borrador();
+      favs.update(codigo, { alias: b.alias, color: d.color, lineas: b.lineas, emoji: d.emoji, estilo: d.estilo,
+        grupo: $('#fv-grupo', m).value.trim().slice(0, 24), compacta: d.compacta, ocultarDir: d.ocultarDir, animar: d.animar });
       close(); toast('Cambios guardados'); onDone?.();
     };
+    pintarPrev();
+    m.scrollTop = 0;
   });
 }
 document.addEventListener('click', (e) => {
@@ -1340,10 +1418,10 @@ function aplicarCapasMapa(bm) {
   vis('bs-stops', settings.mapaParadas !== false);
   vis('bs-stops-hit', settings.mapaParadas !== false);
   for (const id of ['bs-route-casing', 'bs-route', 'bs-route-stops', 'bs-paths-casing', 'bs-paths']) vis(id, settings.mapaRecorridos !== false);
-  for (const id of ['bs-metro-casing', 'bs-metro', 'bs-metro-st', 'bs-metro-hit']) vis(id, settings.mapaMetro !== false);
-  for (const id of ['bs-renfe', 'bs-renfe-st', 'bs-renfe-hit']) vis(id, settings.mapaRenfe !== false);
-  for (const id of ['bs-sevici', 'bs-sevici-hit']) vis(id, settings.mapaSevici !== false);
-  if (settings.mapaSevici !== false && !sevici.datos && bm === mapState.bm) mapState.seviciPintar?.();
+  for (const id of ['bs-metro-casing', 'bs-metro', 'bs-metro-st', 'bs-metro-hit']) vis(id, settings.mapaMetro === true);
+  for (const id of ['bs-renfe', 'bs-renfe-st', 'bs-renfe-hit']) vis(id, settings.mapaRenfe === true);
+  for (const id of ['bs-sevici', 'bs-sevici-hit']) vis(id, settings.mapaSevici === true);
+  if (settings.mapaSevici === true && !sevici.datos && bm === mapState.bm) mapState.seviciPintar?.();
   // Nombres de calles y sitios = las capas de texto del mapa base
   try { for (const l of m.getStyle()?.layers || []) if (l.type === 'symbol') m.setLayoutProperty(l.id, 'visibility', settings.mapaCalles !== false ? 'visible' : 'none'); } catch { /* */ }
 }
@@ -1407,6 +1485,13 @@ async function addCercaniasLayer(bm) {
   aplicarCapasMapa(bm);
 }
 /* ---------- Sevici: bicis y huecos libres en tiempo real (CityBikes, gratis y sin clave) ---------- */
+// "_GLORIETA BIZCO AMATE" / "123_CALLE X" → "Glorieta Bizco Amate"
+function nombreSevici(n) {
+  const peq = new Set(['de', 'del', 'la', 'las', 'el', 'los', 'y', 'a', 'en']);
+  return String(n || '').replace(/^[\s_\-\d.]+/, '').replace(/[_]+/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase()
+    .split(' ').map((w, i) => (i && peq.has(w) ? w : w.replace(/^(\p{L})/u, (c) => c.toUpperCase()))).join(' ')
+    .replace(/\b(Ii|Iii|Iv|Vi|Vii|Viii|Ix|Xi|Xii)\b/g, (r) => r.toUpperCase()) || 'Estación Sevici';
+}
 const sevici = {
   datos: null, at: 0, red: 'sevici', _p: null,
   /* Como mucho una consulta cada 90 s (CityBikes permite 300 por hora y así se gasta poca batería y datos) */
@@ -1423,7 +1508,7 @@ const sevici = {
         if (!n) throw new Error('sin red');
         this.red = n.id; j = await pedir(n.id);
       }
-      this.datos = (j.network?.stations || []).map((e) => ({ id: String(e.id), nombre: String(e.name || '').replace(/^\d+[_\s-]+/, ''), lat: +e.latitude, lon: +e.longitude, bicis: e.free_bikes ?? 0, huecos: e.empty_slots ?? 0 }))
+      this.datos = (j.network?.stations || []).map((e) => ({ id: String(e.id), nombre: nombreSevici(e.name), lat: +e.latitude, lon: +e.longitude, bicis: e.free_bikes ?? 0, huecos: e.empty_slots ?? 0 }))
         .filter((e) => Number.isFinite(e.lat) && Number.isFinite(e.lon));
       this.at = Date.now();
       return this.datos;
@@ -1440,7 +1525,7 @@ window.sevici = sevici;
 async function addSeviciLayer(bm) {
   if (!bm?.m) return;
   const pintar = async (forzar) => {
-    if (settings.mapaSevici === false) return;
+    if (settings.mapaSevici !== true) return;
     try {
       const ds = await sevici.cargar(forzar);
       bm.source('bs-sevici', fc(ds.map((e) => pointF([e.lat, e.lon], { id: e.id, n: e.bicis, c: e.bicis === 0 ? '#9ca3af' : e.bicis < 3 ? '#f59e0b' : '#16a34a' }))));
@@ -1463,7 +1548,7 @@ async function addSeviciLayer(bm) {
   await pintar(false);
   // Solo se refresca mientras el Mapa está abierto y la app a la vista (nada en segundo plano)
   clearInterval(mapState.seviciT);
-  mapState.seviciT = setInterval(() => { if (active.name === 'mapa' && appVisible && settings.mapaSevici !== false) pintar(true); }, 120_000);
+  mapState.seviciT = setInterval(() => { if (active.name === 'mapa' && appVisible && settings.mapaSevici === true) pintar(true); }, 120_000);
 }
 function estacionModal(codigo) {
   const est = estacionMetro(codigo), cer = /^R/.test(codigo), M = cer ? window.BUSSEV_CERCANIAS : window.BUSSEV_METRO;
@@ -2528,7 +2613,7 @@ views.parada = (el, codigo) => {
         : '';
     // Debajo del nombre, en una línea: tu emoji y nombre (si es favorita) · número · dirección
     const f = favs.get(codigo);
-    const mio = f?.alias || f?.emoji ? `<span class="p-mio">${f.emoji ? `${esc(f.emoji)} ` : ''}${esc(f.alias || '')}</span>` : '';
+    const mio = f?.alias || claveIcono(f?.emoji) ? `<span class="p-mio">${iconoSitioSVG(f.emoji)}${esc(f.alias || '')}</span>` : '';
     const sub = [mio, `<span class="p-num">${esc(codigo)}</span>`].filter(Boolean).join('<span class="p-sep">·</span>');
     const dir = info.direccion_completa ? `<p class="p-dir">${esc(info.direccion_completa)}</p>` : '';
     return { fb, html: backHead(`<div class="grow"><h2>${esc(info.nombre)}</h2><p class="p-sub">${sub}</p>${dir}${acc}</div>${fb.html}`) };
@@ -2757,20 +2842,19 @@ views.cerca = (el) => {
 const ICONOS_APP = [['Clasico', 'Clásico'], ['Noche', 'Noche'], ['Azulejo', 'Azulejo'], ['Feria', 'Feria'], ['SemanaSanta', 'Semana Santa'], ['Giralda', 'Giralda'], ['Verde', 'Verde']];
 const SONIDOS_AVISO = [['sistema', 'El del móvil'], ['campana', 'Campana'], ['bocina', 'Bocina'], ['suave', 'Suave'], ['pitido', 'Pitido'], ['vibrar', 'Solo vibrar']];
 let iconoActual = 'Clasico';
-function iconoAppSVG(k) {
-  const bus = (c, x = 30, y = 30, s = 2) => `<g transform="translate(${x} ${y}) scale(${s})"><path fill="${c}" d="M7 3h10a3 3 0 0 1 3 3v10a2 2 0 0 1-2 2v2h-3v-2H9v2H6v-2a2 2 0 0 1-2-2V6a3 3 0 0 1 3-3zM6.5 6v5h11V6zM7.5 13.2a1.3 1.3 0 1 0 0 2.6a1.3 1.3 0 1 0 0-2.6zM16.5 13.2a1.3 1.3 0 1 0 0 2.6a1.3 1.3 0 1 0 0-2.6z"/></g>`;
-  const dots = (c, r, step, salta) => { let o = ''; for (let x = 6; x < 110; x += step) for (let y = 6; y < 110; y += step) if (!salta || !(x > 30 && x < 80 && y > 30 && y < 80)) o += `<circle cx="${x}" cy="${y}" r="${r}" fill="${c}"/>`; return o; };
-  const d = {
-    Clasico: `<rect width="108" height="108" fill="#D41C2B"/>${bus('#fff')}`,
-    Noche: `<rect width="108" height="108" fill="#0F172A"/>${[[20, 22], [86, 18], [92, 40], [14, 60], [30, 88], [88, 84]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="1.2" fill="#fff" opacity=".8"/>`).join('')}<circle cx="78" cy="30" r="10" fill="#FDE68A"/><circle cx="83" cy="26" r="9" fill="#0F172A"/>${bus('#FACC15', 28, 34)}`,
-    Azulejo: `<rect width="108" height="108" fill="#F4ECD8"/>${[0, 24, 48, 72, 96].map((x) => [0, 24, 48, 72, 96].map((y) => `<path d="M${x} ${y - 9}l9 9-9 9-9-9z" fill="#1E4FA3"/>`).join('')).join('')}<circle cx="54" cy="54" r="30" fill="#1E4FA3"/>${bus('#fff', 36, 36, 1.5)}`,
-    Feria: `<rect width="108" height="108" fill="#B8132F"/>${dots('#fff', 4.5, 20, true)}${bus('#fff')}`,
-    SemanaSanta: `<rect width="108" height="108" fill="#4C1D6E"/><path d="M82 22L72 56h20z" fill="#fff" opacity=".2"/>${bus('#F3D27A')}`,
-    Giralda: `<rect width="108" height="108" fill="#E8590C"/><path fill="#fff" d="M44 84V44h20v40zM46 44V32h16v12zM49 32V24h10v8zM51 24V18h6v6zM53.2 18V12h1.6v6z"/><path fill="#E8590C" d="M50 52h3v6h-3zM55 52h3v6h-3zM50 64h3v6h-3zM55 64h3v6h-3zM51 36h2v5h-2zM55 36h2v5h-2z"/>`,
-    Verde: `<rect width="108" height="108" fill="#0B6E2F"/>${bus('#fff')}`,
-  };
-  return `<svg viewBox="9 9 90 90" aria-hidden="true">${d[k] || d.Clasico}</svg>`;
-}
+/* ICONOS_APP_ARTE:INICIO */
+const ICONOS_APP_ARTE = {
+  Clasico: '<path d="M0,0h108v108h-108z" fill="#D41C2B"/><path d="M-26,24a56,56 0 1 0 112,0a56,56 0 1 0 -112,0z" fill="#FFFFFF" fill-opacity="0.07"/><path d="M39,75h3a2,2 0 0 1 2,2v4a2,2 0 0 1 -2,2h-3a2,2 0 0 1 -2,-2v-4a2,2 0 0 1 2,-2zM66,75h3a2,2 0 0 1 2,2v4a2,2 0 0 1 -2,2h-3a2,2 0 0 1 -2,-2v-4a2,2 0 0 1 2,-2z" fill="#FFFFFF"/><path d="M41,27h26a8,8 0 0 1 8,8v34a8,8 0 0 1 -8,8h-26a8,8 0 0 1 -8,-8v-34a8,8 0 0 1 8,-8z" fill="#FFFFFF"/><path d="M41,37h26a3.5,3.5 0 0 1 3.5,3.5v11a3.5,3.5 0 0 1 -3.5,3.5h-26a3.5,3.5 0 0 1 -3.5,-3.5v-11a3.5,3.5 0 0 1 3.5,-3.5z" fill="#D41C2B"/><path d="M38.9,66a3.6,3.6 0 1 0 7.2,0a3.6,3.6 0 1 0 -7.2,0zM61.9,66a3.6,3.6 0 1 0 7.2,0a3.6,3.6 0 1 0 -7.2,0z" fill="#F2A20C"/>',
+  Noche: '<path d="M0,0h108v108h-108z" fill="#0B1533"/><path d="M-16,120a70,70 0 1 0 140,0a70,70 0 1 0 -140,0z" fill="#1E3A8A" fill-opacity="0.55"/><path d="M6,120a48,48 0 1 0 96,0a48,48 0 1 0 -96,0z" fill="#2B4CB0" fill-opacity="0.35"/><path d="M26,23.4L26.73,25.27L28.6,26L26.73,26.73L26,28.6L25.27,26.73L23.4,26L25.27,25.27z" fill="#FFFFFF" fill-opacity="0.9"/><path d="M40,16.4L40.45,17.55L41.6,18L40.45,18.45L40,19.6L39.55,18.45L38.4,18L39.55,17.55z" fill="#FFFFFF" fill-opacity="0.9"/><path d="M82,44.2L82.5,45.5L83.8,46L82.5,46.5L82,47.8L81.5,46.5L80.2,46L81.5,45.5z" fill="#FFFFFF" fill-opacity="0.9"/><path d="M22,48.6L22.39,49.61L23.4,50L22.39,50.39L22,51.4L21.61,50.39L20.6,50L21.61,49.61z" fill="#FFFFFF" fill-opacity="0.9"/><path d="M90,72.5L90.42,73.58L91.5,74L90.42,74.42L90,75.5L89.58,74.42L88.5,74L89.58,73.58z" fill="#FFFFFF" fill-opacity="0.9"/><path d="M16,76L16.56,77.44L18,78L16.56,78.56L16,80L15.44,78.56L14,78L15.44,77.44z" fill="#FFFFFF" fill-opacity="0.9"/><path d="M69,26a9,9 0 1 0 18,0a9,9 0 1 0 -18,0z" fill="#FDE68A"/><path d="M75,22.5a8,8 0 1 0 16,0a8,8 0 1 0 -16,0z" fill="#0B1533"/><path d="M40.2,77.32h2.76a1.84,1.84 0 0 1 1.84,1.84v3.68a1.84,1.84 0 0 1 -1.84,1.84h-2.76a1.84,1.84 0 0 1 -1.84,-1.84v-3.68a1.84,1.84 0 0 1 1.84,-1.84zM65.04,77.32h2.76a1.84,1.84 0 0 1 1.84,1.84v3.68a1.84,1.84 0 0 1 -1.84,1.84h-2.76a1.84,1.84 0 0 1 -1.84,-1.84v-3.68a1.84,1.84 0 0 1 1.84,-1.84z" fill="#FACC15"/><path d="M42.04,33.16h23.92a7.36,7.36 0 0 1 7.36,7.36v31.28a7.36,7.36 0 0 1 -7.36,7.36h-23.92a7.36,7.36 0 0 1 -7.36,-7.36v-31.28a7.36,7.36 0 0 1 7.36,-7.36z" fill="#FACC15"/><path d="M42.04,42.36h23.92a3.22,3.22 0 0 1 3.22,3.22v10.12a3.22,3.22 0 0 1 -3.22,3.22h-23.92a3.22,3.22 0 0 1 -3.22,-3.22v-10.12a3.22,3.22 0 0 1 3.22,-3.22z" fill="#1E2A55"/><path d="M40.11,69.04a3.31,3.31 0 1 0 6.62,0a3.31,3.31 0 1 0 -6.62,0zM61.27,69.04a3.31,3.31 0 1 0 6.62,0a3.31,3.31 0 1 0 -6.62,0z" fill="#FFF7D6"/><path d="M43.88,36.38h20.24a1.84,1.84 0 0 1 1.84,1.84v0a1.84,1.84 0 0 1 -1.84,1.84h-20.24a1.84,1.84 0 0 1 -1.84,-1.84v-0a1.84,1.84 0 0 1 1.84,-1.84z" fill="#FFFFFF"/><path d="M44.6,49.5a1.4,1.4 0 1 0 2.8,0a1.4,1.4 0 1 0 -2.8,0zM50.6,49.5a1.4,1.4 0 1 0 2.8,0a1.4,1.4 0 1 0 -2.8,0zM56.6,49.5a1.4,1.4 0 1 0 2.8,0a1.4,1.4 0 1 0 -2.8,0zM62.6,49.5a1.4,1.4 0 1 0 2.8,0a1.4,1.4 0 1 0 -2.8,0z" fill="#FDE68A" fill-opacity="0.9"/>',
+  Azulejo: '<path d="M0,0h108v108h-108z" fill="#F6EFDC"/><path d="M0,-9c3.78,4.05 3.78,6.75 0,9c-3.78,-2.25 -3.78,-4.95 0,-9zM0,9c3.78,-4.05 3.78,-6.75 0,-9c-3.78,2.25 -3.78,4.95 0,9zM-9,0c4.05,-3.78 6.75,-3.78 9,0c-2.25,3.78 -4.95,3.78 -9,0zM9,0c-4.05,-3.78 -6.75,-3.78 -9,0c2.25,3.78 4.95,3.78 9,0zM0,18c3.78,4.05 3.78,6.75 0,9c-3.78,-2.25 -3.78,-4.95 0,-9zM0,36c3.78,-4.05 3.78,-6.75 0,-9c-3.78,2.25 -3.78,4.95 0,9zM-9,27c4.05,-3.78 6.75,-3.78 9,0c-2.25,3.78 -4.95,3.78 -9,0zM9,27c-4.05,-3.78 -6.75,-3.78 -9,0c2.25,3.78 4.95,3.78 9,0zM0,45c3.78,4.05 3.78,6.75 0,9c-3.78,-2.25 -3.78,-4.95 0,-9zM0,63c3.78,-4.05 3.78,-6.75 0,-9c-3.78,2.25 -3.78,4.95 0,9zM-9,54c4.05,-3.78 6.75,-3.78 9,0c-2.25,3.78 -4.95,3.78 -9,0zM9,54c-4.05,-3.78 -6.75,-3.78 -9,0c2.25,3.78 4.95,3.78 9,0zM0,72c3.78,4.05 3.78,6.75 0,9c-3.78,-2.25 -3.78,-4.95 0,-9zM0,90c3.78,-4.05 3.78,-6.75 0,-9c-3.78,2.25 -3.78,4.95 0,9zM-9,81c4.05,-3.78 6.75,-3.78 9,0c-2.25,3.78 -4.95,3.78 -9,0zM9,81c-4.05,-3.78 -6.75,-3.78 -9,0c2.25,3.78 4.95,3.78 9,0zM0,99c3.78,4.05 3.78,6.75 0,9c-3.78,-2.25 -3.78,-4.95 0,-9zM0,117c3.78,-4.05 3.78,-6.75 0,-9c-3.78,2.25 -3.78,4.95 0,9zM-9,108c4.05,-3.78 6.75,-3.78 9,0c-2.25,3.78 -4.95,3.78 -9,0zM9,108c-4.05,-3.78 -6.75,-3.78 -9,0c2.25,3.78 4.95,3.78 9,0zM27,-9c3.78,4.05 3.78,6.75 0,9c-3.78,-2.25 -3.78,-4.95 0,-9zM27,9c3.78,-4.05 3.78,-6.75 0,-9c-3.78,2.25 -3.78,4.95 0,9zM18,0c4.05,-3.78 6.75,-3.78 9,0c-2.25,3.78 -4.95,3.78 -9,0zM36,0c-4.05,-3.78 -6.75,-3.78 -9,0c2.25,3.78 4.95,3.78 9,0zM27,18c3.78,4.05 3.78,6.75 0,9c-3.78,-2.25 -3.78,-4.95 0,-9zM27,36c3.78,-4.05 3.78,-6.75 0,-9c-3.78,2.25 -3.78,4.95 0,9zM18,27c4.05,-3.78 6.75,-3.78 9,0c-2.25,3.78 -4.95,3.78 -9,0zM36,27c-4.05,-3.78 -6.75,-3.78 -9,0c2.25,3.78 4.95,3.78 9,0zM27,45c3.78,4.05 3.78,6.75 0,9c-3.78,-2.25 -3.78,-4.95 0,-9zM27,63c3.78,-4.05 3.78,-6.75 0,-9c-3.78,2.25 -3.78,4.95 0,9zM18,54c4.05,-3.78 6.75,-3.78 9,0c-2.25,3.78 -4.95,3.78 -9,0zM36,54c-4.05,-3.78 -6.75,-3.78 -9,0c2.25,3.78 4.95,3.78 9,0zM27,72c3.78,4.05 3.78,6.75 0,9c-3.78,-2.25 -3.78,-4.95 0,-9zM27,90c3.78,-4.05 3.78,-6.75 0,-9c-3.78,2.25 -3.78,4.95 0,9zM18,81c4.05,-3.78 6.75,-3.78 9,0c-2.25,3.78 -4.95,3.78 -9,0zM36,81c-4.05,-3.78 -6.75,-3.78 -9,0c2.25,3.78 4.95,3.78 9,0zM27,99c3.78,4.05 3.78,6.75 0,9c-3.78,-2.25 -3.78,-4.95 0,-9zM27,117c3.78,-4.05 3.78,-6.75 0,-9c-3.78,2.25 -3.78,4.95 0,9zM18,108c4.05,-3.78 6.75,-3.78 9,0c-2.25,3.78 -4.95,3.78 -9,0zM36,108c-4.05,-3.78 -6.75,-3.78 -9,0c2.25,3.78 4.95,3.78 9,0zM54,-9c3.78,4.05 3.78,6.75 0,9c-3.78,-2.25 -3.78,-4.95 0,-9zM54,9c3.78,-4.05 3.78,-6.75 0,-9c-3.78,2.25 -3.78,4.95 0,9zM45,0c4.05,-3.78 6.75,-3.78 9,0c-2.25,3.78 -4.95,3.78 -9,0zM63,0c-4.05,-3.78 -6.75,-3.78 -9,0c2.25,3.78 4.95,3.78 9,0zM54,18c3.78,4.05 3.78,6.75 0,9c-3.78,-2.25 -3.78,-4.95 0,-9zM54,36c3.78,-4.05 3.78,-6.75 0,-9c-3.78,2.25 -3.78,4.95 0,9zM45,27c4.05,-3.78 6.75,-3.78 9,0c-2.25,3.78 -4.95,3.78 -9,0zM63,27c-4.05,-3.78 -6.75,-3.78 -9,0c2.25,3.78 4.95,3.78 9,0zM54,45c3.78,4.05 3.78,6.75 0,9c-3.78,-2.25 -3.78,-4.95 0,-9zM54,63c3.78,-4.05 3.78,-6.75 0,-9c-3.78,2.25 -3.78,4.95 0,9zM45,54c4.05,-3.78 6.75,-3.78 9,0c-2.25,3.78 -4.95,3.78 -9,0zM63,54c-4.05,-3.78 -6.75,-3.78 -9,0c2.25,3.78 4.95,3.78 9,0zM54,72c3.78,4.05 3.78,6.75 0,9c-3.78,-2.25 -3.78,-4.95 0,-9zM54,90c3.78,-4.05 3.78,-6.75 0,-9c-3.78,2.25 -3.78,4.95 0,9zM45,81c4.05,-3.78 6.75,-3.78 9,0c-2.25,3.78 -4.95,3.78 -9,0zM63,81c-4.05,-3.78 -6.75,-3.78 -9,0c2.25,3.78 4.95,3.78 9,0zM54,99c3.78,4.05 3.78,6.75 0,9c-3.78,-2.25 -3.78,-4.95 0,-9zM54,117c3.78,-4.05 3.78,-6.75 0,-9c-3.78,2.25 -3.78,4.95 0,9zM45,108c4.05,-3.78 6.75,-3.78 9,0c-2.25,3.78 -4.95,3.78 -9,0zM63,108c-4.05,-3.78 -6.75,-3.78 -9,0c2.25,3.78 4.95,3.78 9,0zM81,-9c3.78,4.05 3.78,6.75 0,9c-3.78,-2.25 -3.78,-4.95 0,-9zM81,9c3.78,-4.05 3.78,-6.75 0,-9c-3.78,2.25 -3.78,4.95 0,9zM72,0c4.05,-3.78 6.75,-3.78 9,0c-2.25,3.78 -4.95,3.78 -9,0zM90,0c-4.05,-3.78 -6.75,-3.78 -9,0c2.25,3.78 4.95,3.78 9,0zM81,18c3.78,4.05 3.78,6.75 0,9c-3.78,-2.25 -3.78,-4.95 0,-9zM81,36c3.78,-4.05 3.78,-6.75 0,-9c-3.78,2.25 -3.78,4.95 0,9zM72,27c4.05,-3.78 6.75,-3.78 9,0c-2.25,3.78 -4.95,3.78 -9,0zM90,27c-4.05,-3.78 -6.75,-3.78 -9,0c2.25,3.78 4.95,3.78 9,0zM81,45c3.78,4.05 3.78,6.75 0,9c-3.78,-2.25 -3.78,-4.95 0,-9zM81,63c3.78,-4.05 3.78,-6.75 0,-9c-3.78,2.25 -3.78,4.95 0,9zM72,54c4.05,-3.78 6.75,-3.78 9,0c-2.25,3.78 -4.95,3.78 -9,0zM90,54c-4.05,-3.78 -6.75,-3.78 -9,0c2.25,3.78 4.95,3.78 9,0zM81,72c3.78,4.05 3.78,6.75 0,9c-3.78,-2.25 -3.78,-4.95 0,-9zM81,90c3.78,-4.05 3.78,-6.75 0,-9c-3.78,2.25 -3.78,4.95 0,9zM72,81c4.05,-3.78 6.75,-3.78 9,0c-2.25,3.78 -4.95,3.78 -9,0zM90,81c-4.05,-3.78 -6.75,-3.78 -9,0c2.25,3.78 4.95,3.78 9,0zM81,99c3.78,4.05 3.78,6.75 0,9c-3.78,-2.25 -3.78,-4.95 0,-9zM81,117c3.78,-4.05 3.78,-6.75 0,-9c-3.78,2.25 -3.78,4.95 0,9zM72,108c4.05,-3.78 6.75,-3.78 9,0c-2.25,3.78 -4.95,3.78 -9,0zM90,108c-4.05,-3.78 -6.75,-3.78 -9,0c2.25,3.78 4.95,3.78 9,0zM108,-9c3.78,4.05 3.78,6.75 0,9c-3.78,-2.25 -3.78,-4.95 0,-9zM108,9c3.78,-4.05 3.78,-6.75 0,-9c-3.78,2.25 -3.78,4.95 0,9zM99,0c4.05,-3.78 6.75,-3.78 9,0c-2.25,3.78 -4.95,3.78 -9,0zM117,0c-4.05,-3.78 -6.75,-3.78 -9,0c2.25,3.78 4.95,3.78 9,0zM108,18c3.78,4.05 3.78,6.75 0,9c-3.78,-2.25 -3.78,-4.95 0,-9zM108,36c3.78,-4.05 3.78,-6.75 0,-9c-3.78,2.25 -3.78,4.95 0,9zM99,27c4.05,-3.78 6.75,-3.78 9,0c-2.25,3.78 -4.95,3.78 -9,0zM117,27c-4.05,-3.78 -6.75,-3.78 -9,0c2.25,3.78 4.95,3.78 9,0zM108,45c3.78,4.05 3.78,6.75 0,9c-3.78,-2.25 -3.78,-4.95 0,-9zM108,63c3.78,-4.05 3.78,-6.75 0,-9c-3.78,2.25 -3.78,4.95 0,9zM99,54c4.05,-3.78 6.75,-3.78 9,0c-2.25,3.78 -4.95,3.78 -9,0zM117,54c-4.05,-3.78 -6.75,-3.78 -9,0c2.25,3.78 4.95,3.78 9,0zM108,72c3.78,4.05 3.78,6.75 0,9c-3.78,-2.25 -3.78,-4.95 0,-9zM108,90c3.78,-4.05 3.78,-6.75 0,-9c-3.78,2.25 -3.78,4.95 0,9zM99,81c4.05,-3.78 6.75,-3.78 9,0c-2.25,3.78 -4.95,3.78 -9,0zM117,81c-4.05,-3.78 -6.75,-3.78 -9,0c2.25,3.78 4.95,3.78 9,0zM108,99c3.78,4.05 3.78,6.75 0,9c-3.78,-2.25 -3.78,-4.95 0,-9zM108,117c3.78,-4.05 3.78,-6.75 0,-9c-3.78,2.25 -3.78,4.95 0,9zM99,108c4.05,-3.78 6.75,-3.78 9,0c-2.25,3.78 -4.95,3.78 -9,0zM117,108c-4.05,-3.78 -6.75,-3.78 -9,0c2.25,3.78 4.95,3.78 9,0z" fill="#1D4F9C"/><path d="M-2.4,0a2.4,2.4 0 1 0 4.8,0a2.4,2.4 0 1 0 -4.8,0zM-2.4,27a2.4,2.4 0 1 0 4.8,0a2.4,2.4 0 1 0 -4.8,0zM-2.4,54a2.4,2.4 0 1 0 4.8,0a2.4,2.4 0 1 0 -4.8,0zM-2.4,81a2.4,2.4 0 1 0 4.8,0a2.4,2.4 0 1 0 -4.8,0zM-2.4,108a2.4,2.4 0 1 0 4.8,0a2.4,2.4 0 1 0 -4.8,0zM24.6,0a2.4,2.4 0 1 0 4.8,0a2.4,2.4 0 1 0 -4.8,0zM24.6,27a2.4,2.4 0 1 0 4.8,0a2.4,2.4 0 1 0 -4.8,0zM24.6,54a2.4,2.4 0 1 0 4.8,0a2.4,2.4 0 1 0 -4.8,0zM24.6,81a2.4,2.4 0 1 0 4.8,0a2.4,2.4 0 1 0 -4.8,0zM24.6,108a2.4,2.4 0 1 0 4.8,0a2.4,2.4 0 1 0 -4.8,0zM51.6,0a2.4,2.4 0 1 0 4.8,0a2.4,2.4 0 1 0 -4.8,0zM51.6,27a2.4,2.4 0 1 0 4.8,0a2.4,2.4 0 1 0 -4.8,0zM51.6,54a2.4,2.4 0 1 0 4.8,0a2.4,2.4 0 1 0 -4.8,0zM51.6,81a2.4,2.4 0 1 0 4.8,0a2.4,2.4 0 1 0 -4.8,0zM51.6,108a2.4,2.4 0 1 0 4.8,0a2.4,2.4 0 1 0 -4.8,0zM78.6,0a2.4,2.4 0 1 0 4.8,0a2.4,2.4 0 1 0 -4.8,0zM78.6,27a2.4,2.4 0 1 0 4.8,0a2.4,2.4 0 1 0 -4.8,0zM78.6,54a2.4,2.4 0 1 0 4.8,0a2.4,2.4 0 1 0 -4.8,0zM78.6,81a2.4,2.4 0 1 0 4.8,0a2.4,2.4 0 1 0 -4.8,0zM78.6,108a2.4,2.4 0 1 0 4.8,0a2.4,2.4 0 1 0 -4.8,0zM105.6,0a2.4,2.4 0 1 0 4.8,0a2.4,2.4 0 1 0 -4.8,0zM105.6,27a2.4,2.4 0 1 0 4.8,0a2.4,2.4 0 1 0 -4.8,0zM105.6,54a2.4,2.4 0 1 0 4.8,0a2.4,2.4 0 1 0 -4.8,0zM105.6,81a2.4,2.4 0 1 0 4.8,0a2.4,2.4 0 1 0 -4.8,0zM105.6,108a2.4,2.4 0 1 0 4.8,0a2.4,2.4 0 1 0 -4.8,0z" fill="#E8A317"/><path d="M11.9,13.5a1.6,1.6 0 1 0 3.2,0a1.6,1.6 0 1 0 -3.2,0zM11.9,40.5a1.6,1.6 0 1 0 3.2,0a1.6,1.6 0 1 0 -3.2,0zM11.9,67.5a1.6,1.6 0 1 0 3.2,0a1.6,1.6 0 1 0 -3.2,0zM11.9,94.5a1.6,1.6 0 1 0 3.2,0a1.6,1.6 0 1 0 -3.2,0zM11.9,121.5a1.6,1.6 0 1 0 3.2,0a1.6,1.6 0 1 0 -3.2,0zM38.9,13.5a1.6,1.6 0 1 0 3.2,0a1.6,1.6 0 1 0 -3.2,0zM38.9,40.5a1.6,1.6 0 1 0 3.2,0a1.6,1.6 0 1 0 -3.2,0zM38.9,67.5a1.6,1.6 0 1 0 3.2,0a1.6,1.6 0 1 0 -3.2,0zM38.9,94.5a1.6,1.6 0 1 0 3.2,0a1.6,1.6 0 1 0 -3.2,0zM38.9,121.5a1.6,1.6 0 1 0 3.2,0a1.6,1.6 0 1 0 -3.2,0zM65.9,13.5a1.6,1.6 0 1 0 3.2,0a1.6,1.6 0 1 0 -3.2,0zM65.9,40.5a1.6,1.6 0 1 0 3.2,0a1.6,1.6 0 1 0 -3.2,0zM65.9,67.5a1.6,1.6 0 1 0 3.2,0a1.6,1.6 0 1 0 -3.2,0zM65.9,94.5a1.6,1.6 0 1 0 3.2,0a1.6,1.6 0 1 0 -3.2,0zM65.9,121.5a1.6,1.6 0 1 0 3.2,0a1.6,1.6 0 1 0 -3.2,0zM92.9,13.5a1.6,1.6 0 1 0 3.2,0a1.6,1.6 0 1 0 -3.2,0zM92.9,40.5a1.6,1.6 0 1 0 3.2,0a1.6,1.6 0 1 0 -3.2,0zM92.9,67.5a1.6,1.6 0 1 0 3.2,0a1.6,1.6 0 1 0 -3.2,0zM92.9,94.5a1.6,1.6 0 1 0 3.2,0a1.6,1.6 0 1 0 -3.2,0zM92.9,121.5a1.6,1.6 0 1 0 3.2,0a1.6,1.6 0 1 0 -3.2,0zM119.9,13.5a1.6,1.6 0 1 0 3.2,0a1.6,1.6 0 1 0 -3.2,0zM119.9,40.5a1.6,1.6 0 1 0 3.2,0a1.6,1.6 0 1 0 -3.2,0zM119.9,67.5a1.6,1.6 0 1 0 3.2,0a1.6,1.6 0 1 0 -3.2,0zM119.9,94.5a1.6,1.6 0 1 0 3.2,0a1.6,1.6 0 1 0 -3.2,0zM119.9,121.5a1.6,1.6 0 1 0 3.2,0a1.6,1.6 0 1 0 -3.2,0z" fill="#2F8F5B"/><path d="M21,54a33,33 0 1 0 66,0a33,33 0 1 0 -66,0zM24,54a30,30 0 1 1 60,0a30,30 0 1 1 -60,0z" fill="#E8A317"/><path d="M24,54a30,30 0 1 0 60,0a30,30 0 1 0 -60,0z" fill="#1D4F9C"/><path d="M42,71.8h2.4a1.6,1.6 0 0 1 1.6,1.6v3.2a1.6,1.6 0 0 1 -1.6,1.6h-2.4a1.6,1.6 0 0 1 -1.6,-1.6v-3.2a1.6,1.6 0 0 1 1.6,-1.6zM63.6,71.8h2.4a1.6,1.6 0 0 1 1.6,1.6v3.2a1.6,1.6 0 0 1 -1.6,1.6h-2.4a1.6,1.6 0 0 1 -1.6,-1.6v-3.2a1.6,1.6 0 0 1 1.6,-1.6z" fill="#FFFFFF"/><path d="M43.6,33.4h20.8a6.4,6.4 0 0 1 6.4,6.4v27.2a6.4,6.4 0 0 1 -6.4,6.4h-20.8a6.4,6.4 0 0 1 -6.4,-6.4v-27.2a6.4,6.4 0 0 1 6.4,-6.4z" fill="#FFFFFF"/><path d="M43.6,41.4h20.8a2.8,2.8 0 0 1 2.8,2.8v8.8a2.8,2.8 0 0 1 -2.8,2.8h-20.8a2.8,2.8 0 0 1 -2.8,-2.8v-8.8a2.8,2.8 0 0 1 2.8,-2.8z" fill="#1D4F9C"/><path d="M41.92,64.6a2.88,2.88 0 1 0 5.76,0a2.88,2.88 0 1 0 -5.76,0zM60.32,64.6a2.88,2.88 0 1 0 5.76,0a2.88,2.88 0 1 0 -5.76,0z" fill="#E8A317"/>',
+  Feria: '<path d="M0,0h108v108h-108z" fill="#C8102E"/><path d="M-13.2,-9a4.2,4.2 0 1 0 8.4,0a4.2,4.2 0 1 0 -8.4,0zM4.8,-9a4.2,4.2 0 1 0 8.4,0a4.2,4.2 0 1 0 -8.4,0zM22.8,-9a4.2,4.2 0 1 0 8.4,0a4.2,4.2 0 1 0 -8.4,0zM40.8,-9a4.2,4.2 0 1 0 8.4,0a4.2,4.2 0 1 0 -8.4,0zM58.8,-9a4.2,4.2 0 1 0 8.4,0a4.2,4.2 0 1 0 -8.4,0zM76.8,-9a4.2,4.2 0 1 0 8.4,0a4.2,4.2 0 1 0 -8.4,0zM94.8,-9a4.2,4.2 0 1 0 8.4,0a4.2,4.2 0 1 0 -8.4,0zM-4.2,9a4.2,4.2 0 1 0 8.4,0a4.2,4.2 0 1 0 -8.4,0zM13.8,9a4.2,4.2 0 1 0 8.4,0a4.2,4.2 0 1 0 -8.4,0zM31.8,9a4.2,4.2 0 1 0 8.4,0a4.2,4.2 0 1 0 -8.4,0zM49.8,9a4.2,4.2 0 1 0 8.4,0a4.2,4.2 0 1 0 -8.4,0zM67.8,9a4.2,4.2 0 1 0 8.4,0a4.2,4.2 0 1 0 -8.4,0zM85.8,9a4.2,4.2 0 1 0 8.4,0a4.2,4.2 0 1 0 -8.4,0zM103.8,9a4.2,4.2 0 1 0 8.4,0a4.2,4.2 0 1 0 -8.4,0zM-13.2,27a4.2,4.2 0 1 0 8.4,0a4.2,4.2 0 1 0 -8.4,0zM4.8,27a4.2,4.2 0 1 0 8.4,0a4.2,4.2 0 1 0 -8.4,0zM22.8,27a4.2,4.2 0 1 0 8.4,0a4.2,4.2 0 1 0 -8.4,0zM76.8,27a4.2,4.2 0 1 0 8.4,0a4.2,4.2 0 1 0 -8.4,0zM94.8,27a4.2,4.2 0 1 0 8.4,0a4.2,4.2 0 1 0 -8.4,0zM-4.2,45a4.2,4.2 0 1 0 8.4,0a4.2,4.2 0 1 0 -8.4,0zM13.8,45a4.2,4.2 0 1 0 8.4,0a4.2,4.2 0 1 0 -8.4,0zM85.8,45a4.2,4.2 0 1 0 8.4,0a4.2,4.2 0 1 0 -8.4,0zM103.8,45a4.2,4.2 0 1 0 8.4,0a4.2,4.2 0 1 0 -8.4,0zM-13.2,63a4.2,4.2 0 1 0 8.4,0a4.2,4.2 0 1 0 -8.4,0zM4.8,63a4.2,4.2 0 1 0 8.4,0a4.2,4.2 0 1 0 -8.4,0zM94.8,63a4.2,4.2 0 1 0 8.4,0a4.2,4.2 0 1 0 -8.4,0zM-4.2,81a4.2,4.2 0 1 0 8.4,0a4.2,4.2 0 1 0 -8.4,0zM13.8,81a4.2,4.2 0 1 0 8.4,0a4.2,4.2 0 1 0 -8.4,0zM85.8,81a4.2,4.2 0 1 0 8.4,0a4.2,4.2 0 1 0 -8.4,0zM103.8,81a4.2,4.2 0 1 0 8.4,0a4.2,4.2 0 1 0 -8.4,0zM-13.2,99a4.2,4.2 0 1 0 8.4,0a4.2,4.2 0 1 0 -8.4,0zM4.8,99a4.2,4.2 0 1 0 8.4,0a4.2,4.2 0 1 0 -8.4,0zM22.8,99a4.2,4.2 0 1 0 8.4,0a4.2,4.2 0 1 0 -8.4,0zM40.8,99a4.2,4.2 0 1 0 8.4,0a4.2,4.2 0 1 0 -8.4,0zM58.8,99a4.2,4.2 0 1 0 8.4,0a4.2,4.2 0 1 0 -8.4,0zM76.8,99a4.2,4.2 0 1 0 8.4,0a4.2,4.2 0 1 0 -8.4,0zM94.8,99a4.2,4.2 0 1 0 8.4,0a4.2,4.2 0 1 0 -8.4,0z" fill="#FFFFFF"/><path d="M21,54a33,33 0 1 0 66,0a33,33 0 1 0 -66,0zM23.5,54a30.5,30.5 0 1 1 61,0a30.5,30.5 0 1 1 -61,0z" fill="#FFFFFF"/><path d="M25,54a29,29 0 1 0 58,0a29,29 0 1 0 -58,0z" fill="#FFFFFF"/><path d="M42.3,71.38h2.34a1.56,1.56 0 0 1 1.56,1.56v3.12a1.56,1.56 0 0 1 -1.56,1.56h-2.34a1.56,1.56 0 0 1 -1.56,-1.56v-3.12a1.56,1.56 0 0 1 1.56,-1.56zM63.36,71.38h2.34a1.56,1.56 0 0 1 1.56,1.56v3.12a1.56,1.56 0 0 1 -1.56,1.56h-2.34a1.56,1.56 0 0 1 -1.56,-1.56v-3.12a1.56,1.56 0 0 1 1.56,-1.56z" fill="#C8102E"/><path d="M43.86,33.94h20.28a6.24,6.24 0 0 1 6.24,6.24v26.52a6.24,6.24 0 0 1 -6.24,6.24h-20.28a6.24,6.24 0 0 1 -6.24,-6.24v-26.52a6.24,6.24 0 0 1 6.24,-6.24z" fill="#C8102E"/><path d="M43.86,41.74h20.28a2.73,2.73 0 0 1 2.73,2.73v8.58a2.73,2.73 0 0 1 -2.73,2.73h-20.28a2.73,2.73 0 0 1 -2.73,-2.73v-8.58a2.73,2.73 0 0 1 2.73,-2.73z" fill="#FFFFFF"/><path d="M42.22,64.36a2.81,2.81 0 1 0 5.62,0a2.81,2.81 0 1 0 -5.62,0zM60.16,64.36a2.81,2.81 0 1 0 5.62,0a2.81,2.81 0 1 0 -5.62,0z" fill="#FFD54A"/>',
+  SemanaSanta: '<path d="M0,0h108v108h-108z" fill="#3A1557"/><path d="M-16,30a70,70 0 1 0 140,0a70,70 0 1 0 -140,0z" fill="#5B2A86" fill-opacity="0.5"/><path d="M10,20a44,44 0 1 0 88,0a44,44 0 1 0 -88,0z" fill="#7A3BA8" fill-opacity="0.35"/><path d="M20,54a34,34 0 1 0 68,0a34,34 0 1 0 -68,0zM21.4,54a32.6,32.6 0 1 1 65.2,0a32.6,32.6 0 1 1 -65.2,0z" fill="#E8C46A" fill-opacity="0.9"/><path d="M23.5,54a30.5,30.5 0 1 0 61,0a30.5,30.5 0 1 0 -61,0zM24.3,54a29.7,29.7 0 1 1 59.4,0a29.7,29.7 0 1 1 -59.4,0z" fill="#E8C46A" fill-opacity="0.5"/><path d="M20,84h2.6v14h-2.6z" fill="#FFF4D8" fill-opacity="0.55"/><path d="M37,84h2.6v14h-2.6z" fill="#FFF4D8" fill-opacity="0.55"/><path d="M54,84h2.6v14h-2.6z" fill="#FFF4D8" fill-opacity="0.55"/><path d="M71,84h2.6v14h-2.6z" fill="#FFF4D8" fill-opacity="0.55"/><path d="M88,84h2.6v14h-2.6z" fill="#FFF4D8" fill-opacity="0.55"/><path d="M19.5,81a1.8,1.8 0 1 0 3.6,0a1.8,1.8 0 1 0 -3.6,0z" fill="#FFD36B" fill-opacity="0.9"/><path d="M36.5,81a1.8,1.8 0 1 0 3.6,0a1.8,1.8 0 1 0 -3.6,0z" fill="#FFD36B" fill-opacity="0.9"/><path d="M53.5,81a1.8,1.8 0 1 0 3.6,0a1.8,1.8 0 1 0 -3.6,0z" fill="#FFD36B" fill-opacity="0.9"/><path d="M70.5,81a1.8,1.8 0 1 0 3.6,0a1.8,1.8 0 1 0 -3.6,0z" fill="#FFD36B" fill-opacity="0.9"/><path d="M87.5,81a1.8,1.8 0 1 0 3.6,0a1.8,1.8 0 1 0 -3.6,0z" fill="#FFD36B" fill-opacity="0.9"/><path d="M41.1,70.06h2.58a1.72,1.72 0 0 1 1.72,1.72v3.44a1.72,1.72 0 0 1 -1.72,1.72h-2.58a1.72,1.72 0 0 1 -1.72,-1.72v-3.44a1.72,1.72 0 0 1 1.72,-1.72zM64.32,70.06h2.58a1.72,1.72 0 0 1 1.72,1.72v3.44a1.72,1.72 0 0 1 -1.72,1.72h-2.58a1.72,1.72 0 0 1 -1.72,-1.72v-3.44a1.72,1.72 0 0 1 1.72,-1.72z" fill="#E8C46A"/><path d="M42.82,28.78h22.36a6.88,6.88 0 0 1 6.88,6.88v29.24a6.88,6.88 0 0 1 -6.88,6.88h-22.36a6.88,6.88 0 0 1 -6.88,-6.88v-29.24a6.88,6.88 0 0 1 6.88,-6.88z" fill="#E8C46A"/><path d="M42.82,37.38h22.36a3.01,3.01 0 0 1 3.01,3.01v9.46a3.01,3.01 0 0 1 -3.01,3.01h-22.36a3.01,3.01 0 0 1 -3.01,-3.01v-9.46a3.01,3.01 0 0 1 3.01,-3.01z" fill="#2E1145"/><path d="M41.01,62.32a3.1,3.1 0 1 0 6.19,0a3.1,3.1 0 1 0 -6.19,0zM60.79,62.32a3.1,3.1 0 1 0 6.19,0a3.1,3.1 0 1 0 -6.19,0z" fill="#FFF4D8"/>',
+  Giralda: '<path d="M0,0h108v108h-108z" fill="#F28F3B"/><path d="M0,0h108v40h-108z" fill="#C2496A"/><path d="M0,36h108v14h-108z" fill="#D86A52"/><path d="M30,74a24,24 0 1 0 48,0a24,24 0 1 0 -48,0z" fill="#FFD17A"/><path d="M37,74a17,17 0 1 0 34,0a17,17 0 1 0 -34,0z" fill="#FFE7A8"/><path d="M0,86h108v22h-108z" fill="#5A2346"/><path d="M46,46h16v44h-16zM47.5,34h13v13h-13zM49.5,25h9v10h-9zM51,19h6v7h-6zM51,19q3,-7 6,0zM53.3,10h1.4v6h-1.4zM44.5,45h19v2h-19zM46,33h16v1.6h-16zM48.5,24.2h11v1.4h-11z" fill="#3A1D3F"/><path d="M54.7,11l4,2.2l-4,1.4z" fill="#3A1D3F"/><path d="M49,37h2v5h-2zM53,37h2v5h-2zM57,37h2v5h-2zM51,28h2v4h-2zM55,28h2v4h-2z" fill="#FFCF7A" fill-opacity="0.9"/><path d="M50.5,56h2.4v6h-2.4zM55.1,56h2.4v6h-2.4zM50.5,70h2.4v6h-2.4zM55.1,70h2.4v6h-2.4z" fill="#FFCF7A" fill-opacity="0.5"/>',
+  Verde: '<path d="M0,0h108v108h-108z" fill="#0B6E2F"/><path d="M-10,0h9l-40,108h-9z" fill="#FFFFFF" fill-opacity="0.07"/><path d="M16,0h9l-40,108h-9z" fill="#FFFFFF" fill-opacity="0.07"/><path d="M42,0h9l-40,108h-9z" fill="#FFFFFF" fill-opacity="0.07"/><path d="M68,0h9l-40,108h-9z" fill="#FFFFFF" fill-opacity="0.07"/><path d="M94,0h9l-40,108h-9z" fill="#FFFFFF" fill-opacity="0.07"/><path d="M120,0h9l-40,108h-9z" fill="#FFFFFF" fill-opacity="0.07"/><path d="M146,0h9l-40,108h-9z" fill="#FFFFFF" fill-opacity="0.07"/><path d="M23,54a31,31 0 1 0 62,0a31,31 0 1 0 -62,0z" fill="#0E8A3B"/><path d="M41.7,72.22h2.46a1.64,1.64 0 0 1 1.64,1.64v3.28a1.64,1.64 0 0 1 -1.64,1.64h-2.46a1.64,1.64 0 0 1 -1.64,-1.64v-3.28a1.64,1.64 0 0 1 1.64,-1.64zM63.84,72.22h2.46a1.64,1.64 0 0 1 1.64,1.64v3.28a1.64,1.64 0 0 1 -1.64,1.64h-2.46a1.64,1.64 0 0 1 -1.64,-1.64v-3.28a1.64,1.64 0 0 1 1.64,-1.64z" fill="#FFFFFF"/><path d="M43.34,32.86h21.32a6.56,6.56 0 0 1 6.56,6.56v27.88a6.56,6.56 0 0 1 -6.56,6.56h-21.32a6.56,6.56 0 0 1 -6.56,-6.56v-27.88a6.56,6.56 0 0 1 6.56,-6.56z" fill="#FFFFFF"/><path d="M43.34,41.06h21.32a2.87,2.87 0 0 1 2.87,2.87v9.02a2.87,2.87 0 0 1 -2.87,2.87h-21.32a2.87,2.87 0 0 1 -2.87,-2.87v-9.02a2.87,2.87 0 0 1 2.87,-2.87z" fill="#0B6E2F"/><path d="M41.62,64.84a2.95,2.95 0 1 0 5.9,0a2.95,2.95 0 1 0 -5.9,0zM60.48,64.84a2.95,2.95 0 1 0 5.9,0a2.95,2.95 0 1 0 -5.9,0z" fill="#FFD54A"/>',
+};
+/* ICONOS_APP_ARTE:FIN */
+// Miniatura del icono (los mismos dibujos que los iconos de Android: scripts/iconos_app.py)
+const iconoAppSVG = (k) => `<svg viewBox="9 9 90 90" aria-hidden="true">${ICONOS_APP_ARTE[k] || ICONOS_APP_ARTE.Clasico}</svg>`;
 views.ajustes = (el) => {
   if (isNative() && window.Capacitor?.isPluginAvailable?.('BusSevApariencia')) {
     window.Capacitor.nativePromise('BusSevApariencia', 'getIcono', {}).then((r) => { if (r?.icono && r.icono !== iconoActual) { iconoActual = r.icono; el.__repintar?.(); } }).catch(() => null);
@@ -2809,8 +2893,8 @@ views.ajustes = (el) => {
         </div>
         <p>Los cuatro primeros son claros y el resto oscuros: al elegir uno, el tema cambia solo a claro u oscuro.</p></div>
       ${isNative() && window.Capacitor?.isPluginAvailable?.('BusSevApariencia') ? `<div class="set-group"><h3>Icono de la app</h3>
-        <div class="iconos-app">${ICONOS_APP.map(([k, n]) => `<button type="button" class="icono-app" data-icono="${k}" aria-pressed="${iconoActual === k}">${iconoAppSVG(k)}<small>${n}</small></button>`).join('')}</div>
-        <p>Cambia el icono de BusSev en la pantalla de inicio. Algunos móviles tardan unos segundos en cambiarlo, o te piden volver a ponerlo en la pantalla de inicio.</p></div>` : ''}
+        <div class="iconos-app">${ICONOS_APP.map(([k, n]) => `<button type="button" class="icono-app" data-icono="${k}" aria-pressed="${iconoActual === k}">${iconoAppSVG(k)}<small>${n}</small><span class="sel-ok" aria-hidden="true"></span></button>`).join('')}</div>
+        <p>Ojo: al cambiarlo, Android quita BusSev de la pantalla de inicio y hay que volver a ponerlo (la app sigue en el cajón de aplicaciones). Es cosa de Android y no se puede evitar.</p></div>` : ''}
       <div class="set-group"><h3>Sonido del aviso de llegada</h3>${segBtns('sonidoAviso', SONIDOS_AVISO, settings.sonidoAviso || 'sistema')}
         ${isNative() && settings.sonidoAviso && !['sistema', 'vibrar'].includes(settings.sonidoAviso) ? '<button class="btn ghost" type="button" id="s-oir">🔊 Escuchar</button>' : ''}
         <p>El que suena cuando tu autobús está a punto de llegar. «Solo vibrar» no hace ruido.</p></div>
@@ -2819,9 +2903,9 @@ views.ajustes = (el) => {
         ${sw('mapaParadas', settings.mapaParadas !== false, 'Paradas', 'Los puntos de las paradas.')}
         ${sw('mapaRecorridos', settings.mapaRecorridos !== false, 'Recorridos', 'La línea del autobús cuando eliges una.')}
         ${sw('mapaCalles', settings.mapaCalles !== false, 'Nombres de calles', 'Las etiquetas de calles y sitios del mapa.')}
-        ${sw('mapaMetro', settings.mapaMetro !== false, 'Metro de Sevilla', 'La línea 1 y sus estaciones (toca una para ver los próximos trenes).')}
-        ${sw('mapaRenfe', settings.mapaRenfe !== false, 'Cercanías Renfe', 'Las líneas C1 a C5 y sus estaciones, con los próximos trenes.')}
-        ${sw('mapaSevici', settings.mapaSevici !== false, 'Bicis Sevici', 'Las estaciones con las bicis y los huecos libres en este momento.')}
+        ${sw('mapaMetro', settings.mapaMetro === true, 'Metro de Sevilla', 'La línea 1 y sus estaciones (toca una para ver los próximos trenes).')}
+        ${sw('mapaRenfe', settings.mapaRenfe === true, 'Cercanías Renfe', 'Las líneas C1 a C5 y sus estaciones, con los próximos trenes.')}
+        ${sw('mapaSevici', settings.mapaSevici === true, 'Bicis Sevici', 'Las estaciones con las bicis y los huecos libres en este momento.')}
         <p class="help">Los autobuses en directo se encienden con el botón <img class="lg-busimg" src="${busImg()}" alt="autobús" style="height:18px;vertical-align:-4px"> del mapa.</p></div>
 
       <h2 class="section-title">Accesibilidad</h2>
@@ -2898,9 +2982,20 @@ views.ajustes = (el) => {
     el.querySelectorAll('[data-tem]').forEach((b) => { b.onclick = () => { pruebaDia = null; settings.tematicaAuto = false; settings.tematica = b.dataset.tem; saveSettings(); applyTheme(); render(); }; });
     el.querySelectorAll('[data-dia]').forEach((b) => { b.onclick = () => { pruebaDia = b.dataset.dia || null; applyTheme(); render(); }; });
     el.querySelectorAll('[data-color]').forEach((b) => { b.onclick = () => { settings.color = b.dataset.color; saveSettings(); applyTheme(); render(); }; });
-    el.querySelectorAll('[data-icono]').forEach((b) => { b.onclick = async () => {
-      try { await window.Capacitor.nativePromise('BusSevApariencia', 'setIcono', { icono: b.dataset.icono }); iconoActual = b.dataset.icono; vibrar(15); toast('Icono cambiado. Míralo en la pantalla de inicio.'); render(); }
-      catch (e) { toast(e?.message || 'No se ha podido cambiar el icono'); }
+    el.querySelectorAll('[data-icono]').forEach((b) => { b.onclick = () => {
+      const k = b.dataset.icono;
+      if (k === iconoActual) return;
+      const nombre = ICONOS_APP.find(([x]) => x === k)?.[1] || k;
+      openModal(`<div class="ic-conf">${iconoAppSVG(k)}<h2>¿Cambiar al icono ${esc(nombre)}?</h2>
+        <p class="help">Android quitará BusSev de tu pantalla de inicio al cambiar el icono. Después búscala en el cajón de aplicaciones y arrástrala otra vez a su sitio. No se pierde nada: tus favoritas, tarjetas y avisos siguen igual.</p></div>
+        <div class="actions"><button class="btn ghost" type="button" id="ic-no">Cancelar</button><button class="btn" type="button" id="ic-si">Cambiar icono</button></div>`, (m, close) => {
+        $('#ic-no', m).onclick = close;
+        $('#ic-si', m).onclick = async () => {
+          close();
+          try { await window.Capacitor.nativePromise('BusSevApariencia', 'setIcono', { icono: k }); iconoActual = k; vibrar(15); toast('Icono cambiado. Vuelve a ponerlo en la pantalla de inicio.'); render(); }
+          catch (e) { toast(e?.message || 'No se ha podido cambiar el icono'); }
+        };
+      });
     }; });
     $('#s-oir', el)?.addEventListener('click', () => window.Capacitor.nativePromise('BusSevApariencia', 'probarSonido', { sonido: settings.sonidoAviso }).catch(() => null));
     el.querySelectorAll('[data-fondo]').forEach((b) => { b.onclick = () => {
