@@ -1123,14 +1123,18 @@ html.oculta #fiesta-cielo .f-cruza, html.oculta #fiesta-cielo .f-cruza svg, html
 .card.fav.est-retro { border-left: 0; background: #f2e8d2; --ink: #3a2e1d; --muted: #6b5a40; --line: #d8c8a6; --surface-2: #e7dabd; color: var(--ink); border: 2px dashed #b9a47a; font-family: Georgia, "Times New Roman", serif; }
 .card.fav.est-retro .stop-num { background: #3a2e1d; color: #f2e8d2; }
 .card.fav.est-retro .fav-alias { color: #8a3b12; }
-/* Semana Santa: terciopelo morado, ribete dorado y un nazareno con su cirio */
-.card.fav.est-semanasanta { border-left: 0; --ink: #fff7e0; --muted: #dccba0; --line: rgb(232 196 106 / .25); --surface-2: rgb(0 0 0 / .18); color: var(--ink); overflow: hidden;
-  background: radial-gradient(120% 90% at 0% 0%, #6b3796 0%, #4a2069 45%, #2c1142 100%); box-shadow: inset 0 0 0 1px rgb(232 196 106 / .55), inset 0 0 0 5px #3a1857, inset 0 0 0 6px rgb(232 196 106 / .35), var(--shadow); }
-.card.fav.est-semanasanta::after { content: ""; position: absolute; right: 10px; bottom: 0; width: 64px; height: 92px; opacity: .2; pointer-events: none;
-  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 92'%3E%3Cg fill='%23e8c46a'%3E%3Cpath d='M26 2c1.5 0 2 1 2.6 3L39 40H13L23.4 5c.6-2 1.1-3 2.6-3z'/%3E%3Cpath d='M11 40h30c2 0 3 1 3.4 3L50 92H2L7.6 43c.4-2 1.4-3 3.4-3z'/%3E%3Crect x='51' y='34' width='5' height='58' rx='1.5'/%3E%3Cpath d='M53.5 21c4 4.5 3.6 8.6 0 10.6-3.6-2-4-6.1 0-10.6z'/%3E%3C/g%3E%3Cg fill='%233a1857'%3E%3Cellipse cx='21.5' cy='30' rx='2' ry='1.4'/%3E%3Cellipse cx='30.5' cy='30' rx='2' ry='1.4'/%3E%3Cpath d='M24.6 50h2.8v5h4.6v2.8h-4.6V68h-2.8V57.8H20V55h4.6z'/%3E%3C/g%3E%3C/svg%3E") no-repeat right bottom / contain; }
-.card.fav.est-semanasanta .fav-alias { color: #e8c46a; letter-spacing: .04em; }
-.card.fav.est-semanasanta .card-title h3 { font-family: Georgia, "Times New Roman", serif; }
-.card.fav.est-semanasanta .stop-num { background: linear-gradient(180deg, #f3d98b, #c99a32); color: #3a1857; }
+/* Semana Santa: terciopelo morado con brocado, galón dorado y candelería */
+.card.fav.est-semanasanta { border-left: 0; --ink: #fff7e0; --muted: #d9c9a3; --line: rgb(232 196 106 / .22); --surface-2: rgb(0 0 0 / .2); color: var(--ink); overflow: hidden; padding-top: 14px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='30' height='30' viewBox='0 0 30 30'%3E%3Cg fill='%23e8c46a' fill-opacity='.09'%3E%3Cpath d='M15 5c2.4 3.4 2.4 5.6 0 8-2.4-2.4-2.4-4.6 0-8zM15 25c2.4-3.4 2.4-5.6 0-8-2.4 2.4-2.4 4.6 0 8zM5 15c3.4-2.4 5.6-2.4 8 0-2.4 2.4-4.6 2.4-8 0zM25 15c-3.4-2.4-5.6-2.4-8 0 2.4 2.4 4.6 2.4 8 0z'/%3E%3Ccircle cx='15' cy='15' r='1.6'/%3E%3Ccircle cx='0' cy='0' r='2'/%3E%3Ccircle cx='30' cy='0' r='2'/%3E%3Ccircle cx='0' cy='30' r='2'/%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/svg%3E") 0 0 / 30px 30px, radial-gradient(130% 110% at 15% 0%, #5c2784 0%, #3b1459 42%, #1f0831 100%);
+  box-shadow: inset 0 0 0 1px rgb(232 196 106 / .6), var(--shadow); }
+/* Galón dorado arriba (como el azulejo y la feria) y la candelería encendida abajo a la derecha */
+.card.fav.est-semanasanta::before { content: ""; position: absolute; left: 1px; right: 1px; top: 1px; height: 14px; pointer-events: none; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='14' viewBox='0 0 24 14'%3E%3Crect width='24' height='14' fill='%232a0d40'/%3E%3Cpath d='M0 1.5h24M0 12.5h24' stroke='%23e8c46a' stroke-width='1.2'/%3E%3Cpath d='M12 3.6l3.4 3.4-3.4 3.4-3.4-3.4z' fill='%23e8c46a'/%3E%3Ccircle cx='12' cy='7' r='1.1' fill='%232a0d40'/%3E%3Ccircle cx='0' cy='7' r='1.3' fill='%23e8c46a'/%3E%3Ccircle cx='24' cy='7' r='1.3' fill='%23e8c46a'/%3E%3C/svg%3E") repeat-x 0 0 / 24px 14px; }
+.card.fav.est-semanasanta::after { content: ""; position: absolute; right: 14px; bottom: 8px; width: 112px; height: 50px; opacity: .75; pointer-events: none; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 124 56'%3E%3Ccircle cx='8' cy='29' r='7' fill='%23ffd36b' fill-opacity='.22'/%3E%3Crect x='6.4' y='34' width='3.2' height='22' rx='1' fill='%23fff4d8'/%3E%3Cpath d='M8 24c2.6 3.2 2.4 5.4 0 6.8-2.4-1.4-2.6-3.6 0-6.8z' fill='%23ffd36b'/%3E%3Ccircle cx='26' cy='22' r='7' fill='%23ffd36b' fill-opacity='.22'/%3E%3Crect x='24.4' y='27' width='3.2' height='29' rx='1' fill='%23fff4d8'/%3E%3Cpath d='M26 17c2.6 3.2 2.4 5.4 0 6.8-2.4-1.4-2.6-3.6 0-6.8z' fill='%23ffd36b'/%3E%3Ccircle cx='44' cy='15' r='7' fill='%23ffd36b' fill-opacity='.22'/%3E%3Crect x='42.4' y='20' width='3.2' height='36' rx='1' fill='%23fff4d8'/%3E%3Cpath d='M44 10c2.6 3.2 2.4 5.4 0 6.8-2.4-1.4-2.6-3.6 0-6.8z' fill='%23ffd36b'/%3E%3Ccircle cx='62' cy='10' r='7' fill='%23ffd36b' fill-opacity='.22'/%3E%3Crect x='60.4' y='15' width='3.2' height='41' rx='1' fill='%23fff4d8'/%3E%3Cpath d='M62 5c2.6 3.2 2.4 5.4 0 6.8-2.4-1.4-2.6-3.6 0-6.8z' fill='%23ffd36b'/%3E%3Ccircle cx='80' cy='15' r='7' fill='%23ffd36b' fill-opacity='.22'/%3E%3Crect x='78.4' y='20' width='3.2' height='36' rx='1' fill='%23fff4d8'/%3E%3Cpath d='M80 10c2.6 3.2 2.4 5.4 0 6.8-2.4-1.4-2.6-3.6 0-6.8z' fill='%23ffd36b'/%3E%3Ccircle cx='98' cy='22' r='7' fill='%23ffd36b' fill-opacity='.22'/%3E%3Crect x='96.4' y='27' width='3.2' height='29' rx='1' fill='%23fff4d8'/%3E%3Cpath d='M98 17c2.6 3.2 2.4 5.4 0 6.8-2.4-1.4-2.6-3.6 0-6.8z' fill='%23ffd36b'/%3E%3Ccircle cx='116' cy='29' r='7' fill='%23ffd36b' fill-opacity='.22'/%3E%3Crect x='114.4' y='34' width='3.2' height='22' rx='1' fill='%23fff4d8'/%3E%3Cpath d='M116 24c2.6 3.2 2.4 5.4 0 6.8-2.4-1.4-2.6-3.6 0-6.8z' fill='%23ffd36b'/%3E%3Crect x='0' y='52' width='124' height='4' rx='1' fill='%23e8c46a'/%3E%3C/svg%3E") no-repeat right bottom / contain; }
+.card.fav.est-semanasanta .fav-alias { color: #e8c46a; letter-spacing: .06em; }
+.card.fav.est-semanasanta .card-title h3 { font-family: Georgia, "Times New Roman", serif; color: #fff7e0; }
+.card.fav.est-semanasanta .stop-num { background: linear-gradient(180deg, #f6dd94, #c4922c); color: #2a0d40; box-shadow: 0 1px 0 rgb(255 255 255 / .3) inset; }
+.card.fav.est-semanasanta .t-now { background: #e8c46a; color: #2a0d40; }
+.card.fav.est-semanasanta > .fav-edit { top: 20px; }
 /* Feria: rojo flamenco con lunares y una guirnalda de farolillos arriba */
 .card.fav.est-feria { border-left: 0; --ink: #fff; --muted: rgb(255 255 255 / .86); --line: rgb(255 255 255 / .22); --surface-2: rgb(0 0 0 / .16); color: #fff; padding-top: 16px;
   background: radial-gradient(circle, rgb(255 255 255 / .16) 3.5px, transparent 4px) 0 0 / 22px 22px, radial-gradient(circle, rgb(255 255 255 / .16) 3.5px, transparent 4px) 11px 11px / 22px 22px, linear-gradient(160deg, #d7142f, #a50d24); }
@@ -1215,19 +1219,33 @@ html.oculta #fiesta-cielo .f-cruza, html.oculta #fiesta-cielo .f-cruza svg, html
 .est-mini.est-azulejo, .est-mini.est-feria { padding-top: 12px; }
 .est-mini.est-azulejo::before { left: 4px; right: 4px; top: 4px; height: 8px; background-size: 16px 8px; }
 .est-mini.est-feria::before { height: 12px; background-size: 40px 12px; }
-.est-mini.est-semanasanta::after { width: 30px; height: 44px; right: 6px; }
+.est-mini.est-semanasanta { padding-top: 9px; }
+.est-mini.est-semanasanta::before { height: 9px; background-size: 16px 9px; }
+.est-mini.est-semanasanta::after { width: 48px; height: 22px; right: 6px; bottom: 4px; }
 .est-mini.est-panel .card-head { padding: 7px 8px; }
 .est-mini.est-panel .em-b { background: #15161a; flex: 1; }
 .est-mini.est-panel .em-l.s { background: #e8e8ea; }
-/* Opciones (compacta, sin dirección, animado) */
-.opt-tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-.opt-tile { position: relative; display: grid; justify-items: center; align-content: start; gap: 3px; padding: 14px 6px 12px; border-radius: 16px; border: 1.5px solid var(--line); background: var(--surface); color: var(--ink); font: inherit; cursor: pointer; text-align: center; }
-.opt-tile .opt-ic { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: var(--surface-2); color: var(--muted); margin-bottom: 4px; }
+/* Opciones (compacta, sin dirección, animado…): una fila cada una, con su casilla a la derecha */
+.opt-tiles { display: grid; gap: 8px; }
+.opt-tile { display: grid; grid-template-columns: 42px minmax(0, 1fr) 24px; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 16px;
+  border: 1.5px solid var(--line); background: var(--surface); color: var(--ink); font: inherit; cursor: pointer; text-align: left; }
+.opt-tile .opt-ic { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; background: var(--surface-2); color: var(--muted); }
 .opt-tile .opt-ic svg { width: 22px; height: 22px; }
-.opt-tile b { font-size: 13px; line-height: 1.15; }
-.opt-tile small { font-size: 11.5px; color: var(--muted); line-height: 1.2; }
+.opt-tile .opt-tx { display: grid; gap: 2px; }
+.opt-tile b { font-size: 15px; line-height: 1.2; }
+.opt-tile small { font-size: 12.5px; color: var(--muted); line-height: 1.25; }
+.opt-tile .sel-ok { position: relative; top: auto; right: auto; opacity: 1; transform: none; background: transparent; box-shadow: inset 0 0 0 2px var(--line); }
+.opt-tile .sel-ok::after { opacity: 0; }
 .opt-tile[aria-pressed="true"] { border-color: var(--ink); }
 .opt-tile[aria-pressed="true"] .opt-ic { background: var(--ink); color: var(--bg); }
+.opt-tile[aria-pressed="true"] .sel-ok { background: var(--ink); box-shadow: none; }
+.opt-tile[aria-pressed="true"] .sel-ok::after { opacity: 1; }
+/* Los editores de personalizar ocupan toda la pantalla */
+.modal.pz { display: flex; flex-direction: column; height: 100dvh; max-height: 100dvh; border-radius: 0; padding-top: env(safe-area-inset-top, 0px); }
+.modal.pz > * { flex: none; }
+.modal.pz .modal-grip { display: none; }
+.modal.pz .pz-top { top: 0; margin-top: 0; padding-top: 14px; }
+.modal.pz .pz-acc { margin-top: auto; }
 /* ---------- Tarjeta: diseños, marcos, pegatinas y brillo ---------- */
 .tcard .tc-arte { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; }
 .tcard.con-diseno { text-shadow: 0 1px 3px rgb(0 0 0 / .5); }
@@ -1272,7 +1290,6 @@ html.oculta #fiesta-cielo .f-cruza, html.oculta #fiesta-cielo .f-cruza svg, html
 .mk-mini { --r: 11px; }
 .mk-mini .tc-marco { padding: calc(var(--g, 6px) * .7); }
 .mk-mini .tc-marco.mk-doble { inset: 5px; border-radius: 6px; outline-offset: 2px; }
-.opt-tiles.dos { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 /* Ajustes: icono de la app */
 .iconos-app { display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 10px; }
 .icono-app { position: relative; display: grid; justify-items: center; gap: 6px; border: 0; background: transparent; color: var(--ink); cursor: pointer; padding: 4px; font: inherit; }

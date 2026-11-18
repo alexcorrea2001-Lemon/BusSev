@@ -152,6 +152,10 @@ assert.equal(inp.value, repetido.trim());
 inp.value = ''; inp.dispatchEvent(new a.w.Event('focus'));
 ev(`irARuta({ tipo: 'parada', nombre: 'Prueba', pos: ${JSON.stringify(d)}, codigo: '${seq29[14]}' })`);
 await a.espera(50);
+// Cómo llegar con metro: a las 11 de la mañana (de noche el metro está cerrado y la prueba dependería de la hora)
+const DateReal = a.w.Date;
+{ const D = DateReal, b = new D(); b.setHours(11, 0, 0, 0); const desfase = b.getTime() - D.now();
+  a.w.Date = class extends D { constructor(...x) { if (x.length) super(...x); else super(D.now() + desfase); } static now() { return D.now() + desfase; } }; }
 await a.ir('#favoritas', 300); ev(`irARuta({ tipo: 'parada', nombre: 'Prueba', pos: ${JSON.stringify(d)}, codigo: '${seq29[14]}' })`);
 await a.espera(900);
 assert.equal(a.w.location.hash, '#ruta');
@@ -167,6 +171,7 @@ a.$('[data-medio="rutaBici"]').click(); await a.espera(900);
 assert.equal(a.$('#pl-res .plan-bici'), null, 'sin bici si no la quieres');
 a.$('[data-medio="rutaMetro"]').click(); a.$('[data-medio="rutaBici"]').click(); await a.espera(300);
 assert.ok(a.$('#pl-res [data-bajar]'), 'botón Avísame al bajar en cada opción');
+a.w.Date = DateReal;
 
 // ---------- Aviso de llegada: con la versión nueva de Android lo vigila el móvil (no la notificación fija) ----------
 llamadas.length = 0;

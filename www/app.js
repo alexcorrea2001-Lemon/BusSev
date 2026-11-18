@@ -1118,9 +1118,9 @@ const miniEstiloHTML = (k, codigo, color) => `<span class="est-mini card fav est
   <span class="card-head"><span class="stop-num">${esc(codigo)}</span><span class="em-l"></span></span>
   <span class="em-b"><span class="em-l s"></span><span class="t-main">5<small>min</small></span></span></span>`;
 const OPCIONES_FAV = [
-  ['compacta', 'Compacta', 'Solo el próximo bus', '<rect x="3" y="8" width="18" height="8" rx="2.5"/><path d="M6.5 12h4M15 12h2.5"/>'],
-  ['ocultarDir', 'Sin dirección', 'Oculta la calle', '<path d="M4 7h11M4 12h16"/><path d="M4 17h9" stroke-dasharray="1.5 2.5"/><path d="M16 15l4 4M20 15l-4 4"/>'],
-  ['animar', '«Llegando» animado', 'Late cuando llega', '<circle cx="12" cy="12" r="3.2"/><path d="M6.3 6.3a8 8 0 0 0 0 11.4M17.7 6.3a8 8 0 0 1 0 11.4"/>'],
+  ['compacta', 'Tarjeta compacta', 'Una sola línea con el próximo autobús', '<rect x="3" y="8" width="18" height="8" rx="2.5"/><path d="M6.5 12h4M15 12h2.5"/>'],
+  ['ocultarDir', 'Ocultar la dirección', 'Sin la calle debajo del nombre', '<path d="M4 7h11M4 12h16"/><path d="M4 17h9" stroke-dasharray="1.5 2.5"/><path d="M16 15l4 4M20 15l-4 4"/>'],
+  ['animar', '«Llegando» animado', 'El aviso late cuando el bus está llegando', '<circle cx="12" cy="12" r="3.2"/><path d="M6.3 6.3a8 8 0 0 0 0 11.4M17.7 6.3a8 8 0 0 1 0 11.4"/>'],
 ];
 async function editFavorite(codigo, onDone) {
   const fav = favs.get(codigo);
@@ -1156,7 +1156,7 @@ async function editFavorite(codigo, onDone) {
       <section class="pz-sec"><h3>Estilo</h3><div class="est-tiles">${ESTILOS_FAV.map(([k, n]) => `<button type="button" class="est-tile" data-est="${k}" aria-pressed="${d.estilo === k}">${miniEstiloHTML(k, codigo, colorFc())}<span class="est-n">${n}</span>${ok}</button>`).join('')}</div></section>
     </div>
     <div class="pz-panel" data-panel="mostrar" hidden>
-      <section class="pz-sec"><h3>Tarjeta</h3><div class="opt-tiles">${OPCIONES_FAV.map(([k, t, sub, svg]) => `<button type="button" class="opt-tile" data-opt="${k}" aria-pressed="${d[k]}"><span class="opt-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${svg}</svg></span><b>${t}</b><small>${sub}</small>${ok}</button>`).join('')}</div></section>
+      <section class="pz-sec"><h3>Tarjeta</h3><div class="opt-tiles">${OPCIONES_FAV.map(([k, t, sub, svg]) => `<button type="button" class="opt-tile" data-opt="${k}" aria-pressed="${d[k]}"><span class="opt-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${svg}</svg></span><span class="opt-tx"><b>${t}</b><small>${sub}</small></span>${ok}</button>`).join('')}</div></section>
       <section class="pz-sec"><h3>Líneas</h3><p class="help">Toca para quitar las que nunca coges aquí. Con todas marcadas se ven todas.</p>
         <div class="line-picks">${[...lineas].sort(ordenLineas).map((n) => `<button class="line-pick" type="button" data-ln="${esc(n)}" aria-pressed="${elegidas.has(n)}">${badge(etiquetaLinea(lineaFor(n)?.numero || n), lineaFor(n)?.color)}</button>`).join('') || '<span class="help">Sin datos de líneas.</span>'}</div></section>
     </div>
