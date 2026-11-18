@@ -119,6 +119,23 @@ jobs:
             "$VERSION" "$NUMERO" "$(date -u +%Y-%m-%d)" "${{ github.repository }}" > www/version.js
           cat www/version.js
 
+      # Las imágenes demasiado pesadas (p. ej. una foto original subida tal cual) se reducen solo para el APK:
+      # en la app se ven pequeñas, y así el APK pesa menos y se descarga antes. El repositorio no se toca.
+      - name: Reducir imágenes demasiado grandes
+        if: steps.seguir.outputs.si == 'si'
+        run: |
+          pip install --quiet --disable-pip-version-check pillow || echo "No se ha podido instalar Pillow."
+          python3 scripts/optimizar_imagenes.py www/img || echo "No se han podido reducir (no pasa nada)."
+
+      # Comprobaciones automáticas (pruebas/): la app se arranca en un navegador simulado y se prueban sus partes
+      # (horarios, temáticas, avisos, pantallas…). Si alguna falla, la compilación se para aquí y NO se publica el
+      # APK, para que el fallo no llegue al móvil. En el log sale qué ha fallado.
+      - name: Comprobaciones automáticas
+        if: steps.seguir.outputs.si == 'si'
+        run: |
+          npm install --no-save --no-audit --no-fund jsdom@31
+          node pruebas/ejecutar.mjs
+
       # Credenciales de la API de TUSSAM: viven en un Secret del repositorio (nunca en el código).
       # Aquí se escribe www/secrets.js al vuelo, antes de meter la app en el APK.
       - name: Credenciales de TUSSAM
