@@ -156,5 +156,22 @@ ev(`window.BUSSEV_GH = undefined`);
 assert.match(ev(`stopCardHTML({ codigo: '1', nombre: 'X' }, { tiempos: [], status: 'ok', distancia: 300 })`), /🚶 5 min \(300 m\)/);
 
 assert.equal(a.errores.length, 0, a.errores.join('\n').slice(0, 2000));
-console.log('OK horario por parada, Cómo llegar, aviso nativo y avísame al bajar');
-a.cerrar(); process.exit(0);
+a.cerrar();
+
+// ---------- Credenciales: con la app instalada, el token lo da Android (las claves nunca llegan a la web) ----------
+{
+  const auth = [], pedidos = [];
+  const cap2 = { isNativePlatform: () => true, getPlatform: () => 'android', isPluginAvailable: (p) => p === 'BusSevClave',
+    nativePromise: async (plugin, metodo, datos) => { if (plugin === 'BusSevClave' && metodo === 'token') { pedidos.push(datos); return { access_token: 'tok-nativo' }; } throw new Error('no'); } };
+  const red2 = async (url, resp, o) => { if (/auth\.tussam\.es/.test(url)) auth.push(url); if (/api\.tussam\.es/.test(url)) auth.push('API ' + (o?.headers?.Authorization || '')); return null; };
+  const b = await arrancar({ red: red2, capacitor: cap2, ls: { 'bussev.settings': { avisarVersion: false } } });
+  await b.espera(500);
+  b.w.BUSSEV_TUSSAM = undefined;
+  await new vm.Script(`BusSevBackend.estadoTarjeta('123456').catch(() => null)`).runInContext(b.dom.getInternalVMContext());
+  assert.ok(pedidos.length >= 1, 'pide el token a Android');
+  assert.ok(!auth.some((x) => /auth\.tussam\.es/.test(x)), 'la web nunca hace el login con las claves');
+  assert.ok(auth.includes('API Bearer tok-nativo'), 'usa el token de Android');
+  b.cerrar();
+}
+console.log('OK horario por parada, Cómo llegar, aviso nativo, avísame al bajar y claves en Android');
+process.exit(0);

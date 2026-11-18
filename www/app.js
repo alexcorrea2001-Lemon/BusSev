@@ -568,20 +568,18 @@ function lineaFor(label) {
   const s = String(label ?? '');
   return cache.lineaByNum.get(s) || cache.lineaByNum.get(s.padStart(2, '0')) || cache.lineaByNum.get(s.replace(/^0+(?=\w)/, '')) || null;
 }
-/* #52 Widget de inicio: la app guarda en el widget nativo las credenciales de TUSSAM y las
-   paradas favoritas (con su nombre), para que pueda consultar y para elegir parada al añadirlo. */
+/* #52 Widget de inicio: la app guarda en el widget nativo las paradas favoritas (con su nombre), para elegir
+   parada al añadirlo. Las credenciales de TUSSAM ya van cifradas dentro de Android. */
 function actualizarWidget() {
   try {
     if (!window.Capacitor?.isPluginAvailable?.('BusSevWidget')) return;
-    const creds = window.BUSSEV_TUSSAM || {};
     const favoritas = (favs.list() || []).map((f) => ({
       codigo: String(f.codigo),
       nombre: f.alias || cache.paradaByCode.get(String(f.codigo))?.nombre || ('Parada ' + f.codigo),
       lineas: Array.isArray(f.lineas) ? f.lineas.map(String) : [],
     }));
     window.Capacitor.nativePromise('BusSevWidget', 'setConfig', {
-      clientId: creds.clientId || '', clientSecret: creds.clientSecret || '',
-      user: creds.user || '', pass: creds.pass || '', favoritas,
+      favoritas,   // las credenciales ya no pasan por aquí: van cifradas en Android
     }).catch(() => { /* */ });
   } catch { /* */ }
 }

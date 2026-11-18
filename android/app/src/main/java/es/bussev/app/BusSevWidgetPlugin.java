@@ -10,8 +10,8 @@ import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
 /**
- * Puente app -> widget. La app guarda aquí las credenciales de TUSSAM y la lista de
- * paradas favoritas (para que el widget pueda consultar y para elegir parada al añadirlo).
+ * Puente app -> widget. La app guarda aquí la lista de paradas favoritas (para elegir parada al añadirlo).
+ * Las credenciales de TUSSAM no pasan por aquí: van cifradas en Claves.
  */
 @CapacitorPlugin(name = "BusSevWidget")
 public class BusSevWidgetPlugin extends Plugin {
@@ -22,10 +22,8 @@ public class BusSevWidgetPlugin extends Plugin {
         SharedPreferences.Editor e = ctx
                 .getSharedPreferences(BusSevWidgetProvider.PREFS, Context.MODE_PRIVATE)
                 .edit();
-        e.putString("clientId", call.getString("clientId", ""));
-        e.putString("clientSecret", call.getString("clientSecret", ""));
-        e.putString("user", call.getString("user", ""));
-        e.putString("pass", call.getString("pass", ""));
+        // Las credenciales ya no pasan por aquí (van cifradas en Claves): se borran las que guardaban versiones antiguas
+        e.remove("clientId"); e.remove("clientSecret"); e.remove("user"); e.remove("pass");
         JSArray favs = call.getArray("favoritas");
         if (favs != null) e.putString("favs", favs.toString());
         e.apply();

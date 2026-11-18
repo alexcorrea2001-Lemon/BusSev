@@ -274,8 +274,8 @@
   /* ---------- API oficial de la app móvil de TUSSAM (OAuth) ---------- */
   const API_TUSSAM = 'https://api.tussam.es';
   const URL_TOKEN = 'https://auth.tussam.es/auth/realms/TUSSAM-SSO/protocol/openid-connect/token';
-  // Las credenciales van fuera del repositorio, en www/secrets.js (ignorado por git).
-  // Ese fichero sí se incluye en el APK. Ver www/secrets.example.js para su forma.
+  // En el APK las credenciales van cifradas dentro de Android (Claves.java, generado al compilar) y la parte web
+  // solo recibe el token, que caduca a los pocos minutos. www/secrets.js solo se usa probando en el ordenador.
   const CRED = (typeof window !== 'undefined' && window.BUSSEV_TUSSAM) || {};
   const OAUTH_CLIENT_ID = CRED.clientId || '';
   const OAUTH_CLIENT_SECRET = CRED.clientSecret || '';
@@ -283,7 +283,17 @@
   const OAUTH_PASS = CRED.pass || '';
   let accessToken = null, refreshToken = null, tokenP = null;
 
+  const claveNativa = () => !!window.Capacitor?.isPluginAvailable?.('BusSevClave');
   function pedirToken(signal) {
+    if (claveNativa()) {
+      // nuevo: si ya había token y TUSSAM lo ha rechazado (401), se pide otro de verdad
+      const nuevo = !!accessToken;
+      tokenP ??= window.Capacitor.nativePromise('BusSevClave', 'token', { nuevo })
+        .then((j) => { accessToken = j?.access_token || null; if (!accessToken) throw new HttpError(502, 'TUSSAM no devolvió token'); },
+          (e) => { accessToken = null; throw e instanceof HttpError ? e : new HttpError(502, `Auth TUSSAM: ${e?.message || 'sin respuesta'}`); })
+        .finally(() => { tokenP = null; });
+      return tokenP;
+    }
     if (!OAUTH_CLIENT_SECRET) return Promise.reject(new HttpError(500, 'Faltan las credenciales de TUSSAM (crea www/secrets.js)'));
     tokenP ??= (async () => {
       const conRefresh = !!refreshToken;

@@ -43,7 +43,6 @@ const avisos = {
     let vigilado = false;
     if (plugin('BusSevViaje')) {
       try {
-        actualizarWidget();   // el móvil necesita las credenciales de TUSSAM para preguntar solo
         await native('BusSevViaje', 'vigilarLlegada', { id, codigo: a.codigo, parada: a.parada, linea: a.linea, destino: a.destino, antes: a.antes, at });
         vigilado = true;
       } catch { /* se usa la notificación de siempre */ }
