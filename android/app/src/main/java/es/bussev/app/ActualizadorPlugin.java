@@ -66,28 +66,37 @@ public class ActualizadorPlugin extends Plugin {
         try {
             URL url = new URL(u);
             return "https".equals(url.getProtocol())
-                    && "github.com".equalsIgnoreCase(url.getHost())
-                    && url.getPath().matches("^/[\\w.-]+/[\\w.-]+/releases/download/[^/]+/[\\w.-]+\\.apk$");
+                    && (("github.com".equalsIgnoreCase(url.getHost())
+                        && url.getPath().matches("^/[\\w.-]+/[\\w.-]+/releases/download/[^/]+/[\\w.-]+\\.apk$"))
+                    || esApi(url));
         } catch (Exception e) {
             return false;
         }
+    }
+
+    /** Repositorio privado: el APK se pide a la API de GitHub (con el permiso de solo lectura). */
+    private static boolean esApi(URL url) {
+        return "https".equals(url.getProtocol()) && "api.github.com".equalsIgnoreCase(url.getHost())
+                && url.getPath().matches("^/repos/[\\w.-]+/[\\w.-]+/releases/assets/\\d+$");
     }
 
     /** Empieza a descargar (en segundo plano). El avance se consulta con estado(). */
     @PluginMethod
     public void descargar(PluginCall call) {
         final String url = call.getString("url", "");
+        final String token = call.getString("token", "");
         if (!urlValida(url)) { call.reject("La dirección de descarga no es válida"); return; }
+        if (token != null && !token.isEmpty() && !token.matches("^[\\w-]{20,255}$")) { call.reject("Permiso de descarga no válido"); return; }
         if (!activo) {
             activo = true; hecho = false; cancelar = false; error = null; bajado = 0; total = 0;
             new Thread(new Runnable() {
-                @Override public void run() { bajar(url); }
+                @Override public void run() { bajar(url, token); }
             }, "bussev-actualizacion").start();
         }
         call.resolve();
     }
 
-    private void bajar(String direccion) {
+    private void bajar(String direccion, String token) {
         HttpURLConnection c = null;
         try {
             File dir = carpeta();
@@ -103,6 +112,8 @@ public class ActualizadorPlugin extends Plugin {
                 c.setReadTimeout(30000);
                 c.setRequestProperty("Accept", "application/octet-stream");
                 c.setRequestProperty("User-Agent", "BusSev");
+                // El permiso solo se manda a la API de GitHub, nunca al servidor de archivos al que redirige
+                if (token != null && !token.isEmpty() && esApi(u)) c.setRequestProperty("Authorization", "Bearer " + token);
                 int codigo = c.getResponseCode();
                 if (codigo >= 300 && codigo < 400) {
                     String destino = c.getHeaderField("Location");

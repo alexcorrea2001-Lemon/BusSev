@@ -134,6 +134,122 @@ function textoUltimo(h) {
   if (fin < ini && fin >= 60) return { txt: `último ${h.fin} (de madrugada)` };
   return { txt: `último ${h.fin}` };
 }
+/* ---------- Horario de cada parada (www/horarios.js) ----------
+   El GTFS oficial dice a qué hora sale cada viaje de cabecera y cuánto tarda hasta cada parada: con eso se sabe
+   a qué hora pasa por TU parada (no solo a qué hora sale de cabecera). El archivo se carga solo cuando hace falta. */
+let _horP = null, _recIdx = null;
+function cargarHorarios() {
+  if (window.BUSSEV_HORARIOS) return Promise.resolve(window.BUSSEV_HORARIOS);
+  if (_horP) return _horP;
+  _horP = new Promise((ok) => {
+    const sc = document.createElement('script');
+    sc.src = 'horarios.js'; sc.async = true;
+    sc.onload = () => ok(window.BUSSEV_HORARIOS || null);
+    sc.onerror = () => { _horP = null; ok(null); };   // versión sin horarios todavía: no pasa nada
+    document.head.appendChild(sc);
+  });
+  return _horP;
+}
+/* codigo -> [[línea, sentido, posición]] y "línea|sentido" -> [códigos en orden] */
+function indiceRecorridos() {
+  if (_recIdx) return _recIdx;
+  const porParada = new Map(), seqs = new Map();
+  for (const [c, l, s, o] of window.BUSSEV_DATA?.recorridos || []) {
+    const k = `${l}|${s}`;
+    if (!seqs.has(k)) seqs.set(k, []);
+    seqs.get(k)[o] = c;
+    if (!porParada.has(c)) porParada.set(c, []);
+    porParada.get(c).push([l, s, o]);
+  }
+  _recIdx = { porParada, seqs };
+  return _recIdx;
+}
+/* Minutos del «día de servicio» (de 4:00 a 4:00): la 1:30 de la madrugada del sábado cuenta como viernes, 25:30 */
+function minutoServicio(d = new Date()) {
+  const m = d.getHours() * 60 + d.getMinutes();
+  return d.getHours() < 4 ? m + 1440 : m;
+}
+const hhmmDe = (m) => `${String(Math.floor(m / 60) % 24).padStart(2, '0')}:${String(Math.round(m) % 60).padStart(2, '0')}`;
+/* Horas a las que pasa cada línea por una parada en un día (según el horario oficial). null si no hay horarios. */
+function pasosParada(codigo, d = new Date(), H = window.BUSSEV_HORARIOS) {
+  if (!H?.l) return null;
+  const g = H.dias?.[tipoHorarioHoy(d)];
+  const { porParada, seqs } = indiceRecorridos();
+  const out = [];
+  for (const [lin, sen, o] of porParada.get(String(codigo)) || []) {
+    const e = H.l[`${lin}|${sen}`], seq = seqs.get(`${lin}|${sen}`) || [];
+    if (!e || g == null || e.m?.[o] == null) continue;
+    const ultimoIdx = e.m.length - 1;
+    if (o === ultimoIdx && seq[0] !== seq[ultimoIdx]) continue;   // última parada: ahí se baja, no se coge
+    const mins = [];
+    let s0 = 0;
+    for (const x of e.v?.[g] || []) {
+      const [dd, a, b] = Array.isArray(x) ? x : [x, 0, ultimoIdx];
+      s0 += dd;
+      if (o >= a && o < b || (o === b && b === ultimoIdx && o === 0)) mins.push(s0 + e.m[o]);
+    }
+    if (!mins.length) continue;
+    mins.sort((a, b) => a - b);
+    const fin = cache.paradaByCode?.get?.(seq[ultimoIdx]) || (window.BUSSEV_DATA?.paradas || []).find((p) => p.codigo === seq[ultimoIdx]);
+    out.push({ linea: lin, sentido: Number(sen), destino: fin ? fin.nombre : '', mins });
+  }
+  return out.sort((a, b) => ordenLineas(a.linea, b.linea) || a.sentido - b.sentido);
+}
+/* Resumen de una línea en una parada a una hora: primero, último, siguiente y cada cuánto pasa ahora */
+function resumenPasos(p, ahora) {
+  const sig = p.mins.find((m) => m >= ahora - 1);
+  const cerca = p.mins.filter((m) => m >= ahora - 45 && m <= ahora + 75);
+  let cada = null;
+  if (cerca.length >= 3) {
+    const difs = cerca.slice(1).map((m, i) => m - cerca[i]).sort((a, b) => a - b);
+    cada = difs[Math.floor(difs.length / 2)];
+  }
+  return { primero: p.mins[0], ultimo: p.mins[p.mins.length - 1], sig, cada, acabado: sig == null };
+}
+/* Próximos autobuses según el horario (para cuando TUSSAM no da tiempos): «29 a las 06:12» */
+function proximosProgramados(codigo, d = new Date(), n = 3) {
+  const pasos = pasosParada(codigo, d);
+  if (!pasos) return null;
+  const ahora = minutoServicio(d);
+  let lista = pasos.map((p) => ({ ...p, m: p.mins.find((m) => m >= ahora) })).filter((p) => p.m != null);
+  let manana = false;
+  if (!lista.length) {
+    // Ya no pasa nada hoy: los primeros de mañana
+    const d2 = new Date(d.getTime() - 4 * 3600_000 + 24 * 3600_000); d2.setHours(6, 0, 0, 0);   // el día de servicio siguiente
+    lista = (pasosParada(codigo, d2) || []).map((p) => ({ ...p, m: p.mins[0] })).filter((p) => p.m != null);
+    manana = true;
+  }
+  return { manana, lista: lista.sort((a, b) => a.m - b.m).slice(0, n) };
+}
+function proximosProgramadosHTML(codigo, lineasElegidas = []) {
+  const r = proximosProgramados(codigo);
+  if (!r) return '';
+  const sel = new Set(lineasElegidas.map((n) => lineaFor(n)?.numero || String(n)));
+  const lista = sel.size ? r.lista.filter((p) => sel.has(p.linea)) : r.lista;
+  if (!lista.length) return '';
+  return `<div class="prog"><p class="small muted">Según el horario oficial, ${r.manana ? 'los primeros de la mañana' : 'los próximos'}:</p><ul>${lista.map((p) => {
+    const l = lineaFor(p.linea);
+    return `<li>${badge(etiquetaLinea(l?.numero || p.linea), l?.color)}<span>hacia ${esc(p.destino)}</span><b>${hhmmDe(p.m)}</b></li>`;
+  }).join('')}</ul></div>`;
+}
+/* Sección «Horario en esta parada» */
+function horarioParadaHTML(codigo, d = new Date()) {
+  const pasos = pasosParada(codigo, d);
+  if (!pasos || !pasos.length) return '';
+  const ahora = minutoServicio(d);
+  const nombreDia = { lun: 'lunes', mar: 'martes', mie: 'miércoles', jue: 'jueves', vie: 'viernes', sab: 'sábado', dom: 'domingo y festivo' }[tipoHorarioHoy(d)];
+  const filas = pasos.map((p) => {
+    const r = resumenPasos(p, ahora), l = lineaFor(p.linea);
+    const ult = r.ultimo >= 1440 ? `${hhmmDe(r.ultimo)} (de madrugada)` : hhmmDe(r.ultimo);
+    const estado = r.acabado ? '<span class="h-fin">Ya no pasa más hoy</span>'
+      : r.sig - ahora > 60 ? `<span>Próximo a las ${hhmmDe(r.sig)}</span>`
+        : r.cada ? `<span>Ahora pasa cada ${r.cada} min</span>` : `<span>Próximo a las ${hhmmDe(r.sig)}</span>`;
+    return `<li>${badge(etiquetaLinea(l?.numero || p.linea), l?.color, { href: `#linea-${encodeURIComponent(l?.numero || p.linea)}` })}<div><b>hacia ${esc(p.destino)}</b><span>Primero ${hhmmDe(r.primero)} · último ${ult}</span>${estado}</div></li>`;
+  }).join('');
+  return `<details class="card p-horario"><summary><span>🕒 Horario en esta parada</span><small>hoy, ${nombreDia}</small></summary>
+    <ul class="h-lista">${filas}</ul>
+    <p class="small muted">Horas a las que pasa por aquí según el horario oficial (aproximadas: con tráfico puede variar unos minutos).</p></details>`;
+}
 function servicioHoyHTML() {
   const t = tipoDia();
   if (t === 'laborable') return '';
@@ -384,6 +500,8 @@ function openWeb(url) {
 /* Descargar la actualización: abre GitHub y, al volver a la app (tras bajar/instalar el APK),
    cierra esa pestaña del navegador para que no se quede abierta y vuelva a descargar al reabrirla. */
 function descargarApp(url) {
+  // La descarga por la API (repositorio privado) no se puede abrir en el navegador: se abre la página de versiones
+  if (/^https:\/\/api\.github\.com\//.test(String(url))) url = actualizaciones.paginaVersiones() || url;
   openWeb(url);
   const onVis = () => {
     if (document.visibilityState !== 'visible') return;
@@ -615,7 +733,7 @@ async function instalarActualizacion(url) {
     }
   };
   try {
-    await actualizador.nativo('descargar', { url });
+    await actualizador.nativo('descargar', { url, ...(/^https:\/\/api\.github\.com\//.test(url) ? { token: actualizaciones.token() } : {}) });
     for (;;) {
       await new Promise((ok) => setTimeout(ok, 350));
       if (cerrado || !document.getElementById('upd-prog')) { actualizador.limpiar(); return; }   // cancelado o ventana cerrada
@@ -637,6 +755,7 @@ async function instalarActualizacion(url) {
 
 const actualizaciones = {
   version: () => window.BUSSEV_VERSION || { build: 0, fecha: '', repo: '' },
+  token: () => (typeof window.BUSSEV_GH?.token === 'string' && /^[\w-]{20,255}$/.test(window.BUSSEV_GH.token) ? window.BUSSEV_GH.token : ''),
   paginaVersiones() { const r = this.version().repo; return r ? `https://github.com/${r}/releases/latest` : ''; },
   /* Solo se abren enlaces de GitHub (por seguridad) */
   enlaceSeguro(u) { try { const x = new URL(u); return x.protocol === 'https:' && /(^|\.)github\.com$|(^|\.)githubusercontent\.com$/.test(x.hostname) ? x.href : ''; } catch { return ''; } },
@@ -650,7 +769,9 @@ const actualizaciones = {
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), 10000);
     try {
-      const r = await fetch(`https://api.github.com/repos/${v.repo}/releases/latest`, { headers: { Accept: 'application/vnd.github+json' }, signal: ctrl.signal, credentials: 'omit' });
+      // Repositorio privado: la app lleva un permiso de SOLO LECTURA de este repositorio (lo mete GitHub al compilar)
+      const token = this.token();
+      const r = await fetch(`https://api.github.com/repos/${v.repo}/releases/latest`, { headers: { Accept: 'application/vnd.github+json', ...(token ? { Authorization: `Bearer ${token}` } : {}) }, signal: ctrl.signal, credentials: 'omit' });
       if ([401, 403, 404].includes(r.status)) return { estado: 'privado' };   // repositorio privado: GitHub no deja mirarlo sin entrar
       if (!r.ok) throw new Error(`GitHub ha respondido con un error (${r.status}).`);
       const j = await r.json();
@@ -664,7 +785,9 @@ const actualizaciones = {
       else if (pr && pm) hay = this.comparar(pr, pm) > 0;
       else hay = (Number(tag.replace(/\D/g, '')) || 0) > (v.build || 0);
       const mismoNombre = pr && pm && this.comparar(pr, pm) === 0;
-      const apk = (j.assets || []).find((a) => /\.apk$/i.test(a.name || ''))?.browser_download_url;
+      const asset = (j.assets || []).find((a) => /\.apk$/i.test(a.name || ''));
+      // Privado: se descarga por la API (con el permiso); público: el enlace normal
+      const apk = token && /^https:\/\/api\.github\.com\/repos\/[\w.-]+\/[\w.-]+\/releases\/assets\/\d+$/.test(asset?.url || '') ? asset.url : asset?.browser_download_url;
       const url = this.enlaceSeguro(apk || j.html_url || '') || this.paginaVersiones();
       store.set('ultimaRevisionVersion', Date.now());
       return { estado: hay ? 'nueva' : 'al-dia', nueva: pr ? `v${pr.join('.')}` : tag, mismoNombre, clave: `${tag}#${buildRemota}`, url, fecha: j.published_at || '', novedades: novedades.deTexto(j.body) };
@@ -739,13 +862,13 @@ function groupArrivals(tiempos) {
   return out.sort((a, b) => a.buses[0].tiempo_minutos - b.buses[0].tiempo_minutos);
 }
 const minutesHTML = (m) => (m <= 0 ? '<span class="t-now">Llegando</span>' : `<span class="t-main">${m}<small>min</small></span>`);
-function boardHTML(tiempos, status, { limit = 99, filtrado = false, codigo = null } = {}) {
+function boardHTML(tiempos, status, { limit = 99, filtrado = false, codigo = null, vacioExtra = '' } = {}) {
   const groups = groupArrivals(tiempos);
   if (!groups.length) {
     const msg = status && status !== 'ok'
       ? 'TUSSAM no está dando tiempos para esta parada ahora mismo. Vuelve a intentarlo en un momento.'
       : filtrado ? 'Ahora mismo no viene ninguna de las líneas que elegiste para esta parada.' : 'No hay autobuses previstos ahora mismo en esta parada.';
-    return `<div class="board-empty">${msg}</div>`;
+    return `<div class="board-empty">${msg}</div>${vacioExtra}`;
   }
   const rows = groups.slice(0, limit).map((g) => {
     const first = g.buses[0];
@@ -779,7 +902,7 @@ function freshnessPill(d) {
   return '<span class="pill live">En directo</span>';
 }
 function stopCardHTML(p, { tiempos, status, distancia, limit = 4, fav = null }) {
-  const sub = [distancia != null ? `a ${fmtDist(distancia)}` : '', p.direccion_completa || p.calle || ''].filter(Boolean).join(' · ');
+  const sub = [distancia != null ? `🚶 ${Math.max(1, Math.round(distancia * 1.25 / 75))} min (${fmtDist(distancia)})` : '', p.direccion_completa || p.calle || ''].filter(Boolean).join(' · ');
   const color = fav?.color ? safeColor(fav.color) : null;
   const filtered = fav?.lineas?.length ? filtrarLineas(tiempos, fav) : tiempos;
   return `<article class="card${fav ? ' fav' : ''}" ${color ? `style="--fc:${color}"` : ''}>
@@ -1585,7 +1708,7 @@ views.favoritas = (el) => {
   function paint() {
     const list = favs.list();
     if (!list.length) {
-      el.innerHTML = `<div class="page-head"><h1>Favoritas</h1></div>` + emptyHTML(ICON.star, 'Aún no tienes paradas favoritas', 'Abre una parada (desde el mapa, el buscador o Cerca) y pulsa la estrella. Luego podrás ponerle nombre, color y elegir qué líneas ver.', '<a class="btn" href="#mapa">Buscar en el mapa</a><a class="btn ghost" href="#avisos">Avisos de TUSSAM</a>');
+      el.innerHTML = `<div class="page-head"><h1>Favoritas</h1></div><div id="fav-bajada">${window.bajadaHTML?.() || ''}</div>` + emptyHTML(ICON.star, 'Aún no tienes paradas favoritas', 'Abre una parada (desde el mapa, el buscador o Cerca) y pulsa la estrella. Luego podrás ponerle nombre, color y elegir qué líneas ver.', '<a class="btn" href="#mapa">Buscar en el mapa</a><a class="btn ghost" href="#avisos">Avisos de TUSSAM</a>');
       return false;
     }
     const avs = window.avisos ? avisos.list() : [];
@@ -1612,6 +1735,7 @@ views.favoritas = (el) => {
     }
     el.__marco = marco;
     el.innerHTML = `<div class="stack view-anim"><div class="page-head row-between"><div><h1>Favoritas</h1><p>Tus paradas con los tiempos en directo.</p></div><a class="btn ghost sm" href="#ruta">${ICON.route}Cómo llegar</a></div>
+      <div id="fav-bajada">${window.bajadaHTML?.() || ''}</div>
       <div id="fav-offline">${offlineHTML()}</div>
       ${servicioHoyHTML()}
       ${avs.length ? `<div class="set-group"><h3>Avisos de llegada</h3>${avs.map((a) => `<div class="row-flat"><a class="av-ll-link" href="#parada-${esc(a.codigo)}">${badge(a.linea, lineaFor(a.linea)?.color, { sm: true })}<div style="flex:1;min-width:0"><b>${esc(a.parada)}</b><p class="help">Cuando falten ${a.antes} min · sobre las ${new Date(a.at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}</p></div></a><button class="back-btn" type="button" data-av-del="${a.id}" aria-label="Quitar aviso">${ICON.close}</button></div>`).join('')}</div>` : ''}
@@ -1897,6 +2021,26 @@ function zonaBuses(bm, markers, onStatus) {
     parar() { parar?.(); parar = null; clearTimeout(deb); seq++; window.BusSevBackend.cancelarFondo?.(); },
   };
 }
+/* «Cómo llegar» con el destino ya puesto (desde el mapa o desde una parada) */
+function irARuta(destino) {
+  window.rutaPendiente = { destino, buscar: true };
+  location.hash = 'ruta';
+}
+/* Mantener pulsado el mapa (o clic derecho en el ordenador): devuelve [lat, lon] del punto */
+function mantenerPulsado(bm, cb) {
+  let t = 0, ini = null;
+  const parar = () => { clearTimeout(t); t = 0; };
+  bm.m.on('touchstart', (e) => {
+    parar();
+    if ((e.originalEvent?.touches?.length || 1) > 1) return;
+    ini = e.point;
+    const ll0 = e.lngLat;
+    t = setTimeout(() => { t = 0; cb([ll0.lat, ll0.lng]); }, 650);
+  });
+  bm.m.on('touchmove', (e) => { if (t && ini && (Math.abs(e.point.x - ini.x) > 12 || Math.abs(e.point.y - ini.y) > 12)) parar(); });
+  for (const ev of ['touchend', 'touchcancel', 'dragstart', 'zoomstart', 'movestart']) bm.m.on(ev, parar);
+  bm.m.on('contextmenu', (e) => { parar(); cb([e.lngLat.lat, e.lngLat.lng]); });
+}
 views.mapa = (el) => {
   if (!mapState.bm) {
     const bm = mapState.bm = createMap($('#map-all', el), SEVILLA, 14);
@@ -1914,6 +2058,15 @@ views.mapa = (el) => {
       } catch (err) { toast(geoErrorText(err)); }
     };
     if (store.get('geoOk', false)) getPosition().then((pos) => { mapState.me = marker(bm, pos, meEl(), null, 'center'); bm.m.jumpTo({ center: ll(pos), zoom: 16 }); }).catch(() => null);
+    mantenerPulsado(bm, (pos) => {
+      if (settings.modoSencillo) return;
+      vibrar(25);
+      openModal(`<h2>Este punto del mapa</h2><p class="help">¿Quieres ver cómo llegar aquí en autobús?</p>
+        <div class="actions"><button class="btn ghost" type="button" id="mp-x">Cancelar</button><button class="btn" type="button" id="mp-ruta">Cómo llegar aquí</button></div>`, (m, close) => {
+        $('#mp-x', m).onclick = close;
+        $('#mp-ruta', m).onclick = () => { close(); irARuta({ tipo: 'lugar', nombre: 'Punto elegido en el mapa', pos }); };
+      });
+    });
     mapState.zona = zonaBuses(bm, new MarkerSet(bm), (t, html) => { const n = $('#map-zona'); if (!n) return; n.hidden = !t; if (html) n.innerHTML = t; else n.textContent = t || ''; });
     renderLineBar();
   } else {
@@ -2135,7 +2288,10 @@ views.parada = (el, codigo) => {
     const box = $('#p-tools', el);
     if (!box) return;
     const f = favs.get(codigo);
-    box.innerHTML = f ? `<div class="fav-tools"><span class="pill" style="background:var(--accent-soft);color:var(--accent)">★ En favoritas${f.alias ? ': ' + esc(f.alias) : ''}</span><button class="btn ghost" type="button" data-edit-fav="${esc(codigo)}">${ICON.edit}Personalizar</button></div>` : '';
+    const ruta = !settings.modoSencillo && info?.latitud ? `<button class="btn ghost" type="button" id="p-ruta">${ICON.route}Cómo llegar aquí</button>` : '';
+    box.innerHTML = f ? `<div class="fav-tools"><span class="pill" style="background:var(--accent-soft);color:var(--accent)">★ En favoritas${f.alias ? ': ' + esc(f.alias) : ''}</span><button class="btn ghost" type="button" data-edit-fav="${esc(codigo)}">${ICON.edit}Personalizar</button>${ruta}</div>` : (ruta ? `<div class="fav-tools">${ruta}</div>` : '');
+    const br = $('#p-ruta', box);
+    if (br) br.onclick = () => irARuta({ tipo: 'parada', nombre: info.nombre, pos: [info.latitud, info.longitud], codigo });
   }
   async function init() {
     try { await getParadas(); info = cache.paradaByCode.get(codigo) || await api(`/paradas/${encodeURIComponent(codigo)}`); } catch (e) {
@@ -2149,6 +2305,7 @@ views.parada = (el, codigo) => {
       <section class="card p-info"><h3 class="p-info-tit">Líneas que paran aquí</h3><div class="chips-wrap" id="p-lineas"><span class="muted small">Cargando…</span></div></section>
       <div id="p-filtro" class="lfiltro" hidden></div>
       <article class="card" id="p-board"><div class="board-empty">Cargando tiempos…</div></article>
+      <div id="p-horario"></div>
       <div><div class="map-wrap" id="p-mapwrap"><div class="map-box" id="p-map"></div>
           <button class="map-full-btn" type="button" id="p-full" aria-label="Ver el mapa en pantalla completa">${ICON.expand}</button></div>
         <div class="map-legend"><span><i class="lg-stop"></i>Esta parada</span><span><img class="lg-busimg" src="${busImg()}" alt="">Autobús que viene</span><span><i class="lg-path"></i>Camino que le queda</span></div>
@@ -2172,6 +2329,8 @@ views.parada = (el, codigo) => {
       if (ultimo) pintar(ultimo, true);   // los autobuses de los tiempos que ya se tienen
     };
     if (!(info.latitud && info.longitud)) $('#p-map', el).parentElement.hidden = true;
+    // Horario oficial de esta parada (se carga aparte; si la versión aún no lo trae, no sale nada)
+    cargarHorarios().then((H) => { if (dead || !H) return; pintarHorario(); if (ultimo) pintar(ultimo, true); });
     Promise.all([api(`/paradas/${encodeURIComponent(codigo)}/lineas`), getLineas().catch(() => null)]).then(([nums]) => {
       if (dead) return;
       nums = [...nums].sort(ordenLineas);
@@ -2188,6 +2347,11 @@ views.parada = (el, codigo) => {
     if (info.latitud && info.longitud) Promise.race([cargado, new Promise((ok) => setTimeout(ok, 1200))]).then(montarMapa);
     await cargado;
     stop = autoRefresh(() => load(true));
+  }
+  function pintarHorario() {
+    const box = $('#p-horario', el);
+    if (!box || box.querySelector('details[open]')) return;   // si lo estás leyendo, no se toca
+    setHTML(box, horarioParadaHTML(codigo));
   }
   /* Chips para elegir qué líneas ver en esta parada */
   function pintarFiltro() {
@@ -2217,7 +2381,8 @@ views.parada = (el, codigo) => {
     const status = d.upstream_status || 'ok';
     const elegidas = lineasParada.get(codigo);
     const tiempos = elegidas.length ? filtrarLineas(d.tiempos, { lineas: elegidas }) : (d.tiempos || []);
-    setHTML($('#p-board', el), `${boardHTML(tiempos, status, { codigo, filtrado: elegidas.length > 0 })}
+    const vacioExtra = window.BUSSEV_HORARIOS ? proximosProgramadosHTML(codigo, elegidas) : '';
+    setHTML($('#p-board', el), `${boardHTML(tiempos, status, { codigo, filtrado: elegidas.length > 0, vacioExtra })}
         <div class="meta-row" style="padding-top:10px;border-top:1px solid var(--line)">${status === 'ok' ? freshnessPill(d) : '<span class="pill stale">TUSSAM no responde</span>'}<span>Actualizado <span class="p-hora"></span></span>${settings.voz ? `<button class="link-btn" type="button" data-speak="${esc(codigo)}">🔊 Escuchar</button>` : ''}</div>
         <p class="small muted" style="margin:0;padding:0 14px 12px">Toca un autobús para que te avise cuando esté llegando.</p>`);
       const hora = $('#p-board .p-hora', el); if (hora) hora.textContent = fmtClock(d.__at);
@@ -2244,6 +2409,7 @@ views.parada = (el, codigo) => {
       ultimosTiempos.set(codigo, d.tiempos || []); window.avisos?.actualizar(codigo, d.tiempos);
       if (!quiet && first && settings.voz && settings.vozAuto) hablar(textoParaVoz(favs.get(codigo)?.alias || info.nombre, filtrarLineas(d.tiempos, { lineas: lineasParada.get(codigo) })));
       pintarFiltro();
+      if (window.BUSSEV_HORARIOS) pintarHorario();
       await pintar(d);
     } catch (e) {
       if (dead) return;

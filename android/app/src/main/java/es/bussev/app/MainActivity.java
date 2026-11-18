@@ -20,6 +20,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(TussamWebPlugin.class);
         registerPlugin(BusSevWidgetPlugin.class);
         registerPlugin(ActualizadorPlugin.class);
+        registerPlugin(ViajePlugin.class);
         super.onCreate(savedInstanceState);
         handleIntent(getIntent());
 

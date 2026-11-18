@@ -88,6 +88,8 @@ console.log(`Datos: válidos del ${nuevo.generado} al ${nuevo.caduca} · ${nuevo
 node scripts/novedades.mjs www/data.js "$TMP/data.js" www/novedades.json || true
 
 cp "$TMP/data.js" www/data.js
+# Horario de cada parada (lo genera gtfs_a_datos.py junto a data.js)
+if [ -f "$TMP/data.js.horarios.js" ]; then cp "$TMP/data.js.horarios.js" www/horarios.js; fi
 # Geometría real del recorrido (shapes.txt): la deja lista para recorridos.mjs (archivo solo de build, no se sube)
 if [ -f "$TMP/data.js.shapes.json" ]; then
   cp "$TMP/data.js.shapes.json" scripts/_shapes.json

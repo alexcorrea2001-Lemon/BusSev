@@ -1009,3 +1009,38 @@ html.oculta #fiesta-cielo .f-cruza, html.oculta #fiesta-cielo .f-cruza svg, html
 .seg[aria-label="Sentido"] button { display: grid; justify-items: center; align-content: center; gap: 1px; }
 .seg[aria-label="Sentido"] button small { font-size: 10.5px; font-weight: 600; opacity: .8; text-transform: uppercase; letter-spacing: .04em; }
 .seg[aria-label="Sentido"] button .dst { font-size: 13.5px; overflow-wrap: break-word; }
+/* Horario oficial en la parada: próximos programados (cuando no hay tiempos) y sección desplegable */
+.prog { padding: 0 14px 12px; }
+.prog p { margin: 0 0 6px; }
+.prog ul, .h-lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.prog li { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.prog li > span { flex: 1 1 8em; min-width: 0; font-size: 14px; }
+.prog li > b { font-variant-numeric: tabular-nums; }
+.p-horario { padding: 0 14px; }
+.p-horario > summary { list-style: none; cursor: pointer; display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex-wrap: wrap; padding: 14px 0; font-weight: 700; }
+.p-horario > summary::-webkit-details-marker { display: none; }
+.p-horario > summary small { font-weight: 500; color: var(--muted); }
+.p-horario > summary::after { content: "›"; color: var(--muted); font-size: 20px; line-height: 1; transform: rotate(90deg); }
+.p-horario[open] > summary::after { transform: rotate(-90deg); }
+.p-horario > p { margin: 10px 0 14px; }
+.h-lista li { display: flex; gap: 10px; align-items: flex-start; padding-top: 8px; border-top: 1px solid var(--line); }
+.h-lista li > div { display: grid; gap: 2px; min-width: 0; font-size: 14px; }
+.h-lista li span { color: var(--muted); }
+.h-lista .h-fin { color: var(--danger, #d41c2b); }
+/* Cómo llegar: hora de salida/llegada, avisos de TUSSAM y sitios buscados */
+.plan-horas { margin: 0; padding: 0 14px 6px; font-size: 14px; color: var(--muted); }
+.plan-horas b { color: var(--ink); font-variant-numeric: tabular-nums; }
+.plan-aviso { display: grid; gap: 4px; margin: 2px 14px 6px; }
+.plan-aviso a { display: flex; gap: 6px; align-items: flex-start; font-size: 13px; color: inherit; text-decoration: none; background: color-mix(in srgb, var(--warn, #f5a524) 16%, transparent); border-radius: 10px; padding: 6px 8px; }
+.plan-aviso a span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.sugs .lugar-ico { background: transparent; font-size: 18px; }
+.card.plan .btn-row { flex-wrap: wrap; }
+/* Avísame al bajar */
+.bj-btn { width: 100%; }
+.bj-tit { margin: 10px 0 4px; font-size: 15px; }
+.bj-lista { display: grid; gap: 6px; max-height: 46vh; overflow-y: auto; overscroll-behavior: contain; }
+.bj-op { width: 100%; text-align: left; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px; color: inherit; font: inherit; cursor: pointer; display: flex; gap: 10px; align-items: center; }
+.bj-nom { display: grid; min-width: 0; }
+.bj-nom small { color: var(--muted); }
+.bj-activo { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.bj-activo > span { flex: 1 1 12em; min-width: 0; }

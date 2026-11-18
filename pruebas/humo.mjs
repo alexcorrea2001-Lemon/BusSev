@@ -25,7 +25,7 @@ export async function arrancar({ hash = '#favoritas', ls = {}, reduce = false, l
     url = String(url); peticiones.push({ url, t: Date.now() });
     const resp = (body, status = 200) => ({ ok: status < 400, status, headers: { get: () => null }, json: async () => body, text: async () => (typeof body === 'string' ? body : JSON.stringify(body)) });
     if (lento) await new Promise((r) => setTimeout(r, lento));
-    if (red) { const x = await red(url, resp); if (x) return x; }
+    if (red) { const x = await red(url, resp, o); if (x) return x; }
     if (/openid-connect\/token/.test(url)) return resp({ access_token: 'a', refresh_token: 'r', expires_in: 300 });
     let m; if ((m = url.match(/paradas\/(\d+)\/tiempos|tiemposParada\/(\d+)|\/(\d+)$/))) return resp(tiempos(m[1] || m[2] || m[3]));
     if (/api\.github\.com/.test(url)) return resp({ tag_name: 'v0', body: '', assets: [] });

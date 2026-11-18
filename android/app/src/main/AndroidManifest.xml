@@ -56,6 +56,22 @@
                 android:resource="@xml/bussev_widget_info" />
         </receiver>
 
+        <!-- Aviso de llegada que se corrige solo con la app cerrada (vuelve a preguntar a TUSSAM) -->
+        <receiver
+            android:name=".LlegadaReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="es.bussev.app.LLEGADA_REVISAR" />
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- «Avísame cuando tenga que bajarme»: sigue el GPS mientras vas en el autobús (con notificación fija) -->
+        <service
+            android:name=".BajadaService"
+            android:exported="false"
+            android:foregroundServiceType="location" />
+
         <activity
             android:name=".BusSevWidgetConfig"
             android:theme="@android:style/Theme.DeviceDefault.Dialog.NoActionBar"
@@ -81,6 +97,11 @@
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
+    <!-- Avísame al bajar: servicio en primer plano que usa la ubicación mientras vas en el autobús -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+    <uses-permission android:name="android.permission.VIBRATE" />
 
     <!-- Actualizar BusSev desde dentro de la app: permite abrir el instalador de Android con la versión nueva
          descargada de GitHub (Android te pide igualmente que lo autorices la primera vez). -->
