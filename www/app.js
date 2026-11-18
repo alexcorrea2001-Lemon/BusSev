@@ -109,6 +109,21 @@ function tipoDia(d = new Date()) {
   const wd = d.getDay();
   return wd === 0 ? 'domingo' : wd === 6 ? 'sabado' : 'laborable';
 }
+/* Primer y último autobús de HOY (laborable, sábado, o domingo/festivo), del horario oficial de un día normal.
+   La madrugada cuenta como el día anterior (como hace TUSSAM: el búho de las 2:00 del sábado es del viernes). */
+const DIAS_HORARIO = ['dom', 'lun', 'mar', 'mie', 'jue', 'vie', 'sab'];   // como getDay(): 0 = domingo
+const NOMBRE_TIPO = { lun: '', mar: '', mie: '', jue: '', vie: '', lab: '', sab: 'Sábados', dom: 'Domingos y festivos' };
+function tipoHorarioHoy(d = new Date()) {
+  const dia = new Date(d.getTime() - 4 * 3600_000);
+  return tipoDia(dia) === 'festivo' ? 'dom' : DIAS_HORARIO[dia.getDay()];
+}
+function horasHoy(l, sentido = 1, d = new Date()) {
+  const t = tipoHorarioHoy(d), par = l?.horario?.[t]?.[sentido - 1];
+  if (par) return { ini: par[0], fin: par[1], tipo: t };
+  if (l?.horario && !l.horario[t] && Object.keys(l.horario).length) return { ini: null, fin: null, tipo: t, noHoy: true };
+  const ini = sentido === 2 ? l?.hora_inicio_vuelta : l?.hora_inicio_ida, fin = sentido === 2 ? l?.hora_fin_vuelta : l?.hora_fin_ida;
+  return { ini, fin, tipo: 'lab' };
+}
 function servicioHoyHTML() {
   const t = tipoDia();
   if (t === 'laborable') return '';
@@ -1539,7 +1554,7 @@ function nocturnasHTML() {
   const ls = lineasNocturnas();
   if (!ls.length) return '';
   const rows = ls.map((l) => {
-    const fin = l.hora_fin_ida || l.hora_fin_vuelta;
+    const fin = horasHoy(l, 1).fin || horasHoy(l, 2).fin;
     return `<a class="row" href="#linea-${esc(l.numero)}">${badge(l.numero, l.color)}<div class="row-main"><b>${esc(l.nombre)}</b><span>${fin ? `Último bus sobre las ${esc(fin)}` : 'Autobús nocturno'}</span></div>${ICON.chev}</a>`;
   }).join('');
   return `<div class="set-group"><h3>🌙 Autobuses nocturnos</h3><div class="list">${rows}</div><p class="small muted" style="margin:.4rem 0 0">Las líneas Búho circulan de madrugada. Toca una para ver su recorrido y los tiempos.</p></div>`;
@@ -1937,7 +1952,7 @@ views.lineas = (el) => {
       const render = () => {
         const f = FAMILIAS.find((x) => x.id === fam) || FAMILIAS[0];
         const rows = lineas.filter(f.test).map((l) => `<a class="row" href="#linea-${esc(l.numero)}">${badge(l.numero, l.color)}
-            <div class="row-main"><b>${esc(l.nombre)}</b><span>${l.hora_inicio_ida && l.hora_fin_ida ? `Primer y último bus: ${esc(l.hora_inicio_ida)}–${esc(l.hora_fin_ida)}` : 'Consulta el recorrido'}</span></div>${ICON.chev}</a>`).join('');
+            <div class="row-main"><b>${esc(l.nombre)}</b><span>${(() => { const h = horasHoy(l); return h.ini && h.fin ? `Primer y último bus${NOMBRE_TIPO[h.tipo] ? ` (${NOMBRE_TIPO[h.tipo].toLowerCase()})` : ''}: ${esc(h.ini)}–${esc(h.fin)}` : h.noHoy ? `Hoy no circula` : 'Consulta el recorrido'; })()}</span></div>${ICON.chev}</a>`).join('');
         el.innerHTML = `<div class="stack"><div class="page-head"><h1>Líneas</h1><p>Recorrido, horario y autobuses en directo.</p></div>
           <div class="filters" role="group" aria-label="Tipo de línea">${FAMILIAS.map((x) => `<button class="chip" type="button" data-fam="${x.id}" aria-pressed="${x.id === fam}">${x.label}</button>`).join('')}</div>
           <div class="list">${rows || '<div class="board-empty">No hay líneas en este grupo.</div>'}</div>
@@ -2025,9 +2040,10 @@ views.linea = (el, numero) => {
       }
       const draw = () => {
         const stops = ruta[sentido] || [];
-        const ini = sentido === 2 ? l.hora_inicio_vuelta : l.hora_inicio_ida;
-        const fin = sentido === 2 ? l.hora_fin_vuelta : l.hora_fin_ida;
-        $('#l-horario', el).textContent = ini && fin ? `Primer bus ${ini} · último ${fin} · ${stops.length} paradas` : `${stops.length} paradas`;
+        const h = horasHoy(l, sentido);
+        const pre = NOMBRE_TIPO[h.tipo] ? `${NOMBRE_TIPO[h.tipo]}: ` : '';
+        $('#l-horario', el).textContent = h.ini && h.fin ? `${pre}primer bus ${h.ini} · último ${h.fin} · ${stops.length} paradas`.replace(/^p/, 'P')
+          : h.noHoy ? `${NOMBRE_TIPO[h.tipo] || 'Hoy'}: no circula · ${stops.length} paradas` : `${stops.length} paradas`;
         drawTimeline(); cargarLpp();
         el.querySelectorAll('[data-s]').forEach((b) => b.setAttribute('aria-pressed', Number(b.dataset.s) === sentido));
         if (ctl) bm.ready.then(() => { if (!dead) ctl.show(l, sentido); });
