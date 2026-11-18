@@ -217,6 +217,18 @@ function applyTheme() {
   // El saludo de Favoritas se cambia al momento (antes se quedaba el de la temática anterior hasta reabrir la app)
   const sf = document.getElementById('fav-fiesta'); if (sf) setHTML(sf, saludoFiestaHTML());
 }
+/* Barra de abajo: si con la letra del móvil muy grande los nombres de las pestañas no caben, solo iconos */
+function ajustarPestanas() {
+  const tb = document.querySelector('.tabbar'); if (!tb) return;
+  const corta = () => [...tb.querySelectorAll('a span')].some((s) => s.scrollWidth > s.clientWidth + 1);
+  tb.classList.remove('solo-iconos', 'apretada');
+  if (!corta()) return;
+  tb.classList.add('apretada');           // primero, letra un poco más pequeña
+  if (corta()) { tb.classList.remove('apretada'); tb.classList.add('solo-iconos'); }   // y si ni así: solo iconos
+}
+addEventListener('resize', () => requestAnimationFrame(ajustarPestanas));
+document.fonts?.ready?.then(ajustarPestanas);
+setTimeout(ajustarPestanas, 300);
 /* A medianoche (o al volver a la app otro día) puede tocar otra temática u otro día especial */
 let firmaFiesta = '';
 setInterval(() => { if (document.visibilityState === 'visible') revisarFiesta(); }, 60_000);
@@ -927,12 +939,33 @@ window.busSevAbrirParada = (c) => { c = String(c == null ? '' : c).replace(/[^0-
 document.addEventListener('visibilitychange', () => setVisible(document.visibilityState === 'visible'));
 document.addEventListener('pause', () => setVisible(false));
 document.addEventListener('resume', () => setVisible(true));
+/* Ahorro de batería: si dejas la app abierta sin tocarla (en la mesa, con la pantalla encendida), los tiempos se
+   piden cada vez más despacio. En cuanto tocas la pantalla se actualiza al momento y vuelve al ritmo normal.
+     - tocada en los últimos 3 min: ritmo normal (el que elijas en Ajustes)
+     - de 3 a 15 min sin tocarla:   como mucho cada 2 min
+     - más de 15 min sin tocarla:   cada 5 min */
+const REPOSO_MS = 3 * 60_000;
+let ultimoToque = Date.now();
+const despertarHandlers = new Set();
+const enReposo = () => Date.now() - ultimoToque > REPOSO_MS;
+const ritmoReposo = (ms) => { const q = Date.now() - ultimoToque; return q > 15 * 60_000 ? Math.max(ms, 5 * 60_000) : q > REPOSO_MS ? Math.max(ms, 2 * 60_000) : ms; };
+for (const ev of ['pointerdown', 'keydown', 'wheel', 'touchstart']) {
+  addEventListener(ev, () => {
+    const dormida = enReposo();
+    ultimoToque = Date.now();
+    if (dormida && appVisible) for (const h of [...despertarHandlers]) h();
+  }, { passive: true, capture: true });
+}
 function autoRefresh(fn, { min = 0 } = {}) {
   const ms = settings.refresh ? Math.max(settings.refresh * 1000, min) : 0;
-  const id = ms ? setInterval(() => { if (appVisible) fn(); }, ms) : null;
-  const onResume = () => fn();
-  resumeHandlers.add(onResume);
-  return () => { if (id) clearInterval(id); resumeHandlers.delete(onResume); };
+  let ultima = Date.now();
+  const correr = () => { ultima = Date.now(); fn(); };
+  // Se mira cada pocos segundos si ya toca (así el ritmo cambia en cuanto dejas de tocar o vuelves a tocar)
+  const id = ms ? setInterval(() => { if (appVisible && Date.now() - ultima >= ritmoReposo(ms) - 500) correr(); }, Math.min(ms, 5000)) : null;
+  const onResume = () => correr();
+  const onDespertar = () => { if (ms && Date.now() - ultima >= Math.min(ms, 15_000)) correr(); };
+  resumeHandlers.add(onResume); despertarHandlers.add(onDespertar);
+  return () => { if (id) clearInterval(id); resumeHandlers.delete(onResume); despertarHandlers.delete(onDespertar); };
 }
 const refreshNote = () => (settings.refresh ? `se actualiza cada ${settings.refresh === 60 ? 'minuto' : settings.refresh + ' s'}` : 'pulsa ⟳ para actualizar');
 
@@ -2302,7 +2335,7 @@ views.ajustes = (el) => {
 
       <h2 class="section-title">Tiempos y avisos</h2>
       <div class="set-group"><h3>Actualizar los tiempos</h3>${segBtns('refresh', [[30, 'Cada 30 s'], [60, 'Cada minuto'], [0, 'Al pulsar ⟳']], settings.refresh)}
-        <p>Cuanto menos a menudo, menos batería y datos. Con la app en segundo plano nunca se actualiza.</p></div>
+        <p>Cuanto menos a menudo, menos batería y datos. Con la app en segundo plano nunca se actualiza, y si la dejas abierta sin tocarla va más despacio (cada 2 min, y pasado un cuarto de hora cada 5): en cuanto la tocas, se actualiza al momento.</p></div>
       <div class="set-group">${sw('liveLines', settings.liveLines, 'Autobuses en directo en el mapa', 'Muestra dónde va cada autobús (en las líneas y en la zona del mapa que miras). También se activa con el botón ' + busIco() + ' del mapa.')}</div>
       <div class="set-group"><h3>Revisar al abrir la app</h3>${segBtns('revisarCada', [[0, 'Nunca'], [1, 'Cada hora'], [3, 'Cada 3 h'], [6, 'Cada 6 h']], settings.revisarCada)}
         <p>Comprueba el saldo y la caducidad de tus tarjetas guardadas al abrir la app, como mucho con esta frecuencia, y te avisa si el saldo está bajo.</p></div>
@@ -2342,6 +2375,7 @@ views.ajustes = (el) => {
       if (k === 'escalaTexto') settings.letraGrande = Number(b.dataset.v) > 1;
       saveSettings();
       if (k === 'theme' || k === 'mapStyle' || k === 'escalaTexto') applyTheme();
+      if (k === 'escalaTexto') requestAnimationFrame(ajustarPestanas);
       if (k === 'avisosTussam' && b.dataset.v !== 'no' && isNative()) window.avisos?.permisoOk?.();
       render();
     }; });

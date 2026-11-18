@@ -115,4 +115,9 @@ open(OUT, 'w', encoding='utf8').write(f"/* Paradas, líneas y recorridos de TUSS
 open(OUT + '.shapes.json', 'w', encoding='utf8').write(json.dumps(shapes_out, ensure_ascii=False, separators=(',', ':')))
 print(len(paradas), 'paradas,', len(lineas), 'líneas,', len(recorridos), 'relaciones; nuevas paradas:', len([p for p in paradas if p['codigo'] not in oldP]))
 nsent = len({(x[1], x[2]) for x in recorridos})
-print(f'geometría real (shapes.txt): {len(shapes_out)} de {nsent} líneas-sentido' + ('' if shapes_out else '  (el GTFS no trae shapes.txt: se usará OSRM)'))
+# El dibujo de las líneas sale del trazado oficial del Ayuntamiento (geojson/lineas.json) ajustado a las calles;
+# la geometría del GTFS solo se usa si algún día TUSSAM la publica. Solo se menciona si la trae.
+if shapes_out: print(f'Geometría del GTFS (shapes.txt): {len(shapes_out)} de {nsent} líneas-sentido.')
+# Accesibilidad de las paradas (silla de ruedas): la app solo enseña el icono si TUSSAM lo publica
+acc = sum(1 for p in paradas if 'accesible' in p)
+print(f'Accesibilidad de paradas: {acc} de {len(paradas)} con dato.' if acc else 'Accesibilidad de paradas: TUSSAM no la publica (la app no enseña el icono).')
