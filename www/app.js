@@ -15,7 +15,7 @@ const DEFAULTS = {
   tematicaAuto: true, tematica: 'normal',
   voz: false, vozAuto: false, letraGrande: false, escalaTexto: 1.22, altoContraste: false, menosAnimaciones: false, vibrar: true, botonesGrandes: false,
   modoSencillo: false,
-  revisarCada: 3, avisosTussam: 'mias', saldoURL: '', tiemposServidor: false, fondo: '', vehiculosFiesta: false, avisarVersion: true,
+  revisarCada: 3, avisosTussam: 'mias', avisosResumen: true, avisosTarjetas: true, avisosParada: true, avisosLinea: true, saldoURL: '', tiemposServidor: false, fondo: '', vehiculosFiesta: false, avisarVersion: true,
 };
 const settings = { ...DEFAULTS, ...store.get('settings', {}) };
 if (!['oscuro', 'claro', 'tema', 'satelite'].includes(settings.mapStyle)) settings.mapStyle = 'oscuro';
@@ -789,7 +789,7 @@ function stopCardHTML(p, { tiempos, status, distancia, limit = 4, fav = null }) 
         ${fav?.lineas?.length ? `<p>Solo líneas ${fav.lineas.map(esc).join(', ')}</p>` : ''}</div>
       ${ICON.chev}
     </a>
-    ${fav ? (window.avisosTussam?.favAvisoHTML?.(p.codigo, fav.lineas) || '') : ''}
+    ${fav && settings.avisosTarjetas !== false ? (window.avisosTussam?.favAvisoHTML?.(p.codigo, fav.lineas) || '') : ''}
     ${tiempos === undefined ? '<div class="board-empty">Cargando tiempos…</div>' : boardHTML(filtered, status, { limit, filtrado: !!fav?.lineas?.length, codigo: p.codigo })}
     ${fav ? `<div class="card-tools">${settings.voz ? `<button type="button" data-speak="${esc(p.codigo)}">🔊 Escuchar</button>` : ''}<button type="button" data-edit-fav="${esc(p.codigo)}">Personalizar</button></div>` : ''}
   </article>`;
@@ -1652,7 +1652,7 @@ views.favoritas = (el) => {
     } finally { loading = false; spin(false); }
   }
   function pintarAvisos() {
-    window.avisosTussam?.favoritasHTML().then((h) => setHTML($('#fav-avisos', el), h)).catch(() => null);
+    if (settings.avisosResumen !== false) window.avisosTussam?.favoritasHTML().then((h) => setHTML($('#fav-avisos', el), h)).catch(() => null);
   }
   window.addEventListener('bussev-avisos', pintarAvisos);
   getParadas().then(() => { if (paint()) load(); actualizarWidget(); }).catch(() => { if (paint()) load(); });
@@ -1997,7 +1997,7 @@ views.linea = (el, numero) => {
       const segLabel = (s) => (sameEnd ? (s === 1 ? 'Ida' : 'Vuelta') : `Hacia ${lastName(s)}`);
       el.innerHTML = `<div class="stack">
         ${backHead(`<div class="grow" style="display:flex;gap:12px;align-items:flex-start"><div style="margin-top:6px">${badge(l.numero, lc)}</div><div style="min-width:0"><h2 style="margin-top:4px">${esc(l.nombre)}</h2><p id="l-horario"></p></div></div>`)}
-        <div id="l-av-banner">${window.avisosTussam?.bannerHTML([l.numero]) || ''}</div>
+        <div id="l-av-banner">${settings.avisosLinea !== false ? (window.avisosTussam?.bannerHTML([l.numero]) || '') : ''}</div>
         ${sentidos.length > 1 ? `<div class="seg" role="group" aria-label="Sentido">${sentidos.map((s) => `<button type="button" data-s="${s}" aria-pressed="${s === sentido}" aria-label="${esc(segLabel(s))}">${sameEnd ? `<span class="dst">${s === 1 ? 'Ida' : 'Vuelta'}</span>` : `<small>Hacia</small><span class="dst">${esc(lastName(s))}</span>`}</button>`).join('')}</div>` : ''}
         <div><div class="map-wrap"><div class="map-box" id="l-map"></div>
           <button class="map-buses-btn" type="button" id="l-buses" aria-pressed="${settings.liveLines}" aria-label="${settings.liveLines ? 'Ocultar los autobuses en directo' : 'Ver los autobuses en directo'}"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3" width="16" height="15" rx="3" fill="none" stroke="currentColor" stroke-width="1.9"/><path d="M4 11h16M8 21v-3M16 21v-3" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/><circle cx="8" cy="14.5" r="1.1" fill="currentColor"/><circle cx="16" cy="14.5" r="1.1" fill="currentColor"/><path class="tachon" d="M3 3l18 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button><a id="l-desvio" class="map-desvio" href="#avisos" hidden>⚠️ Posible desvío · ver aviso</a></div><p class="live-note" id="l-live"></p></div>
@@ -2066,7 +2066,7 @@ views.linea = (el, numero) => {
       const pintarDesvio = () => {
         if (dead) return;
         const avs = window.avisosTussam?.avisosDeLinea?.(l.numero) || [];
-        const banner = $('#l-av-banner', el); if (banner) setHTML(banner, window.avisosTussam?.bannerHTML([l.numero]) || '');
+        const banner = $('#l-av-banner', el); if (banner) setHTML(banner, settings.avisosLinea !== false ? (window.avisosTussam?.bannerHTML([l.numero]) || '') : '');
         const pill = $('#l-desvio', el);
         if (pill) { pill.hidden = !avs.length; if (avs.length) pill.onclick = (e) => { e.preventDefault(); window.avisosTussam?.abrir?.(avs[0].id); }; }
         if (bm && avs.length) bm.ready?.then(() => { if (!dead) { try { bm.m.setPaintProperty('bs-route', 'line-dasharray', [2, 1.5]); } catch { /* el estilo aún no está */ } } });
@@ -2145,7 +2145,7 @@ views.parada = (el, codigo) => {
     if (dead) return;
     const h = headHTML();
     el.innerHTML = `<div class="stack">${h.html}<div id="p-tools"></div>
-      <div id="p-avisos">${window.avisosTussam?.paradaBannerHTML?.(codigo) || ''}</div>
+      <div id="p-avisos">${settings.avisosParada !== false ? (window.avisosTussam?.paradaBannerHTML?.(codigo) || '') : ''}</div>
       <section class="card p-info"><h3 class="p-info-tit">Líneas que paran aquí</h3><div class="chips-wrap" id="p-lineas"><span class="muted small">Cargando…</span></div></section>
       <div id="p-filtro" class="lfiltro" hidden></div>
       <article class="card" id="p-board"><div class="board-empty">Cargando tiempos…</div></article>
@@ -2176,7 +2176,7 @@ views.parada = (el, codigo) => {
       if (dead) return;
       nums = [...nums].sort(ordenLineas);
       $('#p-lineas', el).innerHTML = nums.length ? nums.map((n) => badge(etiquetaLinea(lineaFor(n)?.numero || n), lineaFor(n)?.color, { href: `#linea-${encodeURIComponent(n)}` })).join('') : '<span class="muted small">Sin datos de líneas.</span>';
-      setHTML($('#p-avisos', el), window.avisosTussam?.paradaBannerHTML?.(codigo, nums) || '');
+      setHTML($('#p-avisos', el), settings.avisosParada !== false ? (window.avisosTussam?.paradaBannerHTML?.(codigo, nums) || '') : '');
       lineasAqui = nums.map((n) => lineaFor(n)?.numero || String(n));
       pintarFiltro();
     }).catch(() => { if (!dead) $('#p-lineas', el).innerHTML = '<span class="muted small">No se han podido cargar.</span>'; });
@@ -2368,7 +2368,12 @@ views.ajustes = (el) => {
       <div class="set-group"><h3>Revisar al abrir la app</h3>${segBtns('revisarCada', [[0, 'Nunca'], [1, 'Cada hora'], [3, 'Cada 3 h'], [6, 'Cada 6 h']], settings.revisarCada)}
         <p>Comprueba el saldo y la caducidad de tus tarjetas guardadas al abrir la app, como mucho con esta frecuencia, y te avisa si el saldo está bajo.</p></div>
       <div class="set-group"><h3>Avisos de TUSSAM (desvíos, obras, horarios especiales)</h3>${segBtns('avisosTussam', [['mias', 'De mis líneas'], ['todas', 'Todos'], ['no', 'No avisar']], settings.avisosTussam)}
-        <p>Al abrir la app (como mucho una vez por hora) mira la web de TUSSAM y te manda una notificación si hay un aviso nuevo. «Mis líneas» son las que paran en tus favoritas.</p>
+        <p>Notificaciones: al abrir la app (como mucho una vez por hora) mira la web de TUSSAM y te avisa si hay un aviso nuevo. «Mis líneas» son las que paran en tus favoritas.</p>
+        <h3 style="margin-top:14px">Dónde ver los avisos en la app</h3>
+        ${sw('avisosResumen', settings.avisosResumen !== false, 'Botón en Favoritas', 'El botón «Ver avisos de TUSSAM» arriba de tus favoritas.')}
+        ${sw('avisosTarjetas', settings.avisosTarjetas !== false, 'En cada parada favorita', 'Una línea con el aviso dentro de la tarjeta de la parada a la que afecta.')}
+        ${sw('avisosParada', settings.avisosParada !== false, 'Al abrir una parada', 'El aviso arriba del todo si afecta a esa parada.')}
+        ${sw('avisosLinea', settings.avisosLinea !== false, 'Al abrir una línea', 'El aviso arriba del recorrido de la línea.')}
         <a class="btn ghost" href="#avisos">Ver los avisos</a></div>
       <div class="set-group"><h3>Tarifas y títulos de viaje</h3><p>Los precios actuales de TUSSAM, leídos de su web (se actualizan solos).</p><a class="btn ghost" href="#tarifas">Ver las tarifas</a></div>
 
@@ -2533,13 +2538,25 @@ function show(name, arg) {
   }
   el.hidden = false; el.dataset.active = '1';
   document.body.dataset.view = name;   // para ocultar el buscador en Ajustes (y lo que haga falta por pantalla)
+  // Al volver atrás se deja la pantalla donde estaba (p. ej. Ajustes tras mirar Avisos o Tarifas); si no, arriba.
+  const yVuelta = volviendo ? (posScroll.get(location.hash || '#favoritas') || 0) : 0;
   if (name !== 'mapa') el.scrollTop = 0;
   document.querySelectorAll('.tabbar a').forEach((a) => { if (a.dataset.tab === lastTab) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
   active = { name, cleanup: null, refresh: null, rerender: null, back: null };
   const r = views[name](el, arg) || {};
   active.cleanup = r.cleanup; active.refresh = active.refresh || r.refresh; active.back = r.back || null;
   if (!settings.menosAnimaciones) { el.classList.remove('entrando'); void el.offsetWidth; el.classList.add('entrando'); }
+  if (name !== 'mapa' && yVuelta > 0) {
+    // Algunas pantallas terminan de pintarse un poco después (favoritas, parada): se reintenta un momento.
+    let tocado = false;   // si la persona ya está moviendo la pantalla, no se le corrige
+    ['touchstart', 'wheel'].forEach((t) => el.addEventListener(t, () => { tocado = true; }, { once: true, passive: true }));
+    const poner = () => { if (!tocado && el.dataset.active === '1' && el.scrollTop < yVuelta - 2) el.scrollTop = yVuelta; };
+    poner(); requestAnimationFrame(poner); setTimeout(poner, 150); setTimeout(poner, 500);
+  }
 }
+/* Posición de scroll de cada pantalla, para recuperarla al volver atrás */
+const posScroll = new Map();
+let volviendo = false;
 /* ---------- Botón Atrás de Android ---------- */
 const navStack = [];
 let ultimoAtras = 0;
@@ -2560,6 +2577,10 @@ window.busSevBack = () => {
 function route() {
   routeCount++;
   const hh = location.hash || '#favoritas';
+  const saliendo = navStack[navStack.length - 1], vistaAct = document.querySelector('.view[data-active="1"]');
+  if (saliendo && vistaAct && saliendo !== hh) posScroll.set(saliendo, vistaAct.scrollTop);
+  volviendo = navStack.length > 1 && navStack[navStack.length - 2] === hh;
+  if (volviendo) posScroll.delete(saliendo);   // la pantalla de la que se sale ya no se recuerda
   if (navStack.length > 1 && navStack[navStack.length - 2] === hh) navStack.pop();
   else if (navStack[navStack.length - 1] !== hh) navStack.push(hh);
   if (navStack.length > 30) navStack.splice(0, navStack.length - 30);
