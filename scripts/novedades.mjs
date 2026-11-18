@@ -54,11 +54,15 @@ export function comparar(viejo, nuevo) {
   mete('Paradas que cambian de nombre', junta(comunes.filter((c) => Pv.get(c).nombre !== Pn.get(c).nombre).map((c) => `${c}: «${Pv.get(c).nombre}» pasa a ser «${Pn.get(c).nombre}»`)));
   mete('Paradas que cambian de sitio', junta(comunes.filter((c) => metros(Pv.get(c), Pn.get(c)) > 40).map((c) => `${nombreP(c)}, unos ${Math.round(metros(Pv.get(c), Pn.get(c)) / 10) * 10} m`)));
 
-  // Horarios (primer y último autobús)
+  // Horarios (primer y último autobús). Solo si TUSSAM ha publicado datos nuevos: con los mismos datos, un cambio de
+  // horas viene de cómo los calcula la app (p. ej. al corregir el cálculo), no de TUSSAM, y no se anuncia.
+  const mismosDatos = String(viejo.generado) === String(nuevo.generado) && String(viejo.caduca) === String(nuevo.caduca);
+  if (!mismosDatos) {
   const hor = (l) => [l.hora_inicio_ida, l.hora_fin_ida, l.hora_inicio_vuelta, l.hora_fin_vuelta].map((x) => x || '').join('|');
   mete('Líneas que cambian de horario', junta([...Ln.keys()].filter((n) => Lv.has(n) && hor(Lv.get(n)) !== hor(Ln.get(n))).sort(orden).map((n) => {
     const l = Ln.get(n); return `${n}: primer bus ${l.hora_inicio_ida || '—'}, último ${l.hora_fin_ida || '—'}`;
   }), 12));
+  }
 
   return { id: String(nuevo.generado || ''), desde: String(viejo.generado || ''), fecha: new Date().toISOString().slice(0, 10), grupos };
 }

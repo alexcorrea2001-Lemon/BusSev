@@ -39,6 +39,7 @@ if os.path.exists(sp):
 
 pat = collections.defaultdict(collections.Counter)
 horas = collections.defaultdict(list)
+salidas = collections.defaultdict(list)   # (línea, dirección) -> [(service_id, hora de salida del primer punto)]
 # Para cada línea|dirección y patrón de paradas, qué shape_id usan los viajes (el más repetido manda)
 pat_shapes = collections.defaultdict(lambda: collections.defaultdict(collections.Counter))
 for t, l in seq.items():
@@ -49,8 +50,45 @@ for t, l in seq.items():
     patt = tuple(x[1] for x in l)
     pat[(lin, tr['direction_id'])][patt] += 1
     horas[(lin, tr['direction_id'])].append(l[0][2])
+    salidas[(lin, tr['direction_id'])].append((tr['service_id'], l[0][2]))
     sid = tr.get('shape_id')
     if sid: pat_shapes[(lin, tr['direction_id'])][patt][sid] += 1
+
+# ---------- Primer y último autobús de un día NORMAL de cada tipo ----------
+# Antes se cogía el más temprano y el más tardío de TODO el periodo, mezclando laborables, sábados, festivos y días
+# especiales (Feria, Nochevieja… con servicio toda la noche): por eso la 29 salía «primer bus 05:18 · último 05:00».
+# Ahora, con el calendario oficial (calendar.txt / calendar_dates.txt), se busca qué servicios circulan un día
+# normal de cada día de la semana: de todos los lunes del periodo, el conjunto de servicios que más se repite (los
+# días raros, como un festivo o la Feria, se quedan fuera solos); igual con martes, miércoles… Va día a día (no
+# «laborables» juntos) porque los Búhos y algunas líneas tienen horario distinto el viernes.
+import datetime
+DIAS = ['lun', 'mar', 'mie', 'jue', 'vie', 'sab', 'dom']
+def fecha(t): return datetime.date(int(t[:4]), int(t[4:6]), int(t[6:8]))
+def dias_normales():
+    cal = rd('calendar.txt') if os.path.exists(f'{G}/calendar.txt') else []
+    exc = rd('calendar_dates.txt') if os.path.exists(f'{G}/calendar_dates.txt') else []
+    if not cal and not exc: return None
+    activos = collections.defaultdict(set)
+    sem = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+    for c in cal:
+        try: d, fin = fecha(c['start_date']), fecha(c['end_date'])
+        except (KeyError, ValueError): continue
+        while d <= fin:
+            if c.get(sem[d.weekday()]) == '1': activos[d].add(c['service_id'])
+            d += datetime.timedelta(days=1)
+    for e in exc:
+        try: d = fecha(e['date'])
+        except (KeyError, ValueError): continue
+        if e.get('exception_type') == '1': activos[d].add(e['service_id'])
+        elif e.get('exception_type') == '2': activos[d].discard(e['service_id'])
+    try: ini, fin = fecha(feed['feed_start_date']), fecha(feed['feed_end_date'])
+    except (KeyError, ValueError): ini, fin = None, None
+    por_tipo = {t: collections.Counter() for t in DIAS}
+    for d, ss in activos.items():
+        if not ss or (ini and (d < ini or d > fin)): continue
+        por_tipo[DIAS[d.weekday()]][frozenset(ss)] += 1
+    return {t: set(c.most_common(1)[0][0]) for t, c in por_tipo.items() if c}
+NORMALES = dias_normales()
 
 def hhmm(t):
     h, m, *_ = (int(x) for x in t.split(':'))
@@ -85,11 +123,28 @@ for rid, r in routes.items():
             shapes_out[f'{lin}|{m[d]}'] = shapes_pts[sid]
     prev = oldL.get(lin, {})
     hs = {m[d]: sorted(horas[(lin, d)], key=mins) for d in dirs}
+    # Primer y último de un día normal de cada día de la semana: {'lun': [[ini, fin] ida, [ini, fin] vuelta], …, 'dom': …}
+    horario = {}
+    if NORMALES:
+        for t, servs in NORMALES.items():
+            par = []
+            for sentido in (1, 2):
+                d = next((x for x in dirs if m[x] == sentido), None)
+                hh = sorted((h for sv, h in salidas[(lin, d)] if sv in servs), key=mins) if d is not None else []
+                par.append([hhmm(hh[0]), hhmm(hh[-1])] if hh else None)
+            if any(par): horario[t] = par
+    # Lo de siempre (lo que usan las versiones antiguas de la app): un martes normal
+    if horario.get('mar'): horario['lab'] = horario['mar']
+    lab_ok = bool(horario.get('lab'))
     color = prev.get('color') or (('#' + r['route_color']) if r.get('route_color') else COLOR_DEF.get(lin[0], '#000d6f'))
     lineas.append({
         'numero': lin, 'nombre': ' '.join(r['route_long_name'].split()), 'color': color,
-        'hora_inicio_ida': hhmm(hs[1][0]) if hs.get(1) else None, 'hora_fin_ida': hhmm(hs[1][-1]) if hs.get(1) else None,
-        'hora_inicio_vuelta': hhmm(hs[2][0]) if hs.get(2) else None, 'hora_fin_vuelta': hhmm(hs[2][-1]) if hs.get(2) else None,
+        # lo de siempre (y lo que usan las versiones antiguas de la app): un laborable normal si se sabe
+        'hora_inicio_ida': (horario['lab'][0][0] if horario['lab'][0] else None) if lab_ok else (hhmm(hs[1][0]) if hs.get(1) else None),
+        'hora_fin_ida': (horario['lab'][0][1] if horario['lab'][0] else None) if lab_ok else (hhmm(hs[1][-1]) if hs.get(1) else None),
+        'hora_inicio_vuelta': (horario['lab'][1][0] if horario['lab'][1] else None) if lab_ok else (hhmm(hs[2][0]) if hs.get(2) else None),
+        'hora_fin_vuelta': (horario['lab'][1][1] if horario['lab'][1] else None) if lab_ok else (hhmm(hs[2][-1]) if hs.get(2) else None),
+        **({'horario': {k: v for k, v in horario.items() if k != 'lab'}} if horario else {}),
         'nocturna': lin.startswith('A'),
     })
 orden = lambda n: (0 if n[0].isdigit() else 1, n.zfill(3))
@@ -118,6 +173,15 @@ nsent = len({(x[1], x[2]) for x in recorridos})
 # El dibujo de las líneas sale del trazado oficial del Ayuntamiento (geojson/lineas.json) ajustado a las calles;
 # la geometría del GTFS solo se usa si algún día TUSSAM la publica. Solo se menciona si la trae.
 if shapes_out: print(f'Geometría del GTFS (shapes.txt): {len(shapes_out)} de {nsent} líneas-sentido.')
+# Primer y último autobús: se enseñan algunas líneas en el log para poder comprobarlo
+if NORMALES:
+    print('Horario de un día normal (martes / viernes / sábado / domingo y festivo), ida:')
+    for l in lineas:
+        if l['numero'] in ('29', '16', 'C1', '2', 'A1', 'A6') and l.get('horario'):
+            h = l['horario']; f = lambda t: '–'.join(h[t][0]) if h.get(t) and h[t][0] else 'no circula'
+            print(f"  {l['numero']}: {f('mar')} / {f('vie')} / {f('sab')} / {f('dom')}")
+else:
+    print('El GTFS no trae calendario: primer y último autobús de todo el periodo.')
 # Accesibilidad de las paradas (silla de ruedas): la app solo enseña el icono si TUSSAM lo publica
 acc = sum(1 for p in paradas if 'accesible' in p)
 print(f'Accesibilidad de paradas: {acc} de {len(paradas)} con dato.' if acc else 'Accesibilidad de paradas: TUSSAM no la publica (la app no enseña el icono).')
