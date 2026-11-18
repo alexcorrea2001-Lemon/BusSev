@@ -3,7 +3,8 @@ import os, subprocess, json, shutil, sys, tempfile, datetime
 R = sys.argv[1]
 T = os.path.join(os.environ.get('PRUEBAS_TMP') or tempfile.gettempdir(), 'cercanias'); shutil.rmtree(T, ignore_errors=True); os.makedirs(T)
 def escribe(nombre, filas):
-    with open(f'{T}/{nombre}', 'w', encoding='utf8') as f: f.write('\n'.join(filas) + '\n')
+    # Como el de Renfe: campos con espacios de más
+    with open(f'{T}/{nombre}', 'w', encoding='utf8') as f: f.write('\n'.join(','.join(c + '   ' for c in fila.split(',')) for fila in filas) + '\n')
 hoy = datetime.date.today(); ini = (hoy - datetime.timedelta(days=30)).strftime('%Y%m%d'); fin = (hoy + datetime.timedelta(days=200)).strftime('%Y%m%d')
 escribe('routes.txt', ['route_id,route_short_name,route_long_name,route_type,route_color',
     '30T0001C1,C1,Lora del Río - Utrera,2,78B4E1', '30T0004C4,C4,Circular,2,8B2A8B', '10T0001C1,C1,Madrid C1,2,00AAEE'])

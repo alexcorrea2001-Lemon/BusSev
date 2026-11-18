@@ -8,8 +8,11 @@ import csv, collections, datetime, json, os, sys
 
 G, OUT = sys.argv[1:3]
 def rd(f):
+    # El GTFS de Renfe trae espacios de más en los campos («51003   », « C1»): se limpian todos
     p = f'{G}/{f}'
-    return csv.DictReader(open(p, encoding='utf-8-sig')) if os.path.exists(p) else iter(())
+    if not os.path.exists(p): return
+    for row in csv.DictReader(open(p, encoding='utf-8-sig')):
+        yield {(k or '').strip(): (v.strip() if isinstance(v, str) else v) for k, v in row.items()}
 
 def mins(t):
     h, m, *s = (int(x) for x in t.strip().split(':'))
@@ -179,7 +182,9 @@ estaciones = []
 for s in usadas:
     x = stops[s]
     estaciones.append({'codigo': codigo(s), 'nombre': ' '.join(x['stop_name'].split()), 'latitud': round(float(x['stop_lat']), 6), 'longitud': round(float(x['stop_lon']), 6)})
-if len(lineas) < 2 or len(estaciones) < 5: sys.exit(f'Datos raros: {len(lineas)} líneas, {len(estaciones)} estaciones')
+if len(lineas) < 2 or len(estaciones) < 5:
+    en_sev = sum(1 for sid in stops if en_capital(sid))
+    sys.exit(f'Datos raros: {len(lineas)} líneas, {len(estaciones)} estaciones (rutas {len(routes)}, viajes {len(trips)}, estaciones en Sevilla {en_sev}, viajes por Sevilla {len(de_sevilla)})')
 out = {'lineas': lineas, 'estaciones': sorted(estaciones, key=lambda e: e['codigo']), 'recorridos': recorridos,
        'horarios': {'dias': DIA_GRUPO, 'l': horarios}}
 open(OUT, 'w', encoding='utf8').write('/* Cercanías Renfe de Sevilla (GTFS oficial de Renfe): estaciones, recorridos y horario. */\nwindow.BUSSEV_CERCANIAS=' + json.dumps(out, ensure_ascii=False, separators=(',', ':')) + ';\n')
