@@ -1044,3 +1044,26 @@ html.oculta #fiesta-cielo .f-cruza, html.oculta #fiesta-cielo .f-cruza svg, html
 .bj-nom small { color: var(--muted); }
 .bj-activo { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .bj-activo > span { flex: 1 1 12em; min-width: 0; }
+/* Los huecos vacíos de una pantalla (avisos que hoy no hay, saldo, nocturnos…) no ocupan sitio: antes cada uno
+   sumaba su separación y en Favoritas quedaba un hueco grande entre el título, los avisos y las paradas. */
+.stack > div:empty, .stack > p:empty { display: none; }
+#fav-cards { gap: 14px; }
+.plan-mejor { display: inline-block; margin: 12px 14px -4px; font-size: 12px; font-weight: 700; color: var(--ok); text-transform: uppercase; letter-spacing: .03em; }
+/* Viaje en curso */
+.vj-top { padding: 14px; display: grid; gap: 12px; }
+.vj-top .row-flat { display: flex; gap: 12px; align-items: center; }
+.vj-top .row-flat > div { min-width: 0; }
+.vj-top p { margin: 2px 0 0; }
+.vj-top .btn-row { flex-wrap: wrap; }
+.vj-ya { color: var(--accent); }
+.vj-lista { list-style: none; margin: 0; padding: 0 4px; display: grid; }
+.vj-lista li { display: flex; gap: 12px; align-items: flex-start; position: relative; padding: 0 0 14px; }
+.vj-lista li > i { flex: 0 0 14px; height: 14px; margin-top: 3px; border-radius: 50%; border: 3px solid var(--accent); background: var(--bg); position: relative; z-index: 1; }
+.vj-lista li:not(:last-child)::before { content: ""; position: absolute; left: 5.5px; top: 14px; bottom: -3px; width: 3px; background: var(--accent); opacity: .5; }
+.vj-lista li > span { display: grid; min-width: 0; }
+.vj-lista li small { color: var(--muted); }
+.vj-lista li.pasada { opacity: .45; }
+.vj-lista li.pasada > i { background: var(--accent); }
+.vj-lista li.aqui > i { background: var(--accent); box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent) 30%, transparent); }
+.vj-lista li.fin b { color: var(--accent); }
+.bj-activo .btn { padding-block: 6px; }

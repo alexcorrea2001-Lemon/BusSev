@@ -18,7 +18,9 @@ def gtfs(d, modo):
             hh, mm, _ = h.split(':'); base = int(hh) * 60 + int(mm) + (10 if dirn else 0)
             paradas = ['1', '2', '3'] if dirn == 0 else ['3', '2', '1']
             for k, sid in enumerate(paradas):
-                x = base + k * 15; hs = f'{x // 60:02d}:{x % 60:02d}:00'; st.append(f'{tid},{hs},{hs},{sid},{k + 1}')
+                x = base + k * 15; hs = f'{x // 60:02d}:{x % 60:02d}:00'
+                if k == 1: hs = ''   # como TUSSAM: la parada de en medio sin hora (no es punto de control)
+                st.append(f'{tid},{hs},{hs},{sid},{k + 1}')
     escribe(d, 'trips.txt', t); escribe(d, 'stop_times.txt', st)
     feria = ['20261014', '20261015']           # dos días de Feria (miércoles y jueves): servicio especial
     festivo = '20261012'                        # lunes festivo: horario de domingo

@@ -11,6 +11,14 @@ const red = async (url, resp, o) => {
     { geometry: { coordinates: [-5.9805, 37.3610] }, properties: { name: 'Hospital Virgen del Rocío', street: 'Avenida Manuel Siurot', district: 'Bellavista', city: 'Sevilla' } },
     { geometry: { coordinates: [-3.70, 40.41] }, properties: { name: 'Hospital de Madrid', city: 'Madrid' } },   // fuera de Sevilla: se descarta
   ] });
+  if (/cartociudad\.es\/geocoder\/api\/geocoder\/candidates/.test(url)) {
+    if (/ciencias/i.test(decodeURIComponent(url))) return resp([
+      { id: '410910001234', type: 'callejero', tip_via: 'AVENIDA', address: 'CIENCIAS (DE LAS)', muni: 'Sevilla', postalCode: '41020' },
+      { id: '410910001234', type: 'portal', tip_via: 'AVENIDA', address: 'CIENCIAS (DE LAS)', portalNumber: 6, muni: 'Sevilla', postalCode: '41020', lat: 37.3971, lng: -5.9402 },
+    ]);
+    return resp([]);
+  }
+  if (/cartociudad\.es\/geocoder\/api\/geocoder\/find/.test(url)) return resp({ lat: 37.398, lng: -5.941 });
   if (paradaVacia && new RegExp(`(paradas/${paradaVacia}/tiempos|tiemposParada/${paradaVacia}|/${paradaVacia})$`).test(url)) return resp({ descripcion: { texto: 'X' }, lineasCoincidentes: [] });
   return null;
 };
@@ -18,7 +26,7 @@ const red = async (url, resp, o) => {
 const llamadas = [];
 const capacitor = {
   isNativePlatform: () => true, getPlatform: () => 'android',
-  isPluginAvailable: (p) => ['BusSevViaje', 'LocalNotifications', 'BusSevWidget'].includes(p),
+  isPluginAvailable: (p) => ['BusSevViaje', 'LocalNotifications', 'BusSevWidget', 'Share'].includes(p),
   nativePromise: async (plugin, metodo, datos) => {
     llamadas.push([plugin, metodo, datos]);
     if (metodo === 'checkPermissions' || metodo === 'requestPermissions') return { display: 'granted' };
@@ -45,6 +53,18 @@ ev(`(() => {
 const seq29 = JSON.parse(ev(`JSON.stringify(BUSSEV_DATA.recorridos.filter((r) => r[1] === '29' && r[2] === 1).sort((x, y) => x[3] - y[3]).map((r) => r[0]))`));
 assert.ok(seq29.length > 10, 'la 29 tiene recorrido');
 const p3 = seq29[3];   // cuarta parada de la 29: pasa 6 minutos después de salir de cabecera
+// Metro inventado: 3 estaciones, la primera junto a la 2.ª parada de la 29 y la última junto a la 15.ª (trenes cada 10 min)
+ev(`(() => {
+  const P = (c) => BUSSEV_DATA.paradas.find((x) => x.codigo === c);
+  const a = P('${seq29[1]}'), b = P('${seq29[14]}');
+  const est = [{ codigo: 'MA', nombre: 'Estación A', latitud: a.latitud + 0.0004, longitud: a.longitud },
+    { codigo: 'MB', nombre: 'Estación B', latitud: (a.latitud + b.latitud) / 2, longitud: (a.longitud + b.longitud) / 2 },
+    { codigo: 'MC', nombre: 'Estación C', latitud: b.latitud + 0.0004, longitud: b.longitud }];
+  const v = [360]; for (let t = 370; t <= 1380; t += 10) v.push(10);
+  window.BUSSEV_METRO = { linea: { numero: 'M1', nombre: 'Metro de Sevilla', color: '#2e9c3e', metro: true }, estaciones: est,
+    recorridos: [['MA', 'M1', 1, 0], ['MB', 'M1', 1, 1], ['MC', 'M1', 1, 2], ['MC', 'M1', 2, 0], ['MB', 'M1', 2, 1], ['MA', 'M1', 2, 2]],
+    horarios: { dias: { lun: 0, mar: 0, mie: 0, jue: 0, vie: 0, sab: 0, dom: 0 }, l: { 'M1|1': { m: [0, 2, 4], v: [v] }, 'M1|2': { m: [0, 2, 4], v: [v] } } } };
+})()`);
 
 // pasosParada: la hora en la parada = salida + minutos desde cabecera
 const pasos = JSON.parse(ev(`JSON.stringify(pasosParada('${p3}', new Date(2026, 10, 18, 10, 0)))`));
@@ -86,6 +106,13 @@ const ops = JSON.parse(ev(`JSON.stringify(planner.buscar(${JSON.stringify(o)}, $
 assert.ok(ops.length, 'hay opciones');
 assert.ok(ops.every((x) => x.llega != null), 'todas con hora de llegada');
 assert.ok(ops.some((x) => x.tramos[0].k.startsWith('29|')), 'la 29 está entre las opciones');
+// El metro entra en «Cómo llegar»: aquí es lo más rápido (4 min entre A y C)
+assert.ok(ops.some((x) => x.tramos.some((t) => t.k === 'M1|1')), 'propone el metro');
+assert.equal(ops[0].tramos[0].k, 'M1|1', 'el metro es lo que antes te deja');
+// Próximos trenes en una estación
+const pm = JSON.parse(ev(`JSON.stringify(pasosMetro('MA', new Date(2026, 10, 18, 10, 3)))`));
+assert.equal(pm.length, 1, 'en la primera estación solo hay trenes hacia un lado');
+assert.deepEqual(pm[0].prox, [610, 620, 630]); assert.equal(pm[0].destino, 'Estación C');
 // A las 03:00 (sin Búho en este horario inventado) no circula nada
 const noche = JSON.parse(ev(`(() => { const r = planner.buscar(${JSON.stringify(o)}, ${JSON.stringify(d)}, new Date(2026, 10, 18, 3, 0)); return JSON.stringify({ n: r.length, sin: r.sinServicio }); })()`));
 assert.equal(noche.n, 0, 'de madrugada no propone líneas que no circulan'); assert.ok(noche.sin > 0);
@@ -101,6 +128,23 @@ assert.match(lugar.textContent, /Hospital Virgen del Rocío/);
 assert.equal(a.w.document.querySelectorAll('#pl-d-s [data-lg]').length, 1, 'el de Madrid se descarta');
 lugar.click();
 assert.equal(inp.value, 'Hospital Virgen del Rocío');
+// Dirección con número de portal: sale primero el portal exacto (callejero oficial), no la avenida entera
+inp.value = 'avenida de las ciencias 6'; inp.dispatchEvent(new a.w.Event('input'));
+await a.espera(700);
+const prim = a.$('#pl-d-s button');
+assert.match(prim.textContent, /Avenida de las Ciencias 6/, 'primero el portal');
+assert.match(prim.textContent, /🏠/);
+prim.click(); await a.espera(50);
+assert.equal(inp.value, 'Avenida de las Ciencias 6');
+// Paradas con el mismo nombre van juntas en una sola sugerencia
+const repetido = ev(`(() => { const c = {}; for (const p of BUSSEV_DATA.paradas) { const k = p.nombre.replace(/\\s*\\(.*\\)\\s*$/, ''); c[k] = (c[k] || 0) + 1; } return Object.entries(c).filter(([k, n]) => n >= 2 && k.length > 6).sort((x, y) => y[1] - x[1])[0][0]; })()`);
+inp.value = repetido; inp.dispatchEvent(new a.w.Event('input')); await a.espera(50);
+const grupo = [...a.w.document.querySelectorAll('#pl-d-s [data-g]')].find((b) => /paradas de autobús/.test(b.textContent));
+assert.ok(grupo, `«${repetido}» sale como un grupo de paradas`);
+grupo.click(); await a.espera(20);
+assert.equal(inp.value, repetido.trim());
+// Sitios usados hace poco al tocar el campo vacío
+inp.value = ''; inp.dispatchEvent(new a.w.Event('focus'));
 ev(`irARuta({ tipo: 'parada', nombre: 'Prueba', pos: ${JSON.stringify(d)}, codigo: '${seq29[14]}' })`);
 await a.espera(50);
 await a.ir('#favoritas', 300); ev(`irARuta({ tipo: 'parada', nombre: 'Prueba', pos: ${JSON.stringify(d)}, codigo: '${seq29[14]}' })`);
@@ -108,6 +152,7 @@ await a.espera(900);
 assert.equal(a.w.location.hash, '#ruta');
 assert.equal(a.$('#pl-d').value, 'Prueba', 'destino ya puesto');
 assert.ok(a.$('#pl-res .card.plan'), 'busca solo y encuentra opciones');
+assert.match(a.$('#pl-res').textContent, /Coge el metro/, 'explica el tramo de metro');
 assert.ok(a.$('#pl-res [data-bajar]'), 'botón Avísame al bajar en cada opción');
 
 // ---------- Aviso de llegada: con la versión nueva de Android lo vigila el móvil (no la notificación fija) ----------
@@ -134,8 +179,19 @@ await a.espera(300);
 const emp = llamadas.find(([p, m]) => p === 'BusSevViaje' && m === 'empezarBajada');
 assert.ok(emp, 'empieza el aviso en Android');
 assert.equal(emp[2].paradas.length, 5); assert.equal(emp[2].linea, '29');
+assert.equal(a.w.location.hash, '#viaje', 'abre la pantalla del viaje');
+await a.espera(600);
+assert.match(a.$('#view-viaje').textContent, /Quedan 4 paradas/);
+assert.equal(a.w.document.querySelectorAll('#view-viaje .vj-lista li').length, 5);
+assert.ok(a.$('#view-viaje .vj-lista li.aqui'), 'marca dónde estás');
+llamadas.length = 0;
+a.$('#vj-comp').click(); await a.espera(100);
+const comp = llamadas.find(([p, m]) => p === 'Share' && m === 'share');
+assert.ok(comp, 'comparte el viaje');
+assert.match(comp[2].text, /Voy en el autobús 29\. Me bajo en .+ sobre las \d\d:\d\d \(quedan 4 paradas\)/);
 await a.ir('#favoritas', 600);
 assert.ok(a.$('#fav-bajada .bj-activo'), 'Favoritas enseña el aviso activo');
+assert.ok(a.$('#fav-bajada a[href="#viaje"]'), 'con enlace al viaje');
 a.$('#fav-bajada [data-bj-parar]').click();
 await a.espera(200);
 assert.ok(llamadas.some(([p, m]) => p === 'BusSevViaje' && m === 'pararBajada'));

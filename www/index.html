@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <!-- Solo se cargan archivos de la propia app; solo se conecta con TUSSAM y con las teselas del mapa. -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tiles.openfreemap.org https://www.ign.es; font-src 'self'; connect-src 'self' https://api.github.com https://photon.komoot.io https://www.tussam.es https://reddelineas.tussam.es https://recargas.tussam.es https://tiles.openfreemap.org https://www.ign.es; worker-src 'self' blob:; child-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tiles.openfreemap.org https://www.ign.es; font-src 'self'; connect-src 'self' https://api.github.com https://photon.komoot.io https://www.cartociudad.es https://www.tussam.es https://reddelineas.tussam.es https://recargas.tussam.es https://tiles.openfreemap.org https://www.ign.es; worker-src 'self' blob:; child-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'">
   <meta name="referrer" content="no-referrer">
   <title>BusSev</title>
   <link rel="stylesheet" href="/vendor/maplibre/maplibre-gl.css">
@@ -61,6 +61,7 @@
       <section class="view view-detail" id="view-linea" hidden aria-label="Línea"></section>
       <section class="view view-detail" id="view-avisos" hidden aria-label="Avisos de TUSSAM"></section>
       <section class="view view-detail" id="view-tarifas" hidden aria-label="Tarifas de TUSSAM"></section>
+      <section class="view view-detail" id="view-viaje" hidden aria-label="Viaje en curso"></section>
     </main>
 
     <nav class="tabbar" aria-label="Secciones">
