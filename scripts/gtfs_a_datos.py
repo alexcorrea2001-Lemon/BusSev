@@ -42,6 +42,7 @@ horas = collections.defaultdict(list)
 salidas = collections.defaultdict(list)   # (línea, dirección) -> [(service_id, hora de salida del primer punto)]
 # Para cada línea|dirección y patrón de paradas, qué shape_id usan los viajes (el más repetido manda)
 pat_shapes = collections.defaultdict(lambda: collections.defaultdict(collections.Counter))
+viajes = collections.defaultdict(list)    # (línea, dirección) -> [(service_id, [(parada, hora), …])]  (horario de cada parada)
 for t, l in seq.items():
     tr = trips.get(t)
     if not tr: continue
@@ -51,6 +52,7 @@ for t, l in seq.items():
     pat[(lin, tr['direction_id'])][patt] += 1
     horas[(lin, tr['direction_id'])].append(l[0][2])
     salidas[(lin, tr['direction_id'])].append((tr['service_id'], l[0][2]))
+    viajes[(lin, tr['direction_id'])].append((tr['service_id'], [(x[1], x[2]) for x in l]))
     sid = tr.get('shape_id')
     if sid: pat_shapes[(lin, tr['direction_id'])][patt][sid] += 1
 
@@ -96,8 +98,86 @@ def hhmm(t):
 def mins(t):
     h, m, *_ = (int(x) for x in t.split(':')); return h * 60 + m
 
+# ---------- Horario de cada parada (www/horarios.js) ----------
+# Para no guardar cientos de miles de horas, por cada línea|sentido se guarda:
+#   - cuántos minutos tarda el autobús desde la cabecera hasta cada parada del recorrido (lo normal: la mediana);
+#   - a qué hora sale cada viaje de la cabecera, por tipo de día (lun…dom agrupados si tienen los mismos servicios).
+# La hora en una parada = salida + minutos hasta esa parada. Los viajes que no hacen el recorrido entero se guardan
+# como [salida, desde, hasta] (posiciones en el recorrido).
+def _mins_o_none(t):
+    try: return mins(t) if t and t.strip() else None
+    except ValueError: return None
+def _mediana(v):
+    v = sorted(v); n = len(v)
+    return None if not n else (v[n // 2] if n % 2 else (v[n // 2 - 1] + v[n // 2]) / 2)
+def _alinear(canon, paradas):
+    # Empareja las paradas del viaje con el recorrido principal en orden (los circulares repiten parada)
+    out, j = [], 0
+    for c, t in paradas:
+        k = j
+        while k < len(canon) and canon[k] != c: k += 1
+        if k < len(canon):
+            out.append((k, _mins_o_none(t))); j = k + 1
+    return [(k, t) for k, t in out if t is not None]
+def horario_paradas(canon, vs, grupos):
+    al = [(sv, _alinear(canon, ps)) for sv, ps in vs]
+    al = [(sv, a) for sv, a in al if len(a) >= 2]
+    if not al: return None
+    off = [None] * len(canon)
+    difs = collections.defaultdict(list)
+    for sv, a in al:
+        if a[0][0] == 0:
+            for k, t in a: difs[k].append(t - a[0][1])
+    for k, v in difs.items(): off[k] = _mediana(v)
+    if off[0] is None: off[0] = 0
+    def salida(a):
+        v = [t - off[k] for k, t in a if off[k] is not None]
+        return _mediana(v) if v else None
+    # Paradas sin dato (solo las hacen viajes que no salen de cabecera): se completan con esos viajes
+    falta = collections.defaultdict(list)
+    for sv, a in al:
+        s0 = salida(a)
+        if s0 is None: continue
+        for k, t in a:
+            if off[k] is None: falta[k].append(t - s0)
+    for k, v in falta.items(): off[k] = _mediana(v)
+    # Que nunca vaya hacia atrás (una parada no puede estar antes que la anterior)
+    ult = 0
+    for k in range(len(off)):
+        if off[k] is not None:
+            off[k] = max(ult, round(off[k])); ult = off[k]
+    out_g = []
+    for servs in grupos:
+        tr = []
+        for sv, a in al:
+            if servs is not None and sv not in servs: continue
+            s0 = salida(a)
+            if s0 is None: continue
+            s0 = round(s0); de, ha = a[0][0], a[-1][0]
+            tr.append((s0, de, ha))
+        tr.sort()
+        # Salidas como diferencias con la anterior (ocupa mucho menos): 360, 12, 12, 15…
+        enc, prev = [], 0
+        for s0, de, ha in tr:
+            d = s0 - prev; prev = s0
+            enc.append(d if (de == 0 and ha == len(canon) - 1) else [d, de, ha])
+        out_g.append(enc)
+    return {'m': off, 'v': out_g}
+
 COLOR_DEF = {'A': '#2b2f7a', 'C': '#008431', 'T': '#c60018'}
 lineas, recorridos, usadas = [], [], set()
+# Tipos de día con los mismos servicios van juntos (lunes a jueves suele ser igual)
+if NORMALES:
+    _gr, DIA_GRUPO = [], {}
+    for t in DIAS:
+        if t not in NORMALES: continue
+        ss = frozenset(NORMALES[t])
+        if ss not in _gr: _gr.append(ss)
+        DIA_GRUPO[t] = _gr.index(ss)
+    GRUPOS = [set(x) for x in _gr]
+else:
+    DIA_GRUPO, GRUPOS = {t: 0 for t in DIAS}, [None]
+horarios_out = {}
 shapes_out = {}   # "linea|sentido" -> [[lat,lon], ...]  (geometría real del GTFS)
 for rid, r in routes.items():
     lin = r['route_short_name'].strip()
@@ -121,6 +201,11 @@ for rid, r in routes.items():
         sid = sc.most_common(1)[0][0] if sc else None
         if sid and sid in shapes_pts and len(shapes_pts[sid]) >= 2:
             shapes_out[f'{lin}|{m[d]}'] = shapes_pts[sid]
+        try:
+            hp = horario_paradas(main[d], viajes[(lin, d)], GRUPOS)
+            if hp: horarios_out[f'{lin}|{m[d]}'] = hp
+        except Exception as e:   # el horario por parada es un extra: si algo raro pasa, no se para nada
+            print(f'Horario por parada de {lin}|{m[d]}: no se ha podido calcular ({e})')
     prev = oldL.get(lin, {})
     hs = {m[d]: sorted(horas[(lin, d)], key=mins) for d in dirs}
     # Primer y último de un día normal de cada día de la semana: {'lun': [[ini, fin] ida, [ini, fin] vuelta], …, 'dom': …}
@@ -166,6 +251,10 @@ fi, ff = feed['feed_start_date'], feed['feed_end_date']
 data = {'generado': f'{fi[:4]}-{fi[4:6]}-{fi[6:]}', 'caduca': f'{ff[:4]}-{ff[4:6]}-{ff[6:]}', 'fuente': 'GTFS oficial de TUSSAM (Punto de Acceso Nacional)',
         'paradas': paradas, 'lineas': lineas, 'recorridos': recorridos}
 open(OUT, 'w', encoding='utf8').write(f"/* Paradas, líneas y recorridos de TUSSAM. Fuente: GTFS oficial, válido del {data['generado']} al {data['caduca']}. */\nwindow.BUSSEV_DATA=" + json.dumps(data, ensure_ascii=False, separators=(',', ':')) + ';\n')
+# Horario de cada parada: archivo aparte (www/horarios.js), que la app carga solo cuando hace falta
+hor = {'generado': data['generado'], 'caduca': data['caduca'], 'dias': DIA_GRUPO, 'l': horarios_out}
+open(OUT + '.horarios.js', 'w', encoding='utf8').write("/* Horario de cada parada (GTFS oficial de TUSSAM): por línea|sentido, minutos desde cabecera ('m') y salidas por tipo de día ('v', en diferencias). */\nwindow.BUSSEV_HORARIOS=" + json.dumps(hor, ensure_ascii=False, separators=(',', ':')) + ';\n')
+print(f'Horario por parada: {len(horarios_out)} líneas-sentido, {os.path.getsize(OUT + ".horarios.js") // 1024} KB, tipos de día {DIA_GRUPO}.')
 # La geometría real se guarda aparte (solo para el build; no se sube ni va en el APK)
 open(OUT + '.shapes.json', 'w', encoding='utf8').write(json.dumps(shapes_out, ensure_ascii=False, separators=(',', ':')))
 print(len(paradas), 'paradas,', len(lineas), 'líneas,', len(recorridos), 'relaciones; nuevas paradas:', len([p for p in paradas if p['codigo'] not in oldP]))

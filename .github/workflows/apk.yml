@@ -56,7 +56,7 @@ jobs:
       - name: Guardar los datos nuevos en el repositorio
         id: datos
         run: |
-          if git diff --quiet -- www/data.js geojson/lineas.json; then
+          if git diff --quiet -- www/data.js geojson/lineas.json && { [ ! -f www/horarios.js ] || git ls-files --error-unmatch www/horarios.js >/dev/null 2>&1 && git diff --quiet -- www/horarios.js; }; then
             echo "cambio=no" >> "$GITHUB_OUTPUT"
             echo "Los datos y el trazado ya estaban al día."
           else
@@ -64,6 +64,7 @@ jobs:
             git config user.name "BusSev (automático)"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git add www/data.js geojson/lineas.json
+            if [ -f www/horarios.js ]; then git add www/horarios.js; fi
             if [ -f www/novedades.json ]; then git add www/novedades.json; fi
             git commit -m "Datos y trazado oficial de TUSSAM actualizados"
             git push || echo "No se han podido guardar en el repositorio (no pasa nada: van igual en el APK)."
@@ -142,12 +143,21 @@ jobs:
         if: steps.seguir.outputs.si == 'si'
         env:
           TUSSAM_SECRETS_JS: ${{ secrets.TUSSAM_SECRETS_JS }}
+          ACTUALIZAR_TOKEN: ${{ secrets.ACTUALIZAR_TOKEN }}
         run: |
           if [ -z "$TUSSAM_SECRETS_JS" ]; then
             echo "::error::Falta el secreto TUSSAM_SECRETS_JS (Settings → Secrets and variables → Actions). Mira el README."
             exit 1
           fi
           printf '%s\n' "$TUSSAM_SECRETS_JS" > www/secrets.js
+          # Repositorio privado: permiso de SOLO LECTURA de este repositorio, para que la app vea y descargue
+          # las versiones nuevas. Si no está, la app funciona igual pero no puede buscar actualizaciones.
+          if [ -n "$ACTUALIZAR_TOKEN" ]; then
+            node -e 'process.stdout.write("window.BUSSEV_GH=" + JSON.stringify({ token: process.env.ACTUALIZAR_TOKEN.trim() }) + ";\n")' >> www/secrets.js
+            echo "Permiso para buscar actualizaciones: incluido."
+          else
+            echo "::warning::Falta el secreto ACTUALIZAR_TOKEN: con el repositorio privado, la app no podrá buscar actualizaciones sola."
+          fi
           echo "www/secrets.js creado para el APK."
 
       - name: Copiar la app al proyecto Android

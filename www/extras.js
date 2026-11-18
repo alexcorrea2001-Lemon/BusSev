@@ -38,7 +38,17 @@ const avisos = {
     const id = a.id || (Math.floor(Math.random() * 2_000_000_000) + 1);
     await this.canal();
     await native('LocalNotifications', 'cancel', { notifications: [{ id }] }).catch(() => null);
-    await native('LocalNotifications', 'schedule', { notifications: [{
+    // Versión nueva: Android vuelve a preguntar a TUSSAM en los últimos minutos y corrige el aviso aunque
+    // la app esté cerrada. Si no está (versión vieja del APK), se programa la notificación de siempre.
+    let vigilado = false;
+    if (plugin('BusSevViaje')) {
+      try {
+        actualizarWidget();   // el móvil necesita las credenciales de TUSSAM para preguntar solo
+        await native('BusSevViaje', 'vigilarLlegada', { id, codigo: a.codigo, parada: a.parada, linea: a.linea, destino: a.destino, antes: a.antes, at });
+        vigilado = true;
+      } catch { /* se usa la notificación de siempre */ }
+    }
+    if (!vigilado) await native('LocalNotifications', 'schedule', { notifications: [{
       id, title: `Línea ${a.linea}: llega en ${a.antes} min`, body: `${a.parada} · hacia ${a.destino}`,
       schedule: { at: new Date(at).toISOString(), allowWhileIdle: true }, channelId: 'bussev_llegada',
       smallIcon: 'ic_stat_bus', iconColor: '#D41C2B', autoCancel: true,
@@ -50,6 +60,7 @@ const avisos = {
   },
   async cancelar(id) {
     if (plugin('LocalNotifications')) await native('LocalNotifications', 'cancel', { notifications: [{ id }] }).catch(() => null);
+    if (plugin('BusSevViaje')) await native('BusSevViaje', 'quitarLlegada', { id }).catch(() => null);
     this.save(this.list().filter((x) => x.id !== id));
   },
   /* Corrige la hora del aviso con los tiempos nuevos de la parada */
@@ -72,11 +83,13 @@ function avisoModal({ codigo, parada, linea, destino, minutos, color }) {
     ${ya ? `<div class="alert">Tienes un aviso para cuando falten ${ya.antes} min (sobre las ${new Date(ya.at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}).</div>` : ''}
     ${opciones.length ? `<p class="help">Te mandaré una notificación cuando a este autobús le falten:</p>
       <div class="btn-row">${opciones.map((n) => `<button class="btn ghost" type="button" data-antes="${n}">${n} min</button>`).join('')}</div>
-      <p class="help">El aviso se calcula con el tiempo de ahora y se corrige cada vez que abres la app. Si el autobús se retrasa mucho con la app cerrada, puede llegar un poco antes o después.</p>`
+      <p class="help">${plugin('BusSevViaje') ? 'Aunque cierres la app, en los últimos minutos el móvil vuelve a mirar a TUSSAM y corrige el aviso si el autobús se adelanta o se retrasa.' : 'El aviso se calcula con el tiempo de ahora y se corrige cada vez que abres la app. Si el autobús se retrasa mucho con la app cerrada, puede llegar un poco antes o después.'}</p>`
     : '<p class="help">Este autobús está a punto de llegar; no hace falta aviso.</p>'}
+    <button class="btn ghost bj-btn" type="button" id="av-bajar">🚌 Me subo a este: avísame al bajar</button>
     <div class="actions">${ya ? '<button class="btn danger" type="button" id="av-del">Quitar aviso</button>' : ''}<button class="btn ghost" type="button" id="av-x">Cerrar</button></div>`,
   (m, close) => {
     $('#av-x', m).onclick = close;
+    $('#av-bajar', m).onclick = () => { close(); bajada.elegir(codigo, linea, destino); };
     $('#av-del', m)?.addEventListener('click', async () => { await avisos.cancelar(ya.id); close(); toast('Aviso quitado'); active.rerender?.(); });
     m.querySelectorAll('[data-antes]').forEach((b) => { b.onclick = async () => {
       try {
@@ -97,6 +110,104 @@ document.addEventListener('click', (e) => {
   const [codigo, linea, destino, minutos, color] = JSON.parse(r.dataset.av);
   const p = cache.paradaByCode.get(codigo);
   avisoModal({ codigo, parada: favs.get(codigo)?.alias || p?.nombre || `Parada ${codigo}`, linea, destino, minutos: Number(minutos), color });
+});
+
+/* ================================================================== */
+/* «Avísame cuando tenga que bajarme»                                   */
+/* Android sigue tu posición mientras vas en el autobús (también con   */
+/* la pantalla apagada) y vibra al acercarte a tu parada.              */
+/* ================================================================== */
+const bajada = {
+  web: null,   // en el navegador (sin APK): solo funciona con la app abierta
+  actual() { return store.get('bajada', null); },
+  /* Paradas desde donde subes hasta donde bajas, en orden */
+  tramo(k, desde, hasta) {
+    const seq = indiceRecorridos().seqs.get(k) || [];
+    const i = seq.indexOf(String(desde));
+    const j = seq.indexOf(String(hasta), i + 1);
+    if (i < 0 || j < 0) return null;
+    return seq.slice(i, j + 1).map((c) => {
+      const p = cache.paradaByCode.get(c) || (window.BUSSEV_DATA?.paradas || []).find((x) => x.codigo === c) || {};
+      return { codigo: c, nombre: p.nombre || `Parada ${c}`, lat: p.latitud, lon: p.longitud };
+    }).filter((p) => p.lat != null);
+  },
+  async empezar({ k, desde, hasta }) {
+    const paradas = this.tramo(k, desde, hasta);
+    if (!paradas || paradas.length < 2) { toast('No he podido preparar el aviso para esa parada.'); return false; }
+    const linea = k.split('|')[0];
+    const fin = paradas[paradas.length - 1];
+    try { await getPosition(true); } catch (e) { toast(geoErrorText(e)); return false; }   // pide el permiso de ubicación
+    if (plugin('BusSevViaje')) {
+      try { await avisos.permiso(); } catch (e) { toast(e.message); }
+      try { await native('BusSevViaje', 'empezarBajada', { linea: etiquetaLinea(linea), paradas }); }
+      catch (e) { toast(e?.message || 'No se ha podido empezar el aviso.'); return false; }
+    } else this.empezarWeb(linea, paradas);
+    store.set('bajada', { linea, destino: fin.nombre, codigo: fin.codigo, inicio: Date.now() });
+    toast(`Te aviso al llegar a ${fin.nombre}`);
+    active.rerender?.();
+    return true;
+  },
+  async parar() {
+    if (plugin('BusSevViaje')) await native('BusSevViaje', 'pararBajada', {}).catch(() => null);
+    if (this.web) { navigator.geolocation?.clearWatch?.(this.web); this.web = null; }
+    store.set('bajada', null);
+    active.rerender?.();
+  },
+  /* La app se abre: ¿sigue Android avisando? (pudo pararse solo al llegar) */
+  async sincronizar() {
+    if (!this.actual()) return;
+    if (Date.now() - (this.actual().inicio || 0) > 3 * 3600_000) { store.set('bajada', null); return; }
+    if (plugin('BusSevViaje')) {
+      const r = await native('BusSevViaje', 'estadoBajada', {}).catch(() => null);
+      if (r && !r.activo) { store.set('bajada', null); active.rerender?.(); }
+    } else if (!this.web) store.set('bajada', null);
+  },
+  empezarWeb(linea, paradas) {
+    if (!navigator.geolocation) return;
+    if (this.web) navigator.geolocation.clearWatch(this.web);
+    const fin = paradas[paradas.length - 1];
+    let avisado = false;
+    this.web = navigator.geolocation.watchPosition((p) => {
+      const d = haversine([p.coords.latitude, p.coords.longitude], [fin.lat, fin.lon]);
+      if (!avisado && d < 400) { avisado = true; navigator.vibrate?.([600, 250, 600, 250, 900]); toast(`Bájate en la próxima: ${fin.nombre}`); }
+      if (d < 70) { toast(`Estás en tu parada: ${fin.nombre}`); this.parar(); }
+    }, () => null, { enableHighAccuracy: true, maximumAge: 5000 });
+  },
+  /* Elegir dónde te bajas, desde un autobús de la parada (línea y hacia dónde va) */
+  elegir(codigo, linea, destinoTxt = '') {
+    const num = lineaFor(linea)?.numero || String(linea);
+    const { porParada, seqs } = indiceRecorridos();
+    const nombre = (c) => cache.paradaByCode.get(c)?.nombre || (window.BUSSEV_DATA?.paradas || []).find((x) => x.codigo === c)?.nombre || `Parada ${c}`;
+    let grupos = (porParada.get(String(codigo)) || []).filter(([l]) => l === num).map(([l, sen, o]) => {
+      const seq = seqs.get(`${l}|${sen}`) || [];
+      return { k: `${l}|${sen}`, fin: nombre(seq[seq.length - 1]), resto: seq.slice(o + 1) };
+    }).filter((g) => g.resto.length);
+    if (!grupos.length) { toast('No tengo el recorrido de esta línea.'); return; }
+    // El sentido que coincide con el destino del autobús va primero (y si coincide claro, solo ese)
+    const nd = norm(destinoTxt);
+    const coincide = (g) => nd && (norm(g.fin).includes(nd) || nd.includes(norm(g.fin)) || norm(g.fin).split(/\s+/).some((w) => w.length > 4 && nd.includes(w)));
+    if (grupos.some(coincide)) grupos = grupos.filter(coincide);
+    openModal(`<h2>¿Dónde te bajas?</h2>
+      <p class="help">Línea ${esc(etiquetaLinea(num))}. Te aviso con vibración al pasar por la parada anterior, aunque tengas el móvil en el bolsillo.</p>
+      ${grupos.map((g) => `${grupos.length > 1 ? `<h3 class="bj-tit">Hacia ${esc(g.fin)}</h3>` : ''}<div class="bj-lista">${g.resto.map((c, n) => `<button type="button" class="row-flat bj-op" data-k="${esc(g.k)}" data-c="${esc(c)}"><span class="stop-num">${esc(c)}</span><span class="bj-nom"><b>${esc(nombre(c))}</b><small>${n + 1} parada${n ? 's' : ''}</small></span></button>`).join('')}</div>`).join('')}
+      <div class="actions"><button class="btn ghost" type="button" id="bj-x">Cancelar</button></div>`, (m, close) => {
+      $('#bj-x', m).onclick = close;
+      m.querySelectorAll('.bj-op').forEach((b) => { b.onclick = async () => { close(); await this.empezar({ k: b.dataset.k, desde: codigo, hasta: b.dataset.c }); }; });
+    });
+  },
+};
+window.bajada = bajada;
+/* Aviso activo en Favoritas: a dónde vas y botón para parar */
+function bajadaHTML() {
+  const b = bajada.actual();
+  if (!b) return '';
+  return `<div class="dia-aviso bj-activo">🔔 <span>Te aviso al llegar a <b>${esc(b.destino)}</b> (línea ${esc(etiquetaLinea(b.linea))}).</span><button class="btn ghost" type="button" data-bj-parar>Parar</button></div>`;
+}
+window.bajadaHTML = bajadaHTML;
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('[data-bj-parar]')) return;
+  e.preventDefault();
+  bajada.parar().then(() => toast('Aviso para bajarte quitado'));
 });
 
 /* ================================================================== */
@@ -189,7 +300,23 @@ const planner = (() => {
     const { pos } = idx || build();
     return [...pos].map(([c, p]) => [c, haversine(pt, p)]).filter(([, d]) => d <= radio).sort((a, b) => a[1] - b[1]).slice(0, max);
   }
-  function buscar(origen, destino) {
+  /* Primer viaje de una línea que pasa por la posición i a partir del minuto «desde» y llega a la j.
+     undefined = esa línea no tiene horario (se calcula como antes); null = hoy ya no pasa ninguno. */
+  const viajesCache = new Map();
+  function pasoTras(H, g, k, i, j, desde) {
+    const e = H.l[k];
+    if (!e || g == null || e.m?.[i] == null || e.m?.[j] == null) return undefined;
+    const ck = `${k}#${g}`;
+    if (!viajesCache.has(ck)) {
+      let s0 = 0; const ult = e.m.length - 1;
+      viajesCache.set(ck, (e.v?.[g] || []).map((x) => { const [d, a, b] = Array.isArray(x) ? x : [x, 0, ult]; s0 += d; return [s0, a, b]; }));
+    }
+    for (const [s0, a, b] of viajesCache.get(ck)) {
+      if (a <= i && b >= j && s0 + e.m[i] >= desde) return { sube: s0 + e.m[i], baja: s0 + e.m[j] };
+    }
+    return null;
+  }
+  function buscar(origen, destino, cuando = new Date()) {
     const I = idx || build();
     const O = paradasCerca(origen), Dd = new Map(paradasCerca(destino));
     const res = [];
@@ -197,7 +324,7 @@ const planner = (() => {
       for (const { k, i } of I.porParada.get(o) || []) {
         const seq = I.seqs.get(k);
         for (let j = i + 1; j < seq.length; j++) {
-          if (Dd.has(seq[j])) res.push({ tramos: [{ k, desde: o, hasta: seq[j], n: j - i }], min: wo / ANDAR + (j - i) * PARADA + Dd.get(seq[j]) / ANDAR, andar: [wo, Dd.get(seq[j])] });
+          if (Dd.has(seq[j])) res.push({ tramos: [{ k, desde: o, hasta: seq[j], n: j - i, i, j }], min: wo / ANDAR + (j - i) * PARADA + Dd.get(seq[j]) / ANDAR, andar: [wo, Dd.get(seq[j])] });
         }
         // con un transbordo
         for (let j = i + 1; j < seq.length; j++) {
@@ -208,13 +335,36 @@ const planner = (() => {
               for (let j2 = i2 + 1; j2 < s2.length; j2++) {
                 if (!Dd.has(s2[j2])) continue;
                 const min = wo / ANDAR + (j - i) * PARADA + wt / ANDAR + CAMBIO + (j2 - i2) * PARADA + Dd.get(s2[j2]) / ANDAR;
-                res.push({ tramos: [{ k, desde: o, hasta: seq[j], n: j - i }, { k: k2, desde: t, hasta: s2[j2], n: j2 - i2 }], min, andar: [wo, Dd.get(s2[j2])], cambio: wt });
+                res.push({ tramos: [{ k, desde: o, hasta: seq[j], n: j - i, i, j }, { k: k2, desde: t, hasta: s2[j2], n: j2 - i2, i: i2, j: j2 }], min, andar: [wo, Dd.get(s2[j2])], cambio: wt });
                 break;
               }
             }
           }
         }
       }
+    }
+    // Con el horario oficial: se cuenta la espera y se descartan las líneas que a esa hora no circulan
+    const H = window.BUSSEV_HORARIOS;
+    let sinServicio = 0;
+    if (H?.l) {
+      const ahora = minutoServicio(cuando);
+      const g = H.dias?.[tipoHorarioHoy(cuando)];
+      const conHora = [];
+      for (const r of res) {
+        let t = ahora + r.andar[0] / ANDAR, ok = true, sale = null;
+        for (const [n, tr] of r.tramos.entries()) {
+          if (n === 1) t += (r.cambio || 0) / ANDAR + 1;
+          const p = pasoTras(H, g, tr.k, tr.i, tr.j, t);
+          if (p === null) { ok = false; break; }
+          if (p === undefined) { t += (n ? CAMBIO : 0) + tr.n * PARADA; continue; }   // línea sin horario: lo de antes
+          if (n === 0) sale = p.sube;
+          tr.sube = p.sube; tr.baja = p.baja; t = p.baja;
+        }
+        if (!ok) { sinServicio++; continue; }
+        t += r.andar[1] / ANDAR;
+        conHora.push({ ...r, min: t - ahora, sale, llega: t });
+      }
+      res.length = 0; res.push(...conHora);
     }
     // la mejor opción de cada combinación de líneas
     const best = new Map();
@@ -226,13 +376,52 @@ const planner = (() => {
     const directos = out.filter((r) => r.tramos.length === 1);
     const mejorDirecto = directos[0]?.min ?? Infinity;
     // los transbordos solo si ahorran tiempo de verdad o no hay directo
-    return [...directos.slice(0, 4), ...out.filter((r) => r.tramos.length === 2 && r.min < mejorDirecto - 5).slice(0, directos.length ? 2 : 5)].sort((a, b) => a.min - b.min);
+    const lista = [...directos.slice(0, 4), ...out.filter((r) => r.tramos.length === 2 && r.min < mejorDirecto - 5).slice(0, directos.length ? 2 : 5)].sort((a, b) => a.min - b.min);
+    lista.sinServicio = sinServicio;
+    return lista;
   }
   return { buscar, paradasCerca };
 })();
 
+/* Buscar calles y sitios de Sevilla (OpenStreetMap, servicio Photon: gratis y sin clave) */
+const LUGARES_BBOX = [-6.15, 37.28, -5.80, 37.50];   // Sevilla y alrededores
+const lugaresCache = new Map();
+async function buscarLugares(texto) {
+  const q = String(texto || '').trim();
+  if (q.length < 3) return [];
+  if (lugaresCache.has(q.toLowerCase())) return lugaresCache.get(q.toLowerCase());
+  const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=8&lat=37.389&lon=-5.984&bbox=${LUGARES_BBOX.join(',')}`;
+  const ctl = new AbortController(); const to = setTimeout(() => ctl.abort(), 6000);
+  let j;
+  try { const r = await fetch(url, { signal: ctl.signal }); if (!r.ok) throw new Error('photon ' + r.status); j = await r.json(); } finally { clearTimeout(to); }
+  const vistos = new Set(), out = [];
+  for (const f of j?.features || []) {
+    const pr = f.properties || {}, c = f.geometry?.coordinates;
+    if (!Array.isArray(c) || c.length < 2) continue;
+    const [lon, lat] = c;
+    if (lon < LUGARES_BBOX[0] || lon > LUGARES_BBOX[2] || lat < LUGARES_BBOX[1] || lat > LUGARES_BBOX[3]) continue;
+    const calle = [pr.street, pr.housenumber].filter(Boolean).join(' ');
+    const nombre = pr.name || calle;
+    if (!nombre) continue;
+    const detalle = [pr.name && calle !== pr.name ? calle : '', pr.district || pr.locality || '', pr.city && pr.city !== 'Sevilla' ? pr.city : (pr.district || pr.locality ? '' : 'Sevilla')].filter(Boolean).join(', ');
+    const k = `${nombre}|${detalle}`.toLowerCase();
+    if (vistos.has(k)) continue;
+    vistos.add(k);
+    out.push({ nombre, detalle, pos: [lat, lon] });
+    if (out.length >= 5) break;
+  }
+  lugaresCache.set(q.toLowerCase(), out);
+  if (lugaresCache.size > 60) lugaresCache.delete(lugaresCache.keys().next().value);
+  return out;
+}
+window.buscarLugares = buscarLugares;
+
 views.ruta = (el) => {
-  const st = { origen: null, destino: null };   // { tipo:'yo'|'parada', nombre, pos, codigo }
+  const st = { origen: null, destino: null };   // { tipo:'yo'|'parada'|'lugar', nombre, pos, codigo }
+  // «Cómo llegar aquí» desde el mapa o una parada: llega el destino ya puesto y se busca solo
+  const pre = window.rutaPendiente; window.rutaPendiente = null;
+  if (pre?.destino) st.destino = pre.destino;
+  let fotonT = 0, fotonN = 0;
   const nombreParada = (p) => favs.get(p.codigo)?.alias ? `${favs.get(p.codigo).alias} (${p.nombre})` : p.nombre;
   function campo(id, label, val, ph) {
     return `<div class="field plan-field"><label for="${id}">${label}</label>
@@ -244,7 +433,7 @@ views.ruta = (el) => {
       ${backHead('<div class="grow"><h2>Cómo llegar</h2><p>En autobús, directo o con un transbordo.</p></div>')}
       <div class="set-group">${campo('pl-o', 'Desde', st.origen, 'Mi ubicación, parada o calle')}
         <button class="swap" type="button" id="pl-swap" aria-label="Intercambiar origen y destino">⇅</button>
-        ${campo('pl-d', 'Hasta', st.destino, 'Parada, calle o número de parada')}
+        ${campo('pl-d', 'Hasta', st.destino, 'Parada, calle, sitio o número de parada')}
         <button class="btn" type="button" id="pl-go">Buscar autobuses</button></div>
       <div id="pl-res"></div></div>`;
     $('.back-btn', el).onclick = goBack;
@@ -260,49 +449,84 @@ views.ruta = (el) => {
         if (q.length < 2) { box.hidden = true; return; }
         const words = q.split(/\s+/);
         const list = (window.BUSSEV_DATA.paradas).filter((p) => /^\d+$/.test(q) ? p.codigo.startsWith(q) : words.every((w) => norm(`${p.nombre} ${p.direccion_completa || ''} ${favs.get(p.codigo)?.alias || ''}`).includes(w))).slice(0, 8);
-        box.innerHTML = list.map((p) => `<button type="button" data-c="${esc(p.codigo)}"><span class="stop-num">${esc(p.codigo)}</span><span><b>${esc(nombreParada(p))}</b><small>${esc(p.direccion_completa || '')}</small></span></button>`).join('') || '<p class="help" style="padding:8px">No hay paradas con ese nombre.</p>';
-        box.hidden = false;
-        box.querySelectorAll('[data-c]').forEach((b) => { b.onclick = () => {
-          const p = cache.paradaByCode.get(b.dataset.c) || window.BUSSEV_DATA.paradas.find((x) => x.codigo === b.dataset.c);
-          st[key] = { tipo: 'parada', nombre: nombreParada(p), pos: [p.latitud, p.longitud], codigo: p.codigo };
-          inp.value = st[key].nombre; box.hidden = true;
-        }; });
+        const paradasHTML = list.map((p) => `<button type="button" data-c="${esc(p.codigo)}"><span class="stop-num">${esc(p.codigo)}</span><span><b>${esc(nombreParada(p))}</b><small>${esc(p.direccion_completa || '')}</small></span></button>`).join('');
+        const pintarSugs = (lugares) => {
+          const lug = (lugares || []).map((l, n) => `<button type="button" data-lg="${n}"><span class="stop-num lugar-ico" aria-hidden="true">📍</span><span><b>${esc(l.nombre)}</b><small>${esc(l.detalle)}</small></span></button>`).join('');
+          box.innerHTML = (paradasHTML + lug) || (lugares ? '<p class="help" style="padding:8px">No encuentro ese sitio. Prueba con el nombre de la calle o de una parada.</p>' : '<p class="help" style="padding:8px">Buscando…</p>');
+          box.hidden = false;
+          box.querySelectorAll('[data-c]').forEach((b) => { b.onclick = () => {
+            const p = cache.paradaByCode.get(b.dataset.c) || window.BUSSEV_DATA.paradas.find((x) => x.codigo === b.dataset.c);
+            st[key] = { tipo: 'parada', nombre: nombreParada(p), pos: [p.latitud, p.longitud], codigo: p.codigo };
+            inp.value = st[key].nombre; box.hidden = true;
+          }; });
+          box.querySelectorAll('[data-lg]').forEach((b) => { b.onclick = () => {
+            const l = lugares[Number(b.dataset.lg)];
+            st[key] = { tipo: 'lugar', nombre: l.nombre, pos: l.pos };
+            inp.value = l.nombre; box.hidden = true;
+          }; });
+        };
+        pintarSugs(/^\d+$/.test(q) ? [] : null);
+        // Calles y sitios (hospitales, estaciones, centros comerciales…): OpenStreetMap, sin clave
+        clearTimeout(fotonT);
+        if (/^\d+$/.test(q) || q.length < 3) return;
+        const n = ++fotonN;
+        fotonT = setTimeout(() => buscarLugares(inp.value).then((l) => { if (n === fotonN && !box.hidden) pintarSugs(l); }).catch(() => { if (n === fotonN) pintarSugs([]); }), 350);
       };
     }
   }
   async function buscar() {
     const res = $('#pl-res', el);
     if (!st.origen) { try { const pos = await getPosition(); st.origen = { tipo: 'yo', nombre: 'Mi ubicación', pos }; $('#pl-o', el).value = 'Mi ubicación'; } catch { toast('Elige desde dónde sales.'); return; } }
-    if (!st.destino) { toast('Elige adónde vas (una parada de la lista).'); return; }
+    if (!st.destino) { toast('Elige adónde vas (toca una opción de la lista).'); return; }
     if (haversine(st.origen.pos, st.destino.pos) < 300) { res.innerHTML = '<div class="alert">Está muy cerca: mejor ir andando.</div>'; return; }
-    await getLineas().catch(() => null);
+    res.innerHTML = '<div class="board-empty">Buscando…</div>';
+    await Promise.all([getLineas().catch(() => null), cargarHorarios().catch(() => null)]);
+    const conHorario = !!window.BUSSEV_HORARIOS;
     const ops = planner.buscar(st.origen.pos, st.destino.pos);
-    if (!ops.length) { res.innerHTML = emptyHTML(ICON.route, 'No he encontrado autobuses', 'No hay una línea directa ni con un solo transbordo entre esos dos puntos. Prueba con una parada cercana.'); return; }
+    if (!ops.length) {
+      res.innerHTML = ops.sinServicio
+        ? emptyHTML(ICON.route, 'A estas horas no hay autobús', 'Las líneas que te llevan ya no circulan hoy. De madrugada solo circulan los Búho (líneas A); prueba más tarde o desde otra parada.')
+        : emptyHTML(ICON.route, 'No he encontrado autobuses', 'No hay una línea directa ni con un solo transbordo entre esos dos puntos. Prueba con una parada cercana.');
+      return;
+    }
     const pName = (c) => esc(cache.paradaByCode.get(c)?.nombre || `Parada ${c}`);
+    const hora = (m) => (m == null ? '' : hhmmDe(m));
+    const proxTxt = (t) => (t.sube != null ? ` · según horario a las ${hora(t.sube)}` : '');
     res.innerHTML = `<h2 class="section-title">Opciones</h2><div class="stack">${ops.map((o, n) => {
       const ls = o.tramos.map((t) => lineaFor(t.k.split('|')[0]) || { numero: t.k.split('|')[0], color: '#555' });
+      const avs = [...new Set(ls.map((l) => l.numero))].flatMap((num) => (window.avisosTussam?.avisosDeLinea?.(num) || []).map((a) => ({ ...a, num })));
       return `<article class="card plan">
         <div class="plan-top">${ls.map((l) => badge(l.numero, l.color)).join('<span class="plan-arrow">›</span>')}<span class="plan-min">${Math.round(o.min)} min</span></div>
+        ${o.llega != null ? `<p class="plan-horas">${o.sale != null ? `Sal sobre las <b>${hora(Math.max(o.llega - o.min, o.sale - Math.ceil(o.andar[0] / 75)))}</b> · ` : ''}llegas sobre las <b>${hora(o.llega)}</b></p>` : ''}
+        ${avs.length ? `<div class="plan-aviso">${avs.slice(0, 2).map((a) => `<a href="#" data-aviso="${esc(a.id)}">⚠️ <span>${esc(window.avisosTussam?.titulo ? window.avisosTussam.titulo(a.titulo) : a.titulo)}</span></a>`).join('')}</div>` : ''}
         <ol class="plan-steps">
-          <li><span class="muted">Anda ${fmtDist(o.andar[0])}</span> hasta <b>${pName(o.tramos[0].desde)}</b> <span class="muted">(${esc(o.tramos[0].desde)})</span> · <span class="next" data-next="${n}-0">próximo…</span></li>
-          <li>Sube a la <b>línea ${esc(ls[0].numero)}</b> y baja en <b>${pName(o.tramos[0].hasta)}</b> <span class="muted">(${o.tramos[0].n} paradas)</span></li>
-          ${o.tramos[1] ? `<li>${o.cambio > 10 ? `Anda ${fmtDist(o.cambio)} hasta <b>${pName(o.tramos[1].desde)}</b> y` : 'Allí'} coge la <b>línea ${esc(ls[1].numero)}</b> · <span class="next" data-next="${n}-1">próximo…</span>; baja en <b>${pName(o.tramos[1].hasta)}</b> <span class="muted">(${o.tramos[1].n} paradas)</span></li>` : ''}
+          <li><span class="muted">Anda ${fmtDist(o.andar[0])}</span> hasta <b>${pName(o.tramos[0].desde)}</b> <span class="muted">(${esc(o.tramos[0].desde)})</span> · <span class="next" data-next="${n}-0">próximo…</span>${proxTxt(o.tramos[0]) ? `<span class="muted" data-prog="${n}-0">${proxTxt(o.tramos[0])}</span>` : ''}</li>
+          <li>Sube a la <b>línea ${esc(ls[0].numero)}</b> y baja en <b>${pName(o.tramos[0].hasta)}</b> <span class="muted">(${o.tramos[0].n} paradas${o.tramos[0].baja != null ? `, sobre las ${hora(o.tramos[0].baja)}` : ''})</span></li>
+          ${o.tramos[1] ? `<li>${o.cambio > 10 ? `Anda ${fmtDist(o.cambio)} hasta <b>${pName(o.tramos[1].desde)}</b> y` : 'Allí'} coge la <b>línea ${esc(ls[1].numero)}</b> · <span class="next" data-next="${n}-1">próximo…</span>${o.tramos[1].sube != null ? `<span class="muted"> · según horario a las ${hora(o.tramos[1].sube)}</span>` : ''}; baja en <b>${pName(o.tramos[1].hasta)}</b> <span class="muted">(${o.tramos[1].n} paradas)</span></li>` : ''}
           <li><span class="muted">Anda ${fmtDist(o.andar[1])}</span> hasta tu destino</li>
         </ol>
-        <div class="btn-row" style="padding:0 14px 12px"><button class="btn ghost" type="button" data-ver="${esc(ls[0].numero)}">Ver la línea ${esc(ls[0].numero)} en el mapa</button></div></article>`;
-    }).join('')}</div><p class="small muted" style="margin:8px 2px 0">Tiempos aproximados: no incluyen la espera salvo en los transbordos.</p>`;
+        <div class="btn-row" style="padding:0 14px 12px"><button class="btn ghost" type="button" data-ver="${esc(ls[0].numero)}">Ver la línea ${esc(ls[0].numero)} en el mapa</button><button class="btn ghost" type="button" data-bajar="${n}">🔔 Avísame al bajar</button></div></article>`;
+    }).join('')}</div><p class="small muted" style="margin:8px 2px 0">${conHorario ? 'Tiempos aproximados según el horario oficial, contando la espera. El «próximo» es el tiempo real de TUSSAM.' : 'Tiempos aproximados: no incluyen la espera salvo en los transbordos.'}</p>`;
     res.querySelectorAll('[data-ver]').forEach((b) => { b.onclick = () => chooseMapLine(b.dataset.ver); });
-    // próximo autobús en cada parada de subida
+    res.querySelectorAll('[data-bajar]').forEach((b) => { b.onclick = () => {
+      // Con transbordo, primero te aviso donde cambias de autobús (luego lo puedes poner otra vez en el segundo)
+      const t = ops[Number(b.dataset.bajar)].tramos[0];
+      bajada.empezar({ k: t.k, desde: t.desde, hasta: t.hasta });
+    }; });
+    // próximo autobús en cada parada de subida (tiempo real)
     ops.forEach((o, n) => o.tramos.forEach((t, ti) => {
       const num = t.k.split('|')[0];
       api(`/paradas/${encodeURIComponent(t.desde)}/tiempos`, { prioridad: 'baja' }).then((d) => {
         const b = (d.tiempos || []).filter((x) => lineaFor(x.linea)?.numero === num).sort((a, c) => a.tiempo_minutos - c.tiempo_minutos)[0];
         const span = res.querySelector(`[data-next="${n}-${ti}"]`);
         if (span) span.textContent = b ? (b.tiempo_minutos <= 0 ? 'llegando' : `próximo en ${b.tiempo_minutos} min`) : 'sin autobuses ahora';
+        // Con el tiempo real ya no hace falta el del horario en la primera parada
+        if (b && ti === 0) res.querySelector(`[data-prog="${n}-0"]`)?.remove();
       }).catch(() => { const span = res.querySelector(`[data-next="${n}-${ti}"]`); if (span) span.textContent = ''; });
     }));
   }
   render();
+  if (st.destino && pre?.buscar) setTimeout(() => { if ($('#pl-res', el)) buscar(); }, 0);
   return {};
 };
 
@@ -458,7 +682,10 @@ setTimeout(async () => {
   for (const c of tarjeta.list()) window.avisosTarjeta.comprobar(c.num);
   revisarAlAbrir();
   window.avisosTussam.revisar().catch(() => null);
+  bajada.sincronizar().catch(() => null);
 }, 2500);
+// Al volver a la app: si Android ya dejó de avisar (has llegado), se quita el aviso de Favoritas
+document.addEventListener('visibilitychange', () => { if (!document.hidden) bajada.sincronizar().catch(() => null); });
 resumeHandlers.add(() => setTimeout(revisarAlAbrir, 1500));
 resumeHandlers.add(() => setTimeout(() => window.avisosTussam.revisar().catch(() => null), 4000));
 // Cambia de temática sola si cambia el día con la app abierta

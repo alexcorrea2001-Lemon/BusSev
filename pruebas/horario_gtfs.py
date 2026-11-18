@@ -61,3 +61,14 @@ for modo in ('calendar', 'solo_dates'):
 l, log = corre('sin_calendario')
 assert 'horario' not in l and l['hora_inicio_ida'] == '05:18', l
 print('OK sin calendario: se queda como antes (', l['hora_inicio_ida'], '-', l['hora_fin_ida'], ')')
+# Horario de cada parada (www/horarios.js): la parada 2 está a 15 min de cabecera
+h = open(f'{T}/calendar_data.js.horarios.js', encoding='utf8').read()
+H = json.loads(h[h.index('{'):h.rindex('}') + 1])
+assert H['dias'] == {'lun': 0, 'mar': 0, 'mie': 0, 'jue': 0, 'vie': 1, 'sab': 2, 'dom': 3}, H['dias']
+e = H['l']['29|1']
+assert e['m'] == [0, 15, 30], e
+sal = []; s0 = 0
+for x in e['v'][0]: s0 += x if isinstance(x, int) else x[0]; sal.append(s0)
+assert sal == [360, 720, 1410], sal      # 06:00, 12:00, 23:30 los laborables
+print('OK horario por parada:', H['dias'], e['m'], sal)
+
