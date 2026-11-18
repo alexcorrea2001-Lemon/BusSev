@@ -945,3 +945,45 @@ html.oculta #fiesta-cielo .f-cruza, html.oculta #fiesta-cielo .f-cruza svg, html
 /* dibujos que miran a la izquierda: se giran al revés que el autobús */
 .busmk .busmk-img[data-izq] { transform: scaleX(-1); }
 .busmk.izq .busmk-img[data-izq] { transform: none; }
+
+/* ================= Letra grande (la de la app y la del sistema Android) =================
+   Con el texto muy grande, nada debe ensanchar la pantalla ni salirse por la derecha. */
+/* Antes, si una pieza no cabía (la barra de abajo con letra enorme), la app entera se hacía más ancha que el móvil */
+.app { grid-template-columns: minmax(0, 1fr); }
+.app > *, main, .view, .stack { min-width: 0; }
+/* Columnas de las pantallas y barra de arriba: se ajustan al ancho del móvil, no a la pieza más ancha */
+.stack, .topbar { grid-template-columns: minmax(0, 1fr); }
+.search { min-width: 0; }
+.search input { min-width: 0; width: 100%; }
+.brand { min-width: 0; }
+/* Barra de abajo: las 5 pestañas siempre caben; si una palabra no entra, se acorta con «…» */
+.tabbar { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.tabbar a { min-width: 0; }
+.tabbar a span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Título con botón al lado (Favoritas, Cerca): si no caben juntos, el botón baja a la línea siguiente
+   (antes el texto se quedaba en una columna estrechísima, palabra a palabra) */
+.row-between { flex-wrap: wrap; }
+.row-between > div { flex: 1 1 11em; }
+/* Botones de elegir (Tema, Mapa, Actualizar…): si no caben en una fila, pasan a la siguiente */
+.seg { display: flex; flex-wrap: wrap; }
+.seg button { flex: 1 1 0; min-width: max-content; }
+.seg[aria-label="Sentido"] button { min-width: 0; }
+/* Nombres muy largos: que partan antes que salirse */
+.detail-head h2, .detail-head p, .page-head h1, .page-head p, .card h3, .card p { overflow-wrap: break-word; }
+/* Colores de fondo: si no caben 5 por fila, pasan a la siguiente; y la fila de la versión baja el botón si hace falta */
+.fondos { grid-template-columns: repeat(auto-fill, minmax(52px, 1fr)); }
+.fondo { min-width: 0; }
+.fondo small { overflow-wrap: anywhere; }
+.ver-fila { flex-wrap: wrap; }
+.ver-fila > div { min-width: 0; flex: 1 1 10em; }
+/* Cajas de una columna (grupos de Ajustes, avisos, tarjetas de información…): la columna se ajusta al ancho
+   disponible, en vez de ensancharse con la pieza más ancha cuando la letra es muy grande */
+.set-group, .field, .info-list, .page-head, .p-info, .av-det, .lfiltro, .saludo-fiesta, .tf-grupo, .orden-box, .ver-res, .dia-prueba, .tl-txt { grid-template-columns: minmax(0, 1fr); }
+/* Palabras largas que no caben (con letra muy grande): se parten por sílabas, con guion («Torre-blanca») */
+.detail-head h2, .page-head h1, .card h3, .p-info-tit, .saludo-fiesta b { hyphens: auto; -webkit-hyphens: auto; }
+/* Si con la letra del móvil muy grande los nombres de las pestañas no caben, se quedan solo los iconos (más grandes)
+   en vez de palabras cortadas («Favo…») */
+.tabbar.solo-iconos a span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.tabbar.solo-iconos svg { width: 30px; height: 30px; }
+.tabbar.solo-iconos a { padding-block: 12px 10px; }
+.tabbar.apretada a, .a-letra .tabbar.apretada a { font-size: 11px; letter-spacing: -.02em; padding-inline: 0; }

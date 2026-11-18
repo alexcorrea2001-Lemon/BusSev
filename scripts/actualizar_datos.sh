@@ -91,7 +91,6 @@ cp "$TMP/data.js" www/data.js
 # Geometría real del recorrido (shapes.txt): la deja lista para recorridos.mjs (archivo solo de build, no se sube)
 if [ -f "$TMP/data.js.shapes.json" ]; then
   cp "$TMP/data.js.shapes.json" scripts/_shapes.json
-  echo "Geometría real del GTFS guardada en scripts/_shapes.json para recorridos.mjs."
 fi
 echo "www/data.js actualizado."
 exit 0
