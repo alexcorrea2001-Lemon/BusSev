@@ -124,6 +124,16 @@ function horasHoy(l, sentido = 1, d = new Date()) {
   const ini = sentido === 2 ? l?.hora_inicio_vuelta : l?.hora_inicio_ida, fin = sentido === 2 ? l?.hora_fin_vuelta : l?.hora_fin_ida;
   return { ini, fin, tipo: 'lab' };
 }
+/* Cómo decir el último autobús: si pasa de medianoche y casi enlaza con el primero del día siguiente, es que
+   circula toda la noche (la 29 los viernes y sábados); si pasa de la 1 de la madrugada, se dice «de madrugada». */
+function textoUltimo(h) {
+  if (!h?.ini || !h?.fin) return null;
+  const m = (t) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
+  const ini = m(h.ini), fin = m(h.fin);
+  if (fin < ini && fin + 1440 - ini >= 1440 - 45) return { todaNoche: true, txt: 'circula toda la noche' };
+  if (fin < ini && fin >= 60) return { txt: `último ${h.fin} (de madrugada)` };
+  return { txt: `último ${h.fin}` };
+}
 function servicioHoyHTML() {
   const t = tipoDia();
   if (t === 'laborable') return '';
@@ -779,6 +789,7 @@ function stopCardHTML(p, { tiempos, status, distancia, limit = 4, fav = null }) 
         ${fav?.lineas?.length ? `<p>Solo líneas ${fav.lineas.map(esc).join(', ')}</p>` : ''}</div>
       ${ICON.chev}
     </a>
+    ${fav ? (window.avisosTussam?.favAvisoHTML?.(p.codigo, fav.lineas) || '') : ''}
     ${tiempos === undefined ? '<div class="board-empty">Cargando tiempos…</div>' : boardHTML(filtered, status, { limit, filtrado: !!fav?.lineas?.length, codigo: p.codigo })}
     ${fav ? `<div class="card-tools">${settings.voz ? `<button type="button" data-speak="${esc(p.codigo)}">🔊 Escuchar</button>` : ''}<button type="button" data-edit-fav="${esc(p.codigo)}">Personalizar</button></div>` : ''}
   </article>`;
@@ -1952,7 +1963,7 @@ views.lineas = (el) => {
       const render = () => {
         const f = FAMILIAS.find((x) => x.id === fam) || FAMILIAS[0];
         const rows = lineas.filter(f.test).map((l) => `<a class="row" href="#linea-${esc(l.numero)}">${badge(l.numero, l.color)}
-            <div class="row-main"><b>${esc(l.nombre)}</b><span>${(() => { const h = horasHoy(l); return h.ini && h.fin ? `Primer y último bus${NOMBRE_TIPO[h.tipo] ? ` (${NOMBRE_TIPO[h.tipo].toLowerCase()})` : ''}: ${esc(h.ini)}–${esc(h.fin)}` : h.noHoy ? `Hoy no circula` : 'Consulta el recorrido'; })()}</span></div>${ICON.chev}</a>`).join('');
+            <div class="row-main"><b>${esc(l.nombre)}</b><span>${(() => { const h = horasHoy(l); return h.ini && h.fin ? (textoUltimo(h).todaNoche ? `Hoy circula toda la noche` : `Primer y último bus${NOMBRE_TIPO[h.tipo] ? ` (${NOMBRE_TIPO[h.tipo].toLowerCase()})` : ''}: ${esc(h.ini)}–${esc(h.fin)}`) : h.noHoy ? `Hoy no circula` : 'Consulta el recorrido'; })()}</span></div>${ICON.chev}</a>`).join('');
         el.innerHTML = `<div class="stack"><div class="page-head"><h1>Líneas</h1><p>Recorrido, horario y autobuses en directo.</p></div>
           <div class="filters" role="group" aria-label="Tipo de línea">${FAMILIAS.map((x) => `<button class="chip" type="button" data-fam="${x.id}" aria-pressed="${x.id === fam}">${x.label}</button>`).join('')}</div>
           <div class="list">${rows || '<div class="board-empty">No hay líneas en este grupo.</div>'}</div>
@@ -2042,7 +2053,7 @@ views.linea = (el, numero) => {
         const stops = ruta[sentido] || [];
         const h = horasHoy(l, sentido);
         const pre = NOMBRE_TIPO[h.tipo] ? `${NOMBRE_TIPO[h.tipo]}: ` : '';
-        $('#l-horario', el).textContent = h.ini && h.fin ? `${pre}primer bus ${h.ini} · último ${h.fin} · ${stops.length} paradas`.replace(/^p/, 'P')
+        $('#l-horario', el).textContent = h.ini && h.fin ? `${pre}primer bus ${h.ini} · ${textoUltimo(h).txt} · ${stops.length} paradas`.replace(/^p/, 'P')
           : h.noHoy ? `${NOMBRE_TIPO[h.tipo] || 'Hoy'}: no circula · ${stops.length} paradas` : `${stops.length} paradas`;
         drawTimeline(); cargarLpp();
         el.querySelectorAll('[data-s]').forEach((b) => b.setAttribute('aria-pressed', Number(b.dataset.s) === sentido));
@@ -2134,7 +2145,8 @@ views.parada = (el, codigo) => {
     if (dead) return;
     const h = headHTML();
     el.innerHTML = `<div class="stack">${h.html}<div id="p-tools"></div>
-      <section class="card p-info"><h3 class="p-info-tit">Líneas que paran aquí</h3><div class="chips-wrap" id="p-lineas"><span class="muted small">Cargando…</span></div><div id="p-avisos"></div></section>
+      <div id="p-avisos">${window.avisosTussam?.paradaBannerHTML?.(codigo) || ''}</div>
+      <section class="card p-info"><h3 class="p-info-tit">Líneas que paran aquí</h3><div class="chips-wrap" id="p-lineas"><span class="muted small">Cargando…</span></div></section>
       <div id="p-filtro" class="lfiltro" hidden></div>
       <article class="card" id="p-board"><div class="board-empty">Cargando tiempos…</div></article>
       <div><div class="map-wrap" id="p-mapwrap"><div class="map-box" id="p-map"></div>
@@ -2164,7 +2176,7 @@ views.parada = (el, codigo) => {
       if (dead) return;
       nums = [...nums].sort(ordenLineas);
       $('#p-lineas', el).innerHTML = nums.length ? nums.map((n) => badge(etiquetaLinea(lineaFor(n)?.numero || n), lineaFor(n)?.color, { href: `#linea-${encodeURIComponent(n)}` })).join('') : '<span class="muted small">Sin datos de líneas.</span>';
-      setHTML($('#p-avisos', el), window.avisosTussam?.bannerHTML(nums) || '');
+      setHTML($('#p-avisos', el), window.avisosTussam?.paradaBannerHTML?.(codigo, nums) || '');
       lineasAqui = nums.map((n) => lineaFor(n)?.numero || String(n));
       pintarFiltro();
     }).catch(() => { if (!dead) $('#p-lineas', el).innerHTML = '<span class="muted small">No se han podido cargar.</span>'; });
