@@ -228,7 +228,7 @@ jobs:
 
       # Solo se deja publicada la última versión: las anteriores a la 1.3.9 llevaban las credenciales de TUSSAM
       # sin cifrar dentro del APK, y la app solo necesita la última para actualizarse.
-      - name: Borrar las versiones anteriores de Releases
+      - name: Borrar las versiones anteriores de Releases (y sus etiquetas)
         if: steps.seguir.outputs.si == 'si'
         continue-on-error: true
         env:
@@ -237,4 +237,9 @@ jobs:
           gh api "repos/${{ github.repository }}/releases?per_page=100" --jq ".[] | select(.tag_name != \"v$VERSION\") | \"\(.id) \(.tag_name)\"" |
           while read -r id tag; do
             gh api -X DELETE "repos/${{ github.repository }}/releases/$id" && echo "Borrada la versión $tag"
+          done
+          # Y sus etiquetas (apuntaban al historial antiguo, que tenía las credenciales)
+          gh api "repos/${{ github.repository }}/git/matching-refs/tags" --jq '.[].ref' | grep -vx "refs/tags/v$VERSION" |
+          while read -r ref; do
+            gh api -X DELETE "repos/${{ github.repository }}/git/$ref" && echo "Borrada la etiqueta ${ref#refs/tags/}"
           done
