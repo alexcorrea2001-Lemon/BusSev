@@ -375,7 +375,10 @@ const planner = (() => {
   const CAMBIO = 6;      // penalización por transbordo (esperar al otro autobús)
   function paradasCerca(pt, radio = 450, max = 8) {
     const { pos } = indice();
-    return [...pos].map(([c, p]) => [c, haversine(pt, p)]).filter(([, d]) => d <= radio).sort((a, b) => a[1] - b[1]).slice(0, max);
+    const todas = [...pos].map(([c, p]) => [c, haversine(pt, p)]).filter(([, d]) => d <= radio).sort((a, b) => a[1] - b[1]);
+    // Las estaciones de metro cercanas siempre cuentan (si no, las muchas paradas de bus de alrededor las tapaban)
+    const bus = todas.filter(([c]) => !estacionMetro(c)).slice(0, max), metro = todas.filter(([c]) => estacionMetro(c)).slice(0, 2);
+    return [...bus, ...metro];
   }
   /* Primer viaje de una línea que pasa por la posición i a partir del minuto «desde» y llega a la j.
      undefined = esa línea no tiene horario (se calcula como antes); null = hoy ya no pasa ninguno. */
