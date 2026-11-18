@@ -53,10 +53,18 @@ jobs:
           NAP_API_KEY: ${{ secrets.NAP_API_KEY }}
         run: bash scripts/actualizar_datos.sh
 
+      # Metro de Sevilla (horario oficial): para el mapa y para «Cómo llegar» en bus + metro. Si falla, sin metro.
+      - name: Actualizar el Metro de Sevilla (datos oficiales)
+        continue-on-error: true
+        timeout-minutes: 4
+        env:
+          NAP_API_KEY: ${{ secrets.NAP_API_KEY }}
+        run: bash scripts/actualizar_metro.sh
+
       - name: Guardar los datos nuevos en el repositorio
         id: datos
         run: |
-          if git diff --quiet -- www/data.js geojson/lineas.json && { [ ! -f www/horarios.js ] || git ls-files --error-unmatch www/horarios.js >/dev/null 2>&1 && git diff --quiet -- www/horarios.js; }; then
+          if git diff --quiet -- www/data.js geojson/lineas.json && { [ ! -f www/horarios.js ] || git ls-files --error-unmatch www/horarios.js >/dev/null 2>&1 && git diff --quiet -- www/horarios.js; } && { [ ! -f www/metro.js ] || git ls-files --error-unmatch www/metro.js >/dev/null 2>&1 && git diff --quiet -- www/metro.js; }; then
             echo "cambio=no" >> "$GITHUB_OUTPUT"
             echo "Los datos y el trazado ya estaban al día."
           else
@@ -65,6 +73,7 @@ jobs:
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git add www/data.js geojson/lineas.json
             if [ -f www/horarios.js ]; then git add www/horarios.js; fi
+            if [ -f www/metro.js ]; then git add www/metro.js; fi
             if [ -f www/novedades.json ]; then git add www/novedades.json; fi
             git commit -m "Datos y trazado oficial de TUSSAM actualizados"
             git push || echo "No se han podido guardar en el repositorio (no pasa nada: van igual en el APK)."

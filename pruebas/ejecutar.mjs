@@ -10,6 +10,7 @@ const env = { ...process.env, PRUEBAS_TMP: TMP };
 // El orden importa: horario_gtfs deja datos para horas, y novedades para app2.
 const PRUEBAS = [
   ['Primer y último autobús (cálculo)', 'python3', ['-I', 'horario_gtfs.py']],
+  ['Metro de Sevilla (cálculo del horario)', 'python3', ['-I', 'metro_gtfs.py']],
   ['Primer y último autobús (en la app)', 'node', ['horas.mjs']],
   ['Novedades al actualizar', 'node', ['novedades.mjs']],
   ['Líneas juntas en el mapa (carriles)', 'node', ['carriles.mjs']],

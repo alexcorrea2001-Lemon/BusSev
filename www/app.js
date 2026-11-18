@@ -144,11 +144,55 @@ function cargarHorarios() {
   _horP = new Promise((ok) => {
     const sc = document.createElement('script');
     sc.src = 'horarios.js'; sc.async = true;
+    setTimeout(() => ok(window.BUSSEV_HORARIOS || null), 6000);   // si tarda o no llega, se sigue sin él
     sc.onload = () => ok(window.BUSSEV_HORARIOS || null);
     sc.onerror = () => { _horP = null; ok(null); };   // versión sin horarios todavía: no pasa nada
     document.head.appendChild(sc);
   });
   return _horP;
+}
+/* Metro de Sevilla (www/metro.js): estaciones, recorrido y horario. Se carga solo cuando hace falta. */
+let _metroP = null;
+function cargarMetro() {
+  if (window.BUSSEV_METRO) return Promise.resolve(window.BUSSEV_METRO);
+  if (_metroP) return _metroP;
+  _metroP = new Promise((ok) => {
+    const sc = document.createElement('script');
+    sc.src = 'metro.js'; sc.async = true;
+    setTimeout(() => ok(window.BUSSEV_METRO || null), 6000);   // si tarda o no llega, se sigue sin él
+    sc.onload = () => ok(window.BUSSEV_METRO || null);
+    sc.onerror = () => { _metroP = null; ok(null); };
+    document.head.appendChild(sc);
+  });
+  return _metroP;
+}
+const esMetro = (k) => /^M1(\||$)/.test(String(k || ''));
+/* Horario de una línea|sentido (bus o metro) para un día: { e: {m, v}, g: grupo del día } */
+function horarioDe(k, d = new Date()) {
+  const H = esMetro(k) ? window.BUSSEV_METRO?.horarios : window.BUSSEV_HORARIOS;
+  if (!H?.l?.[k]) return null;
+  return { e: H.l[k], g: H.dias?.[tipoHorarioHoy(d)] };
+}
+/* Datos de una línea, también del metro */
+const lineaInfo = (n) => lineaFor(n) || (String(n) === 'M1' ? window.BUSSEV_METRO?.linea : null) || null;
+const estacionMetro = (c) => (window.BUSSEV_METRO?.estaciones || []).find((e) => e.codigo === c) || null;
+const nombreLinea = (n) => (String(n) === 'M1' ? 'Metro (línea 1)' : `línea ${n}`);
+/* Próximos trenes en una estación (según horario), en los dos sentidos */
+function pasosMetro(codigo, d = new Date()) {
+  const M = window.BUSSEV_METRO;
+  if (!M) return [];
+  const ahora = minutoServicio(d), out = [];
+  for (const sen of [1, 2]) {
+    const seq = M.recorridos.filter((r) => r[2] === sen).sort((a, b) => a[3] - b[3]).map((r) => r[0]);
+    const o = seq.indexOf(codigo), h = horarioDe(`M1|${sen}`, d);
+    if (o < 0 || o === seq.length - 1 || !h || h.g == null || h.e.m[o] == null) continue;
+    const ult = h.e.m.length - 1;
+    let s0 = 0; const mins = [];
+    for (const x of h.e.v[h.g] || []) { const [dd, a, b] = Array.isArray(x) ? x : [x, 0, ult]; s0 += dd; if (o >= a && o < b) mins.push(s0 + h.e.m[o]); }
+    const prox = mins.filter((m) => m >= ahora).slice(0, 3);
+    out.push({ sentido: sen, destino: estacionMetro(seq[seq.length - 1])?.nombre || '', prox, ultimo: mins[mins.length - 1] });
+  }
+  return out;
 }
 /* codigo -> [[línea, sentido, posición]] y "línea|sentido" -> [códigos en orden] */
 function indiceRecorridos() {
@@ -1219,6 +1263,7 @@ function aplicarCapasMapa(bm) {
   vis('bs-stops', settings.mapaParadas !== false);
   vis('bs-stops-hit', settings.mapaParadas !== false);
   for (const id of ['bs-route-casing', 'bs-route', 'bs-route-stops', 'bs-paths-casing', 'bs-paths']) vis(id, settings.mapaRecorridos !== false);
+  for (const id of ['bs-metro-casing', 'bs-metro', 'bs-metro-st', 'bs-metro-hit']) vis(id, settings.mapaMetro !== false);
   // Nombres de calles y sitios = las capas de texto del mapa base
   try { for (const l of m.getStyle()?.layers || []) if (l.type === 'symbol') m.setLayoutProperty(l.id, 'visibility', settings.mapaCalles !== false ? 'visible' : 'none'); } catch { /* */ }
 }
@@ -1239,10 +1284,39 @@ async function addStopDots(bm, onClick) {
     'circle-radius': ['interpolate', ['linear'], ['zoom'], 11, 9, 13, 11, 15, 13, 17, 16, 19, 18],
     'circle-color': '#000000', 'circle-opacity': 0,
   } });
-  const tocar = (e) => { const c = e.features?.[0]?.properties?.codigo; const p = c && cache.paradaByCode.get(String(c)); if (p) onClick(p); };
+  const tocar = (e) => {
+    // Si justo ahí hay una estación de metro, manda la estación (si no, salían las dos ventanas a la vez)
+    try { if (bm.m.getLayer('bs-metro-hit') && settings.mapaMetro !== false && bm.m.queryRenderedFeatures(e.point, { layers: ['bs-metro-hit'] }).length) return; } catch { /* */ }
+    const c = e.features?.[0]?.properties?.codigo; const p = c && cache.paradaByCode.get(String(c)); if (p) onClick(p);
+  };
   bm.m.on('click', 'bs-stops-hit', tocar);
   bm.m.on('mouseenter', 'bs-stops-hit', () => { bm.m.getCanvas().style.cursor = 'pointer'; });
   bm.m.on('mouseleave', 'bs-stops-hit', () => { bm.m.getCanvas().style.cursor = ''; });
+}
+/* Metro de Sevilla: la línea en su color y las estaciones (tocar una → próximos trenes) */
+async function addMetroLayer(bm) {
+  const M = await cargarMetro().catch(() => null);
+  if (!M || !bm?.m) return;
+  const seq = M.recorridos.filter((r) => r[2] === 1).sort((a, b) => a[3] - b[3]).map((r) => estacionMetro(r[0])).filter(Boolean);
+  const color = safeColor(M.linea?.color, '#2e9c3e');
+  bm.source('bs-metro', fc([lineF(seq.map((e) => [e.latitud, e.longitud]), { color })]));
+  bm.source('bs-metro-st', fc(M.estaciones.map((e) => pointF([e.latitud, e.longitud], { codigo: e.codigo }))));
+  bm.layer({ id: 'bs-metro-casing', type: 'line', source: 'bs-metro', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': mapIsDark() ? '#0b0c0f' : '#ffffff', 'line-opacity': 0.85, 'line-width': ['interpolate', ['linear'], ['zoom'], 11, 4, 16, 9] } });
+  bm.layer({ id: 'bs-metro', type: 'line', source: 'bs-metro', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': color, 'line-width': ['interpolate', ['linear'], ['zoom'], 11, 2.2, 16, 5.5], 'line-dasharray': [2, 1.2] } });
+  bm.layer({ id: 'bs-metro-st', type: 'circle', source: 'bs-metro-st', paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 11, 3, 15, 7, 18, 10], 'circle-color': '#ffffff', 'circle-stroke-color': color, 'circle-stroke-width': ['interpolate', ['linear'], ['zoom'], 11, 2, 15, 3.5] } });
+  bm.layer({ id: 'bs-metro-hit', type: 'circle', source: 'bs-metro-st', paint: { 'circle-radius': 16, 'circle-color': '#000000', 'circle-opacity': 0 } });
+  bm.m.on('click', 'bs-metro-hit', (e) => { const c = e.features?.[0]?.properties?.codigo; if (c) estacionModal(String(c)); });
+  aplicarCapasMapa(bm);
+}
+function estacionModal(codigo) {
+  const est = estacionMetro(codigo), M = window.BUSSEV_METRO;
+  if (!est || !M) return;
+  const filas = pasosMetro(codigo).map((p) => `<div class="row-flat"><div style="flex:1;min-width:0"><b>Hacia ${esc(p.destino)}</b><p class="help">${p.prox.length ? p.prox.map(hhmmDe).join(' · ') : 'Hoy ya no pasa más'}${p.ultimo != null && p.prox.length ? ` · último ${hhmmDe(p.ultimo)}` : ''}</p></div></div>`).join('');
+  openModal(`<h2>Ⓜ ${esc(est.nombre)}</h2><p class="help">Metro de Sevilla · próximos trenes según el horario oficial.</p>${filas || '<p class="help">Sin horario para hoy.</p>'}
+    <div class="actions">${settings.modoSencillo ? '' : '<button class="btn ghost" type="button" id="me-ruta">Cómo llegar aquí</button>'}<button class="btn" type="button" id="me-x">Cerrar</button></div>`, (m, close) => {
+    $('#me-x', m).onclick = close;
+    $('#me-ruta', m)?.addEventListener('click', () => { close(); irARuta({ tipo: 'lugar', nombre: `Metro ${est.nombre}`, pos: [est.latitud, est.longitud] }); });
+  });
 }
 /* Capas para recorrido de línea y caminos de los buses */
 function addRouteLayers(bm) {
@@ -2047,6 +2121,7 @@ views.mapa = (el) => {
     mapState.lineMarkers = new MarkerSet(bm);
     addStopDots(bm, selectStop);
     addRouteLayers(bm);
+    addMetroLayer(bm);
     mapState.line = lineController(bm, mapState.lineMarkers, { onStatus: (t, html) => { const n = $('#ml-live'); if (n) { if (html) n.innerHTML = t; else n.textContent = t; } } });
     $('#btn-locate', el).onclick = async () => {
       try {
@@ -2510,6 +2585,7 @@ views.ajustes = (el) => {
         ${sw('mapaParadas', settings.mapaParadas !== false, 'Paradas', 'Los puntos de las paradas.')}
         ${sw('mapaRecorridos', settings.mapaRecorridos !== false, 'Recorridos', 'La línea del autobús cuando eliges una.')}
         ${sw('mapaCalles', settings.mapaCalles !== false, 'Nombres de calles', 'Las etiquetas de calles y sitios del mapa.')}
+        ${sw('mapaMetro', settings.mapaMetro !== false, 'Metro de Sevilla', 'La línea 1 y sus estaciones (toca una para ver los próximos trenes).')}
         <p class="help">Los autobuses en directo se encienden con el botón <img class="lg-busimg" src="${busImg()}" alt="autobús" style="height:18px;vertical-align:-4px"> del mapa.</p></div>
 
       <h2 class="section-title">Accesibilidad</h2>
@@ -2760,6 +2836,7 @@ function route() {
   if (h === 'ajustes') return show('ajustes');
   if (h === 'ruta') return show('ruta');
   if (h === 'avisos') return show('avisos');
+  if (h === 'viaje') return show('viaje');
   if (h === 'tarifas') return show('tarifas');
   if (TABS.includes(h)) return show(h);
   history.replaceState(null, '', '#favoritas');

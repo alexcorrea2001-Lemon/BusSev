@@ -121,12 +121,14 @@ const bajada = {
   actual() { return store.get('bajada', null); },
   /* Paradas desde donde subes hasta donde bajas, en orden */
   tramo(k, desde, hasta) {
-    const seq = indiceRecorridos().seqs.get(k) || [];
+    const seq = esMetro(k)
+      ? (window.BUSSEV_METRO?.recorridos || []).filter((r) => `${r[1]}|${r[2]}` === k).sort((a, b) => a[3] - b[3]).map((r) => r[0])
+      : (indiceRecorridos().seqs.get(k) || []);
     const i = seq.indexOf(String(desde));
     const j = seq.indexOf(String(hasta), i + 1);
     if (i < 0 || j < 0) return null;
     return seq.slice(i, j + 1).map((c) => {
-      const p = cache.paradaByCode.get(c) || (window.BUSSEV_DATA?.paradas || []).find((x) => x.codigo === c) || {};
+      const p = cache.paradaByCode.get(c) || estacionMetro(c) || (window.BUSSEV_DATA?.paradas || []).find((x) => x.codigo === c) || {};
       return { codigo: c, nombre: p.nombre || `Parada ${c}`, lat: p.latitud, lon: p.longitud };
     }).filter((p) => p.lat != null);
   },
@@ -141,9 +143,9 @@ const bajada = {
       try { await native('BusSevViaje', 'empezarBajada', { linea: etiquetaLinea(linea), paradas }); }
       catch (e) { toast(e?.message || 'No se ha podido empezar el aviso.'); return false; }
     } else this.empezarWeb(linea, paradas);
-    store.set('bajada', { linea, destino: fin.nombre, codigo: fin.codigo, inicio: Date.now() });
+    store.set('bajada', { linea, k, destino: fin.nombre, codigo: fin.codigo, inicio: Date.now(), paradas, actual: 0 });
     toast(`Te aviso al llegar a ${fin.nombre}`);
-    active.rerender?.();
+    location.hash = 'viaje';   // pantalla con las paradas que quedan
     return true;
   },
   async parar() {
@@ -200,13 +202,86 @@ window.bajada = bajada;
 function bajadaHTML() {
   const b = bajada.actual();
   if (!b) return '';
-  return `<div class="dia-aviso bj-activo">🔔 <span>Te aviso al llegar a <b>${esc(b.destino)}</b> (línea ${esc(etiquetaLinea(b.linea))}).</span><button class="btn ghost" type="button" data-bj-parar>Parar</button></div>`;
+  return `<div class="dia-aviso bj-activo">🔔 <span>Te aviso al llegar a <b>${esc(b.destino)}</b> (línea ${esc(etiquetaLinea(b.linea))}).</span>${b.paradas ? '<a class="btn ghost" href="#viaje">Ver viaje</a>' : ''}<button class="btn ghost" type="button" data-bj-parar>Parar</button></div>`;
 }
 window.bajadaHTML = bajadaHTML;
+
+/* ---------- Pantalla «Viaje en curso»: las paradas que quedan se van marcando solas ---------- */
+/* Minutos aproximados entre dos posiciones del recorrido (horario oficial; si no, 1,6 min por parada) */
+function minutosEntre(k, i, j) {
+  const e = horarioDe(k)?.e;
+  if (e?.m && e.m[i] != null && e.m[j] != null) return Math.max(0, e.m[j] - e.m[i]);
+  return Math.max(0, j - i) * 1.6;
+}
+/* ¿Por qué parada va? La más cercana de las que quedan (nunca hacia atrás), si está a menos de 150 m */
+function avanceViaje(b, pos) {
+  let mejor = b.actual || 0, dm = Infinity;
+  for (let i = b.actual || 0; i < b.paradas.length; i++) {
+    const d = haversine(pos, [b.paradas[i].lat, b.paradas[i].lon]);
+    if (d < dm) { dm = d; mejor = i; }
+  }
+  return dm < 150 ? Math.max(b.actual || 0, mejor) : (b.actual || 0);
+}
+function textoCompartir(b) {
+  const quedan = b.paradas.length - 1 - (b.actual || 0);
+  const llega = new Date(Date.now() + minutosEntre(b.k, (b.actual || 0) + (b.inicioIdx || 0), b.paradas.length - 1 + (b.inicioIdx || 0)) * 60000);
+  const h = llega.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+  return quedan <= 0 ? `Ya he llegado a ${b.destino} 🚌` : `Voy en el autobús ${etiquetaLinea(b.linea)}. Me bajo en ${b.destino} sobre las ${h} (quedan ${quedan} parada${quedan > 1 ? 's' : ''}). — BusSev`;
+}
+async function compartirViaje(b) {
+  const text = textoCompartir(b);
+  try {
+    if (plugin('Share')) { await native('Share', 'share', { text, dialogTitle: 'Compartir mi viaje' }); return; }
+    if (navigator.share) { await navigator.share({ text }); return; }
+  } catch { return; }   // cancelado
+  openWeb(`https://wa.me/?text=${encodeURIComponent(text)}`);
+}
+views.viaje = (el) => {
+  let watch = null, dead = false, tick = 0;
+  const pintar = () => {
+    const b = bajada.actual();
+    if (!b?.paradas?.length) {
+      el.innerHTML = backHead('<div class="grow"><h2>Viaje en curso</h2></div>') + emptyHTML(ICON.route, 'No vas en ningún autobús', 'Toca un autobús en una parada y elige «Me subo a este: avísame al bajar».');
+      $('.back-btn', el).onclick = goBack;
+      return;
+    }
+    const l = lineaFor(b.linea), act = b.actual || 0, ult = b.paradas.length - 1, quedan = ult - act;
+    // Posición de la parada de subida en el recorrido completo (para el horario)
+    if (b.inicioIdx == null && b.k) {
+      const seq = indiceRecorridos().seqs.get(b.k) || [];
+      b.inicioIdx = Math.max(0, seq.indexOf(b.paradas[0].codigo));
+    }
+    const min = Math.round(minutosEntre(b.k, act + (b.inicioIdx || 0), ult + (b.inicioIdx || 0)));
+    const hora = new Date(Date.now() + min * 60000).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+    setHTML(el, `<div class="stack">${backHead(`<div class="grow"><h2>Viaje en curso</h2><p>Te aviso con vibración al acercarte, aunque bloquees el móvil.</p></div>`)}
+      <section class="card vj-top">
+        <div class="row-flat">${badge(etiquetaLinea(l?.numero || b.linea), l?.color)}<div><b>Te bajas en ${esc(b.destino)}</b><p class="help">${quedan <= 0 ? 'Has llegado' : quedan === 1 ? '<b class="vj-ya">Bájate en la próxima</b>' : `Quedan <b>${quedan}</b> paradas`}${quedan > 0 ? ` · llegas sobre las <b>${hora}</b>` : ''}</p></div></div>
+        <div class="btn-row"><button class="btn" type="button" id="vj-comp">📤 Compartir mi viaje</button><button class="btn ghost" type="button" data-bj-parar>Parar aviso</button></div>
+      </section>
+      <ol class="vj-lista">${b.paradas.map((p, i) => `<li class="${i < act ? 'pasada' : i === act ? 'aqui' : ''}${i === ult ? ' fin' : ''}"><i aria-hidden="true"></i><span><b>${esc(p.nombre)}</b><small>${esc(p.codigo)}${i === act && i < ult ? ' · estás aquí' : ''}${i === ult ? ' · te bajas aquí' : ''}</small></span></li>`).join('')}</ol>
+      <p class="small muted">La hora es aproximada (horario oficial). Las paradas se marcan con tu ubicación.</p></div>`);
+    $('.back-btn', el).onclick = goBack;
+    $('#vj-comp', el).onclick = () => compartirViaje(b);
+    store.set('bajada', b);
+  };
+  pintar();
+  cargarHorarios().then(() => { if (!dead) pintar(); });
+  if (navigator.geolocation) {
+    watch = navigator.geolocation.watchPosition((p) => {
+      const b = bajada.actual();
+      if (!b?.paradas?.length || dead) return;
+      const nuevo = avanceViaje(b, [p.coords.latitude, p.coords.longitude]);
+      if (nuevo !== (b.actual || 0)) { b.actual = nuevo; store.set('bajada', b); pintar(); }
+    }, () => null, { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 });
+  }
+  tick = setInterval(pintar, 30000);   // la hora de llegada se va ajustando
+  active.rerender = pintar;
+  return { cleanup: () => { dead = true; clearInterval(tick); if (watch != null) navigator.geolocation?.clearWatch?.(watch); } };
+};
 document.addEventListener('click', (e) => {
   if (!e.target.closest('[data-bj-parar]')) return;
   e.preventDefault();
-  bajada.parar().then(() => toast('Aviso para bajarte quitado'));
+  bajada.parar().then(() => { toast('Aviso para bajarte quitado'); if (location.hash === '#viaje') goBack(); });
 });
 
 /* ================================================================== */
@@ -260,10 +335,12 @@ async function hablar(texto) {
 const planner = (() => {
   let idx = null;
   function build() {
-    const D = window.BUSSEV_DATA;
-    const pos = new Map(D.paradas.map((p) => [p.codigo, [p.latitud, p.longitud]]));
+    const D = window.BUSSEV_DATA, M = window.BUSSEV_METRO;
+    // El metro entra como una línea más (M1), con sus estaciones como paradas
+    const todas = [...D.paradas, ...(M?.estaciones || [])];
+    const pos = new Map(todas.map((p) => [p.codigo, [p.latitud, p.longitud]]));
     const seqs = new Map();       // "linea|sentido" -> [codigos]
-    for (const [cod, lin, s, orden] of D.recorridos) {
+    for (const [cod, lin, s, orden] of [...D.recorridos, ...(M?.recorridos || [])]) {
       const k = `${lin}|${s}`;
       if (!seqs.has(k)) seqs.set(k, []);
       seqs.get(k).push([orden, cod]);
@@ -277,7 +354,7 @@ const planner = (() => {
     }
     // paradas cercanas entre sí (para cambiar de autobús andando un poco)
     const cerca = new Map();
-    const arr = D.paradas;
+    const arr = todas;
     for (let a = 0; a < arr.length; a++) {
       const pa = [arr[a].latitud, arr[a].longitud];
       for (let b = a; b < arr.length; b++) {
@@ -289,21 +366,24 @@ const planner = (() => {
         }
       }
     }
-    idx = { pos, seqs, porParada, cerca };
+    idx = { pos, seqs, porParada, cerca, metro: !!M };
     return idx;
   }
+  const indice = () => (idx && idx.metro === !!window.BUSSEV_METRO ? idx : build());
   const ANDAR = 75;      // metros por minuto
   const PARADA = 1.6;    // minutos por parada, aproximado
   const CAMBIO = 6;      // penalización por transbordo (esperar al otro autobús)
   function paradasCerca(pt, radio = 450, max = 8) {
-    const { pos } = idx || build();
+    const { pos } = indice();
     return [...pos].map(([c, p]) => [c, haversine(pt, p)]).filter(([, d]) => d <= radio).sort((a, b) => a[1] - b[1]).slice(0, max);
   }
   /* Primer viaje de una línea que pasa por la posición i a partir del minuto «desde» y llega a la j.
      undefined = esa línea no tiene horario (se calcula como antes); null = hoy ya no pasa ninguno. */
   const viajesCache = new Map();
-  function pasoTras(H, g, k, i, j, desde) {
-    const e = H.l[k];
+  function pasoTras(H, g, k, i, j, desde, cuando) {
+    const hd = horarioDe(k, cuando);
+    const e = hd?.e;
+    g = hd?.g;
     if (!e || g == null || e.m?.[i] == null || e.m?.[j] == null) return undefined;
     const ck = `${k}#${g}`;
     if (!viajesCache.has(ck)) {
@@ -316,8 +396,10 @@ const planner = (() => {
     return null;
   }
   function buscar(origen, destino, cuando = new Date()) {
-    const I = idx || build();
-    const O = paradasCerca(origen), Dd = new Map(paradasCerca(destino));
+    const I = indice();
+    // Si no hay paradas a menos de 450 m (sitios apartados), se mira hasta 900 m
+    const cerca2 = (pt) => { const l = paradasCerca(pt); return l.length ? l : paradasCerca(pt, 900, 8); };
+    const O = cerca2(origen), Dd = new Map(cerca2(destino));
     const res = [];
     for (const [o, wo] of O) {
       for (const { k, i } of I.porParada.get(o) || []) {
@@ -345,15 +427,15 @@ const planner = (() => {
     // Con el horario oficial: se cuenta la espera y se descartan las líneas que a esa hora no circulan
     const H = window.BUSSEV_HORARIOS;
     let sinServicio = 0;
-    if (H?.l) {
+    if (H?.l || window.BUSSEV_METRO) {
       const ahora = minutoServicio(cuando);
-      const g = H.dias?.[tipoHorarioHoy(cuando)];
+      const g = H?.dias?.[tipoHorarioHoy(cuando)];
       const conHora = [];
       for (const r of res) {
         let t = ahora + r.andar[0] / ANDAR, ok = true, sale = null;
         for (const [n, tr] of r.tramos.entries()) {
           if (n === 1) t += (r.cambio || 0) / ANDAR + 1;
-          const p = pasoTras(H, g, tr.k, tr.i, tr.j, t);
+          const p = pasoTras(H, g, tr.k, tr.i, tr.j, t, cuando);
           if (p === null) { ok = false; break; }
           if (p === undefined) { t += (n ? CAMBIO : 0) + tr.n * PARADA; continue; }   // línea sin horario: lo de antes
           if (n === 0) sale = p.sube;
@@ -382,38 +464,105 @@ const planner = (() => {
   return { buscar, paradasCerca };
 })();
 
-/* Buscar calles y sitios de Sevilla (OpenStreetMap, servicio Photon: gratis y sin clave) */
+/* Buscar calles, portales y sitios de Sevilla.
+   - Direcciones con número («Avenida de las Ciencias 6»): CartoCiudad, el callejero oficial de España (IGN),
+     que tiene TODOS los portales. OpenStreetMap muchas veces no tiene el número y te dejaba en mitad de la avenida.
+   - Sitios (hospitales, estaciones, centros comerciales…): Photon (OpenStreetMap). Los dos gratis y sin clave. */
 const LUGARES_BBOX = [-6.15, 37.28, -5.80, 37.50];   // Sevilla y alrededores
+const dentroSevilla = ([lat, lon]) => lon >= LUGARES_BBOX[0] && lon <= LUGARES_BBOX[2] && lat >= LUGARES_BBOX[1] && lat <= LUGARES_BBOX[3];
 const lugaresCache = new Map();
-async function buscarLugares(texto) {
-  const q = String(texto || '').trim();
-  if (q.length < 3) return [];
-  if (lugaresCache.has(q.toLowerCase())) return lugaresCache.get(q.toLowerCase());
-  const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=8&lat=37.389&lon=-5.984&bbox=${LUGARES_BBOX.join(',')}`;
-  const ctl = new AbortController(); const to = setTimeout(() => ctl.abort(), 6000);
-  let j;
-  try { const r = await fetch(url, { signal: ctl.signal }); if (!r.ok) throw new Error('photon ' + r.status); j = await r.json(); } finally { clearTimeout(to); }
-  const vistos = new Set(), out = [];
+async function pedirJSON(url, ms = 6000) {
+  const ctl = new AbortController(); const to = setTimeout(() => ctl.abort(), ms);
+  try { const r = await fetch(url, { signal: ctl.signal, credentials: 'omit' }); if (!r.ok) throw new Error(String(r.status)); return await r.json(); } finally { clearTimeout(to); }
+}
+const CC = 'https://www.cartociudad.es/geocoder/api/geocoder';
+const titulo1 = (s) => String(s || '').toLocaleLowerCase('es').replace(/(^|[\s(/-])(\p{L})/gu, (m, a, b) => a + b.toLocaleUpperCase('es'))
+  .replace(/(?<=\s)(De|Del|La|Las|Los|El|Y)(?=\s)/g, (w) => w.toLowerCase());
+async function buscarCartoCiudad(q) {
+  const conSevilla = /sevilla|dos hermanas|mairena|camas|tomares|san juan|bormujos|gelves|alcal[aá]/i.test(q) ? q : `${q}, Sevilla`;
+  const j = await pedirJSON(`${CC}/candidates?q=${encodeURIComponent(conSevilla)}&limit=8&provincia_filter=Sevilla&no_process=municipio,provincia,carretera,ngbe`);
+  return (Array.isArray(j) ? j : []).map((x) => {
+    const tipo = String(x.type || '');
+    // «CIENCIAS (DE LAS)» → «de las Ciencias», como se dice
+    const dir = String(x.address || '').replace(/^(.*?)\s*\(((?:DE |DEL |)(?:LA|LAS|LOS|EL)?|DE|DEL)\)\s*$/i, (m, nom, art) => `${art.trim().toLowerCase()} ${titulo1(nom)}`.trim());
+    const calle = `${x.tip_via ? titulo1(x.tip_via) + ' ' : ''}${dir === x.address ? titulo1(dir) : dir}`.trim();
+    const portal = x.portalNumber ? ` ${x.portalNumber}${x.extension || ''}` : '';
+    const pos = Number.isFinite(+x.lat) && Number.isFinite(+x.lng) && +x.lat ? [+x.lat, +x.lng] : null;
+    return { nombre: `${calle}${portal}`, detalle: [x.postalCode, titulo1(x.muni)].filter(Boolean).join(' '), pos, cc: pos ? null : { id: x.id, type: tipo }, portal: tipo === 'portal', fuente: 'cc' };
+  }).filter((x) => x.nombre && (!x.pos || dentroSevilla(x.pos)));
+}
+/* Calles sin coordenadas en la lista (CartoCiudad solo las da al elegirlas) */
+async function posDeCartoCiudad(l) {
+  if (l.pos || !l.cc) return l.pos;
+  const j = await pedirJSON(`${CC}/find?id=${encodeURIComponent(l.cc.id)}&type=${encodeURIComponent(l.cc.type)}`);
+  const pos = Number.isFinite(+j?.lat) && Number.isFinite(+j?.lng) ? [+j.lat, +j.lng] : null;
+  return pos && dentroSevilla(pos) ? pos : null;
+}
+async function buscarPhoton(q) {
+  const j = await pedirJSON(`https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=8&lat=37.389&lon=-5.984&bbox=${LUGARES_BBOX.join(',')}`);
+  const out = [];
   for (const f of j?.features || []) {
     const pr = f.properties || {}, c = f.geometry?.coordinates;
     if (!Array.isArray(c) || c.length < 2) continue;
-    const [lon, lat] = c;
-    if (lon < LUGARES_BBOX[0] || lon > LUGARES_BBOX[2] || lat < LUGARES_BBOX[1] || lat > LUGARES_BBOX[3]) continue;
+    const pos = [c[1], c[0]];
+    if (!dentroSevilla(pos)) continue;
     const calle = [pr.street, pr.housenumber].filter(Boolean).join(' ');
     const nombre = pr.name || calle;
     if (!nombre) continue;
     const detalle = [pr.name && calle !== pr.name ? calle : '', pr.district || pr.locality || '', pr.city && pr.city !== 'Sevilla' ? pr.city : (pr.district || pr.locality ? '' : 'Sevilla')].filter(Boolean).join(', ');
-    const k = `${nombre}|${detalle}`.toLowerCase();
-    if (vistos.has(k)) continue;
-    vistos.add(k);
-    out.push({ nombre, detalle, pos: [lat, lon] });
+    out.push({ nombre, detalle, pos, sitio: !!pr.name && !pr.housenumber, fuente: 'osm' });
+  }
+  return out;
+}
+async function buscarLugares(texto) {
+  const q = String(texto || '').trim();
+  if (q.length < 3) return [];
+  const k = q.toLowerCase();
+  if (lugaresCache.has(k)) return lugaresCache.get(k);
+  const conNumero = /\d/.test(q.replace(/^\s*\d+\s*$/, ''));
+  const [cc, osm] = await Promise.all([buscarCartoCiudad(q).catch(() => []), buscarPhoton(q).catch(() => [])]);
+  // Con número de portal: primero los portales exactos. Sin número: primero los sitios con nombre (Santa Justa…)
+  const lista = conNumero
+    ? [...cc.filter((x) => x.portal), ...osm.filter((x) => x.sitio), ...cc.filter((x) => !x.portal), ...osm.filter((x) => !x.sitio)]
+    : [...osm.filter((x) => x.sitio), ...cc, ...osm.filter((x) => !x.sitio)];
+  const vistos = new Set(), out = [];
+  for (const l of lista) {
+    const clave = norm(l.nombre).replace(/\b(calle|avenida|avda|av|plaza|pza)\b\.?/g, '').replace(/\s+/g, ' ').trim();
+    // Repetidos (el mismo sitio en las dos fuentes, o la misma calle) solo una vez
+    if (vistos.has(clave) || out.some((o) => o.pos && l.pos && haversine(o.pos, l.pos) < 60)) continue;
+    vistos.add(clave);
+    out.push(l);
     if (out.length >= 5) break;
   }
-  lugaresCache.set(q.toLowerCase(), out);
+  if (!cc.length && !osm.length) throw new Error('sin respuesta');
+  lugaresCache.set(k, out);
   if (lugaresCache.size > 60) lugaresCache.delete(lugaresCache.keys().next().value);
   return out;
 }
 window.buscarLugares = buscarLugares;
+/* Paradas con el mismo nombre (las de un lado y otro de la calle, o las 5 de Santa Justa) van juntas en UNA
+   sugerencia: «Cómo llegar» ya mira todas las paradas de alrededor, así que da igual cuál se elija. */
+function paradasAgrupadas(q, max) {
+  const words = q.split(/\s+/);
+  const encontradas = (window.BUSSEV_DATA.paradas).filter((p) => (/^\d+$/.test(q) ? p.codigo.startsWith(q) : words.every((w) => norm(`${p.nombre} ${p.direccion_completa || ''} ${favs.get(p.codigo)?.alias || ''}`).includes(w))));
+  if (/^\d+$/.test(q)) return encontradas.slice(0, max).map((p) => ({ paradas: [p] }));
+  const grupos = new Map();
+  for (const p of encontradas) {
+    const k = norm(p.nombre.replace(/\s*\(.*\)\s*$/, ''));
+    if (!grupos.has(k)) grupos.set(k, []);
+    grupos.get(k).push(p);
+  }
+  return [...grupos.values()].slice(0, max).map((ps) => ({ paradas: ps }));
+}
+/* Sitios usados hace poco (salen al tocar el campo vacío): tu casa, el trabajo… sin volver a escribirlos */
+const recientes = {
+  list() { return store.get('rutaRecientes', []); },
+  add(l) {
+    if (!l || l.tipo === 'yo' || !l.pos) return;
+    const x = { tipo: l.tipo, nombre: l.nombre, pos: l.pos, codigo: l.codigo || null };
+    store.set('rutaRecientes', [x, ...this.list().filter((r) => r.nombre !== x.nombre)].slice(0, 6));
+  },
+};
 
 views.ruta = (el) => {
   const st = { origen: null, destino: null };   // { tipo:'yo'|'parada'|'lugar', nombre, pos, codigo }
@@ -429,7 +578,7 @@ views.ruta = (el) => {
   }
   function render() {
     el.innerHTML = `<div class="stack">
-      ${backHead('<div class="grow"><h2>Cómo llegar</h2><p>En autobús, directo o con un transbordo.</p></div>')}
+      ${backHead('<div class="grow"><h2>Cómo llegar</h2><p>En autobús o metro, directo o con un transbordo.</p></div>')}
       <div class="set-group">${campo('pl-o', 'Desde', st.origen, 'Mi ubicación, parada o calle')}
         <button class="swap" type="button" id="pl-swap" aria-label="Intercambiar origen y destino">⇅</button>
         ${campo('pl-d', 'Hasta', st.destino, 'Parada, calle, sitio o número de parada')}
@@ -443,70 +592,111 @@ views.ruta = (el) => {
     };
     for (const [id, key] of [['pl-o', 'origen'], ['pl-d', 'destino']]) {
       const inp = $('#' + id, el), box = $(`#${id}-s`, el);
+      const elegir = (v) => { st[key] = v; inp.value = v.nombre; box.hidden = true; };
+      const pintarSugs = (q, lugares) => {
+        const grupos = paradasAgrupadas(q, lugares?.length ? 3 : 6);
+        const paradasHTML = grupos.map((g, n) => {
+          const p = g.paradas[0];
+          return g.paradas.length > 1
+            ? `<button type="button" data-g="${n}"><span class="stop-num lugar-ico" aria-hidden="true">🚏</span><span><b>${esc(p.nombre.replace(/\s*\(.*\)\s*$/, ''))}</b><small>${g.paradas.length} paradas de autobús</small></span></button>`
+            : `<button type="button" data-g="${n}"><span class="stop-num">${esc(p.codigo)}</span><span><b>${esc(nombreParada(p))}</b><small>${esc(p.direccion_completa || '')}</small></span></button>`;
+        }).join('');
+        const lug = (lugares || []).map((l, n) => `<button type="button" data-lg="${n}"><span class="stop-num lugar-ico" aria-hidden="true">${l.portal ? '🏠' : '📍'}</span><span><b>${esc(l.nombre)}</b><small>${esc(l.detalle)}</small></span></button>`).join('');
+        // Los sitios y portales (lo que la gente suele buscar) van primero; las paradas después
+        box.innerHTML = (lug + paradasHTML) || (lugares ? '<p class="help" style="padding:8px">No encuentro ese sitio. Prueba con el nombre de la calle y el número, o con el de una parada.</p>' : '<p class="help" style="padding:8px">Buscando…</p>');
+        box.hidden = false;
+        box.querySelectorAll('[data-g]').forEach((b) => { b.onclick = () => {
+          const ps = grupos[Number(b.dataset.g)].paradas;
+          if (ps.length === 1) { const p = ps[0]; elegir({ tipo: 'parada', nombre: nombreParada(p), pos: [p.latitud, p.longitud], codigo: p.codigo }); return; }
+          const pos = [ps.reduce((a, p) => a + p.latitud, 0) / ps.length, ps.reduce((a, p) => a + p.longitud, 0) / ps.length];
+          elegir({ tipo: 'lugar', nombre: ps[0].nombre.replace(/\s*\(.*\)\s*$/, ''), pos });
+        }; });
+        box.querySelectorAll('[data-lg]').forEach((b) => { b.onclick = async () => {
+          const l = lugares[Number(b.dataset.lg)];
+          let pos = l.pos;
+          if (!pos) { b.querySelector('small').textContent = 'Buscando en el callejero…'; pos = await posDeCartoCiudad(l).catch(() => null); }
+          if (!pos) { toast('No encuentro dónde está esa calle. Prueba con el número del portal.'); return; }
+          elegir({ tipo: 'lugar', nombre: l.nombre, pos });
+        }; });
+      };
+      const pintarRecientes = () => {
+        const rs = recientes.list();
+        if (inp.value.trim() || !rs.length) return;
+        box.innerHTML = `<p class="help" style="padding:6px 8px 2px">Usados hace poco</p>${rs.map((r, n) => `<button type="button" data-rc="${n}"><span class="stop-num lugar-ico" aria-hidden="true">🕘</span><span><b>${esc(r.nombre)}</b></span></button>`).join('')}`;
+        box.hidden = false;
+        box.querySelectorAll('[data-rc]').forEach((b) => { b.onclick = () => elegir(rs[Number(b.dataset.rc)]); });
+      };
+      inp.onfocus = pintarRecientes;
+      // Al salir del campo se cierra la lista (si no, tapaba el botón «Buscar autobuses»)
+      inp.onblur = () => setTimeout(() => { if (document.activeElement !== inp && !box.contains(document.activeElement)) box.hidden = true; }, 250);
       inp.oninput = () => {
         const q = norm(inp.value); st[key] = null;
+        if (!q) { pintarRecientes(); return; }
         if (q.length < 2) { box.hidden = true; return; }
-        const words = q.split(/\s+/);
-        const list = (window.BUSSEV_DATA.paradas).filter((p) => /^\d+$/.test(q) ? p.codigo.startsWith(q) : words.every((w) => norm(`${p.nombre} ${p.direccion_completa || ''} ${favs.get(p.codigo)?.alias || ''}`).includes(w))).slice(0, 8);
-        const paradasHTML = list.map((p) => `<button type="button" data-c="${esc(p.codigo)}"><span class="stop-num">${esc(p.codigo)}</span><span><b>${esc(nombreParada(p))}</b><small>${esc(p.direccion_completa || '')}</small></span></button>`).join('');
-        const pintarSugs = (lugares) => {
-          const lug = (lugares || []).map((l, n) => `<button type="button" data-lg="${n}"><span class="stop-num lugar-ico" aria-hidden="true">📍</span><span><b>${esc(l.nombre)}</b><small>${esc(l.detalle)}</small></span></button>`).join('');
-          box.innerHTML = (paradasHTML + lug) || (lugares ? '<p class="help" style="padding:8px">No encuentro ese sitio. Prueba con el nombre de la calle o de una parada.</p>' : '<p class="help" style="padding:8px">Buscando…</p>');
-          box.hidden = false;
-          box.querySelectorAll('[data-c]').forEach((b) => { b.onclick = () => {
-            const p = cache.paradaByCode.get(b.dataset.c) || window.BUSSEV_DATA.paradas.find((x) => x.codigo === b.dataset.c);
-            st[key] = { tipo: 'parada', nombre: nombreParada(p), pos: [p.latitud, p.longitud], codigo: p.codigo };
-            inp.value = st[key].nombre; box.hidden = true;
-          }; });
-          box.querySelectorAll('[data-lg]').forEach((b) => { b.onclick = () => {
-            const l = lugares[Number(b.dataset.lg)];
-            st[key] = { tipo: 'lugar', nombre: l.nombre, pos: l.pos };
-            inp.value = l.nombre; box.hidden = true;
-          }; });
-        };
-        pintarSugs(/^\d+$/.test(q) ? [] : null);
-        // Calles y sitios (hospitales, estaciones, centros comerciales…): OpenStreetMap, sin clave
+        pintarSugs(q, /^\d+$/.test(q) ? [] : null);
         clearTimeout(fotonT);
         if (/^\d+$/.test(q) || q.length < 3) return;
         const n = ++fotonN;
-        fotonT = setTimeout(() => buscarLugares(inp.value).then((l) => { if (n === fotonN && !box.hidden) pintarSugs(l); }).catch(() => { if (n === fotonN) pintarSugs([]); }), 350);
+        fotonT = setTimeout(() => buscarLugares(inp.value).then((l) => { if (n === fotonN && !box.hidden) pintarSugs(q, l); }).catch(() => { if (n === fotonN) pintarSugs(q, []); }), 350);
       };
     }
   }
   async function buscar() {
     const res = $('#pl-res', el);
+    // Si has escrito algo pero no has tocado ninguna sugerencia, se coge la primera (la que mejor encaja)
+    const primera = async (id) => {
+      const txt = ($('#' + id, el)?.value || '').trim();
+      if (txt.length < 3 || txt === 'Mi ubicación') return null;
+      const lug = await buscarLugares(txt).catch(() => []);
+      for (const l of lug) { const pos = l.pos || await posDeCartoCiudad(l).catch(() => null); if (pos) return { tipo: 'lugar', nombre: l.nombre, pos }; }
+      const g = paradasAgrupadas(norm(txt), 1)[0];
+      if (!g) return null;
+      const ps = g.paradas;
+      return { tipo: 'lugar', nombre: ps[0].nombre, pos: [ps.reduce((a, p) => a + p.latitud, 0) / ps.length, ps.reduce((a, p) => a + p.longitud, 0) / ps.length] };
+    };
+    for (const [id, key] of [['pl-o', 'origen'], ['pl-d', 'destino']]) {
+      if (st[key]) continue;
+      const v = await primera(id);
+      if (v) { st[key] = v; $('#' + id, el).value = v.nombre; $(`#${id}-s`, el).hidden = true; }
+    }
     if (!st.origen) { try { const pos = await getPosition(); st.origen = { tipo: 'yo', nombre: 'Mi ubicación', pos }; $('#pl-o', el).value = 'Mi ubicación'; } catch { toast('Elige desde dónde sales.'); return; } }
-    if (!st.destino) { toast('Elige adónde vas (toca una opción de la lista).'); return; }
+    if (!st.destino) { toast('No encuentro ese destino. Escribe el nombre de un sitio, una calle con número o una parada.'); return; }
     if (haversine(st.origen.pos, st.destino.pos) < 300) { res.innerHTML = '<div class="alert">Está muy cerca: mejor ir andando.</div>'; return; }
+    recientes.add(st.origen); recientes.add(st.destino);
     res.innerHTML = '<div class="board-empty">Buscando…</div>';
-    await Promise.all([getLineas().catch(() => null), cargarHorarios().catch(() => null)]);
+    await Promise.all([getLineas().catch(() => null), cargarHorarios().catch(() => null), cargarMetro().catch(() => null)]);
     const conHorario = !!window.BUSSEV_HORARIOS;
     const ops = planner.buscar(st.origen.pos, st.destino.pos);
     if (!ops.length) {
       res.innerHTML = ops.sinServicio
-        ? emptyHTML(ICON.route, 'A estas horas no hay autobús', 'Las líneas que te llevan ya no circulan hoy. De madrugada solo circulan los Búho (líneas A); prueba más tarde o desde otra parada.')
-        : emptyHTML(ICON.route, 'No he encontrado autobuses', 'No hay una línea directa ni con un solo transbordo entre esos dos puntos. Prueba con una parada cercana.');
+        ? emptyHTML(ICON.route, 'A estas horas no hay autobús ni metro', 'Las líneas que te llevan ya no circulan hoy. De madrugada solo circulan los Búho (líneas A); prueba más tarde o desde otra parada.')
+        : emptyHTML(ICON.route, 'No he encontrado autobuses', 'No hay una línea (de autobús o el metro) directa ni con un solo transbordo entre esos dos puntos. Prueba con una parada cercana.');
       return;
     }
-    const pName = (c) => esc(cache.paradaByCode.get(c)?.nombre || `Parada ${c}`);
+    const pName = (c) => esc(cache.paradaByCode.get(c)?.nombre || (estacionMetro(c) ? `estación ${estacionMetro(c).nombre}` : `Parada ${c}`));
+    const pCod = (c) => (estacionMetro(c) ? 'metro' : esc(c));
+    const paradasTxt = (n, k) => (esMetro(k) ? `${n} estacion${n > 1 ? 'es' : ''}` : `${n} parada${n > 1 ? 's' : ''}`);
     const hora = (m) => (m == null ? '' : hhmmDe(m));
     const proxTxt = (t) => (t.sube != null ? ` · según horario a las ${hora(t.sube)}` : '');
     res.innerHTML = `<h2 class="section-title">Opciones</h2><div class="stack">${ops.map((o, n) => {
-      const ls = o.tramos.map((t) => lineaFor(t.k.split('|')[0]) || { numero: t.k.split('|')[0], color: '#555' });
+      const ls = o.tramos.map((t) => lineaInfo(t.k.split('|')[0]) || { numero: t.k.split('|')[0], color: '#555' });
       const avs = [...new Set(ls.map((l) => l.numero))].flatMap((num) => (window.avisosTussam?.avisosDeLinea?.(num) || []).map((a) => ({ ...a, num })));
-      return `<article class="card plan">
-        <div class="plan-top">${ls.map((l) => badge(l.numero, l.color)).join('<span class="plan-arrow">›</span>')}<span class="plan-min">${Math.round(o.min)} min</span></div>
+      return `<article class="card plan${n >= 3 ? ' plan-extra' : ''}"${n >= 3 ? ' hidden' : ''}>
+        ${n === 0 && ops.length > 1 ? '<span class="plan-mejor">⚡ La que antes te deja</span>' : ''}
+        <div class="plan-top">${ls.map((l) => badge(l.metro ? 'Ⓜ L1' : l.numero, l.color)).join('<span class="plan-arrow">›</span>')}<span class="plan-min">${Math.round(o.min)} min</span></div>
         ${o.llega != null ? `<p class="plan-horas">${o.sale != null ? `Sal sobre las <b>${hora(Math.max(o.llega - o.min, o.sale - Math.ceil(o.andar[0] / 75)))}</b> · ` : ''}llegas sobre las <b>${hora(o.llega)}</b></p>` : ''}
         ${avs.length ? `<div class="plan-aviso">${avs.slice(0, 2).map((a) => `<a href="#" data-aviso="${esc(a.id)}">⚠️ <span>${esc(window.avisosTussam?.titulo ? window.avisosTussam.titulo(a.titulo) : a.titulo)}</span></a>`).join('')}</div>` : ''}
         <ol class="plan-steps">
-          <li><span class="muted">Anda ${fmtDist(o.andar[0])}</span> hasta <b>${pName(o.tramos[0].desde)}</b> <span class="muted">(${esc(o.tramos[0].desde)})</span> · <span class="next" data-next="${n}-0">próximo…</span>${proxTxt(o.tramos[0]) ? `<span class="muted" data-prog="${n}-0">${proxTxt(o.tramos[0])}</span>` : ''}</li>
-          <li>Sube a la <b>línea ${esc(ls[0].numero)}</b> y baja en <b>${pName(o.tramos[0].hasta)}</b> <span class="muted">(${o.tramos[0].n} paradas${o.tramos[0].baja != null ? `, sobre las ${hora(o.tramos[0].baja)}` : ''})</span></li>
-          ${o.tramos[1] ? `<li>${o.cambio > 10 ? `Anda ${fmtDist(o.cambio)} hasta <b>${pName(o.tramos[1].desde)}</b> y` : 'Allí'} coge la <b>línea ${esc(ls[1].numero)}</b> · <span class="next" data-next="${n}-1">próximo…</span>${o.tramos[1].sube != null ? `<span class="muted"> · según horario a las ${hora(o.tramos[1].sube)}</span>` : ''}; baja en <b>${pName(o.tramos[1].hasta)}</b> <span class="muted">(${o.tramos[1].n} paradas)</span></li>` : ''}
+          <li><span class="muted">Anda ${fmtDist(o.andar[0])}</span> hasta <b>${pName(o.tramos[0].desde)}</b> <span class="muted">(${pCod(o.tramos[0].desde)})</span> · <span class="next" data-next="${n}-0">próximo…</span>${proxTxt(o.tramos[0]) ? `<span class="muted" data-prog="${n}-0">${proxTxt(o.tramos[0])}</span>` : ''}</li>
+          <li>${ls[0].metro ? 'Coge el <b>metro</b>' : `Sube a la <b>línea ${esc(ls[0].numero)}</b>`} y baja en <b>${pName(o.tramos[0].hasta)}</b> <span class="muted">(${paradasTxt(o.tramos[0].n, o.tramos[0].k)}${o.tramos[0].baja != null ? `, sobre las ${hora(o.tramos[0].baja)}` : ''})</span></li>
+          ${o.tramos[1] ? `<li>${o.cambio > 10 ? `Anda ${fmtDist(o.cambio)} hasta <b>${pName(o.tramos[1].desde)}</b> y` : 'Allí'} coge ${ls[1].metro ? 'el <b>metro</b>' : `la <b>línea ${esc(ls[1].numero)}</b>`} · <span class="next" data-next="${n}-1">próximo…</span>${o.tramos[1].sube != null ? `<span class="muted"> · según horario a las ${hora(o.tramos[1].sube)}</span>` : ''}; baja en <b>${pName(o.tramos[1].hasta)}</b> <span class="muted">(${paradasTxt(o.tramos[1].n, o.tramos[1].k)})</span></li>` : ''}
           <li><span class="muted">Anda ${fmtDist(o.andar[1])}</span> hasta tu destino</li>
         </ol>
-        <div class="btn-row" style="padding:0 14px 12px"><button class="btn ghost" type="button" data-ver="${esc(ls[0].numero)}">Ver la línea ${esc(ls[0].numero)} en el mapa</button><button class="btn ghost" type="button" data-bajar="${n}">🔔 Avísame al bajar</button></div></article>`;
-    }).join('')}</div><p class="small muted" style="margin:8px 2px 0">${conHorario ? 'Tiempos aproximados según el horario oficial, contando la espera. El «próximo» es el tiempo real de TUSSAM.' : 'Tiempos aproximados: no incluyen la espera salvo en los transbordos.'}</p>`;
+        <div class="btn-row" style="padding:0 14px 12px">${ls[0].metro ? '' : `<button class="btn ghost" type="button" data-ver="${esc(ls[0].numero)}">Ver la línea ${esc(ls[0].numero)} en el mapa</button>`}<button class="btn ghost" type="button" data-bajar="${n}">🔔 Avísame al bajar</button></div></article>`;
+    }).join('')}${ops.length > 3 ? `<button class="btn ghost" type="button" id="pl-mas">Ver ${ops.length - 3} opción${ops.length - 3 > 1 ? 'es' : ''} más</button>` : ''}</div><p class="small muted" style="margin:8px 2px 0">${conHorario ? 'Tiempos aproximados según el horario oficial (autobús y metro), contando la espera. El «próximo» es el tiempo real de TUSSAM.' : 'Tiempos aproximados: no incluyen la espera salvo en los transbordos.'}</p>`;
     res.querySelectorAll('[data-ver]').forEach((b) => { b.onclick = () => chooseMapLine(b.dataset.ver); });
+    const mas = $('#pl-mas', res);
+    if (mas) mas.onclick = () => { res.querySelectorAll('.plan-extra').forEach((x) => { x.hidden = false; }); mas.remove(); };
     res.querySelectorAll('[data-bajar]').forEach((b) => { b.onclick = () => {
       // Con transbordo, primero te aviso donde cambias de autobús (luego lo puedes poner otra vez en el segundo)
       const t = ops[Number(b.dataset.bajar)].tramos[0];
@@ -515,6 +705,12 @@ views.ruta = (el) => {
     // próximo autobús en cada parada de subida (tiempo real)
     ops.forEach((o, n) => o.tramos.forEach((t, ti) => {
       const num = t.k.split('|')[0];
+      if (esMetro(t.k)) {   // el metro no tiene tiempo real: su horario es muy fiable
+        const span = res.querySelector(`[data-next="${n}-${ti}"]`);
+        if (span) span.textContent = t.sube != null ? `tren a las ${hora(t.sube)}` : '';
+        res.querySelector(`[data-prog="${n}-${ti}"]`)?.remove();
+        return;
+      }
       api(`/paradas/${encodeURIComponent(t.desde)}/tiempos`, { prioridad: 'baja' }).then((d) => {
         const b = (d.tiempos || []).filter((x) => lineaFor(x.linea)?.numero === num).sort((a, c) => a.tiempo_minutos - c.tiempo_minutos)[0];
         const span = res.querySelector(`[data-next="${n}-${ti}"]`);

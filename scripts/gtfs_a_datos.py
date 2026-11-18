@@ -118,6 +118,13 @@ def _alinear(canon, paradas):
         while k < len(canon) and canon[k] != c: k += 1
         if k < len(canon):
             out.append((k, _mins_o_none(t))); j = k + 1
+    # TUSSAM solo pone la hora en algunas paradas («puntos de control»): las de en medio se reparten entre
+    # la anterior y la siguiente que sí la tienen (si no, esas paradas se quedaban sin horario)
+    con = [i for i, (_, t) in enumerate(out) if t is not None]
+    for a, b in zip(con, con[1:]):
+        ka, kb, ta, tb = out[a][0], out[b][0], out[a][1], out[b][1]
+        for i in range(a + 1, b):
+            out[i] = (out[i][0], ta + (tb - ta) * (out[i][0] - ka) / max(1, kb - ka))
     return [(k, t) for k, t in out if t is not None]
 def horario_paradas(canon, vs, grupos):
     al = [(sv, _alinear(canon, ps)) for sv, ps in vs]
