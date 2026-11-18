@@ -238,9 +238,55 @@ window.avisosTussam = (() => {
   }
 
   /* ---------- Piezas para otras pantallas ---------- */
-  function filaHTML(a, nuevo) {
+  function filaHTML(a, nuevo, aqui = false) {
     const chips = a.lineas.length ? a.lineas.slice(0, 6).map((n) => badge(et(n), lineaFor(n)?.color, { sm: true })).join('') : `<span class="av-ico">${a.seccion === 'horarios' ? '🕒' : '⚠️'}</span>`;
-    return `<button class="av-row" type="button" data-aviso="${esc(a.id)}"><span class="av-lineas">${chips}</span><span class="av-txt">${esc(titulo(a.titulo))}${nuevo ? ' <i class="av-nuevo">Nuevo</i>' : ''}</span>${ICON.chev}</button>`;
+    return `<button class="av-row" type="button" data-aviso="${esc(a.id)}"><span class="av-lineas">${chips}</span><span class="av-txt">${aqui ? '<b class="av-aqui">Afecta a esta parada</b> ' : ''}${esc(titulo(a.titulo))}${nuevo ? ' <i class="av-nuevo">Nuevo</i>' : ''}</span>${ICON.chev}</button>`;
+  }
+  /* ---------- Avisos de una parada ----------
+     Afectan a una parada los avisos de sus líneas (o solo de las que hayas elegido para esa favorita) y, sobre
+     todo, los que la nombran por su número en el título («PARADA 194 TRASLADADA», «PARADAS 194, 200 Y 312…»):
+     esos se marcan como «Afecta a esta parada» y van primero. */
+  function paradasDe(t) {
+    const T = String(t || '').toLocaleUpperCase('es'), out = new Set();
+    for (const m of T.matchAll(/PARADAS?\s+(?:N[º°O.]*\s*)?(\d{1,4}(?:\s*(?:,|\bY\b|\bE\b)\s*(?:N[º°O.]*\s*)?\d{1,4})*)/g)) {
+      for (const x of m[1].split(/\s*,\s*|\s+[YE]\s+/)) { const v = x.replace(/\D/g, ''); if (v) out.add(String(Number(v))); }
+    }
+    return [...out];
+  }
+  let lineasParadaMapa = null;
+  function lineasDeParada(codigo) {
+    if (!lineasParadaMapa) {
+      lineasParadaMapa = new Map();
+      for (const [c, l] of window.BUSSEV_DATA?.recorridos || []) { const k = String(c); if (!lineasParadaMapa.has(k)) lineasParadaMapa.set(k, new Set()); lineasParadaMapa.get(k).add(String(l)); }
+    }
+    return [...(lineasParadaMapa.get(String(codigo)) || [])];
+  }
+  function avisosDeParada(codigo, lineas) {
+    const d = st.datos;
+    if (!d) return [];
+    const set = new Set((lineas?.length ? lineas : lineasDeParada(codigo)).map((n) => lineaFor(n)?.numero || String(n)));
+    const cod = String(Number(codigo));
+    return d.lista
+      .map((a) => ({ ...a, aqui: paradasDe(a.titulo).includes(cod) }))
+      .filter((a) => a.aqui || a.lineas.some((n) => set.has(n)))
+      .sort((x, y) => Number(y.aqui) - Number(x.aqui));
+  }
+  /* Arriba en la pantalla de la parada */
+  function paradaBannerHTML(codigo, lineas) {
+    const ls = avisosDeParada(codigo, lineas);
+    if (!ls.length) return '';
+    const aqui = ls.some((a) => a.aqui);
+    return `<div class="av-banner${aqui ? ' aqui' : ''}"><h3>⚠️ ${aqui ? 'Aviso de TUSSAM sobre esta parada' : ls.length === 1 ? 'Aviso de TUSSAM en sus líneas' : `${ls.length} avisos de TUSSAM en sus líneas`}</h3>${ls.map((a) => filaHTML(a, false, a.aqui)).join('')}</div>`;
+  }
+  /* Una línea dentro de la tarjeta de la parada en Favoritas (si hay varios, lleva a la parada, donde salen todos) */
+  function favAvisoHTML(codigo, lineas) {
+    const ls = avisosDeParada(codigo, lineas);
+    if (!ls.length) return '';
+    const a = ls[0];
+    const txt = `<span class="fa-ico">⚠️</span><span class="fa-txt"><b>${a.aqui ? 'Afecta a esta parada' : 'Aviso de TUSSAM'}:</b> ${esc(titulo(a.titulo))}${ls.length > 1 ? ` <i>· y ${ls.length - 1} más</i>` : ''}</span>`;
+    return ls.length === 1
+      ? `<button class="fav-aviso${a.aqui ? ' aqui' : ''}" type="button" data-aviso="${esc(a.id)}">${txt}</button>`
+      : `<a class="fav-aviso${a.aqui ? ' aqui' : ''}" href="#parada-${esc(codigo)}">${txt}</a>`;
   }
   /* Banner en una línea o parada: avisos que afectan a esas líneas */
   function bannerHTML(lineas) {
@@ -278,7 +324,7 @@ window.avisosTussam = (() => {
     abrir(b.dataset.aviso);
   });
 
-  return { revisar, abrir, bannerHTML, avisosDeLinea, favoritasHTML, filaHTML, misLineas, meAfecta, titulo, lineasDe, leerLista, leerDetalle, get datos() { return st.datos; }, get vistos() { return st.vistos; }, marcarVistos(ids) { const v = st.vistos; ids.forEach((i) => v.add(i)); st.vistos = v; } };
+  return { revisar, abrir, bannerHTML, avisosDeLinea, avisosDeParada, paradaBannerHTML, favAvisoHTML, paradasDe, favoritasHTML, filaHTML, misLineas, meAfecta, titulo, lineasDe, leerLista, leerDetalle, get datos() { return st.datos; }, get vistos() { return st.vistos; }, marcarVistos(ids) { const v = st.vistos; ids.forEach((i) => v.add(i)); st.vistos = v; } };
 })();
 
 /* ---------- Pantalla «Avisos de TUSSAM» ---------- */

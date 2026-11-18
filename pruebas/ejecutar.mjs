@@ -18,6 +18,7 @@ const PRUEBAS = [
   ['Temáticas, días especiales y vehículos', 'node', ['tematicas.mjs']],
   ['Animaciones, parada e icono', 'node', ['app.mjs']],
   ['Nocturnos, satélite, novedades y actualizar', 'node', ['app2.mjs']],
+  ['Avisos de TUSSAM en las paradas', 'node', ['avisos_parada.mjs']],
   ['Todas las pantallas sin errores', 'node', ['pantallas.mjs']],
 ];
 let fallos = 0;

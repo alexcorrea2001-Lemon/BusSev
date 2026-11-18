@@ -23,6 +23,13 @@ assert.equal(ev(`horasHoy(BUHO, 1, new Date(2026, 10, 23, 12)).noHoy`), true);
 assert.equal(ev(`horasHoy(BUHO, 1, new Date(2026, 10, 21, 1)).ini`), '00:30', 'madrugada del sábado: el del viernes');
 // Pantalla de la línea con los datos reales (sin «horario» todavía): sigue funcionando
 await a.ir('#linea-29', 1500); assert.match(a.$('#l-horario').textContent, /paradas/);
+// Cómo se dice el último: toda la noche (la 29 en fin de semana), de madrugada, o normal
+const ult = (ini, fin) => ev(`textoUltimo({ ini: '${ini}', fin: '${fin}' }).txt`);
+assert.equal(ult('05:18', '05:00'), 'circula toda la noche');
+assert.equal(ult('05:18', '02:00'), 'último 02:00 (de madrugada)');
+assert.equal(ult('06:00', '00:19'), 'último 00:19');
+assert.equal(ult('06:00', '23:30'), 'último 23:30');
+assert.equal(ult('00:15', '05:35'), 'último 05:35', 'búho');
 assert.equal(a.errores.length, 0, a.errores.join('\n'));
 console.log('OK horas de hoy:', a.$('#l-horario').textContent);
 a.cerrar(); process.exit(0);
