@@ -1005,3 +1005,7 @@ html.oculta #fiesta-cielo .f-cruza, html.oculta #fiesta-cielo .f-cruza svg, html
 /* Filas de avisos: con letra grande, los números de línea pasan arriba y el texto ocupa todo el ancho */
 .av-row { flex-wrap: wrap; }
 .av-row .av-txt { flex: 1 1 9em; min-width: 0; }
+/* Selector de sentido de la pantalla de una línea, como el del mapa: «HACIA» pequeño arriba y el destino debajo */
+.seg[aria-label="Sentido"] button { display: grid; justify-items: center; align-content: center; gap: 1px; }
+.seg[aria-label="Sentido"] button small { font-size: 10.5px; font-weight: 600; opacity: .8; text-transform: uppercase; letter-spacing: .04em; }
+.seg[aria-label="Sentido"] button .dst { font-size: 13.5px; overflow-wrap: break-word; }
