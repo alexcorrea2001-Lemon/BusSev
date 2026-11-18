@@ -43,88 +43,63 @@ const palmera = (x, y, h, c) => `<g fill="none" stroke="${c}" stroke-linecap="ro
   <g stroke-width="${h * 0.05}"><path d="M${x - h * 0.04} ${y - h} q${-h * 0.3} ${-h * 0.12} ${-h * 0.5} ${h * 0.12}"/><path d="M${x - h * 0.04} ${y - h} q${h * 0.3} ${-h * 0.14} ${h * 0.5} ${h * 0.1}"/>
   <path d="M${x - h * 0.04} ${y - h} q${-h * 0.2} ${-h * 0.3} ${-h * 0.42} ${-h * 0.18}"/><path d="M${x - h * 0.04} ${y - h} q${h * 0.22} ${-h * 0.3} ${h * 0.42} ${-h * 0.2}"/><path d="M${x - h * 0.04} ${y - h} q${h * 0.02} ${-h * 0.3} ${h * 0.05} ${-h * 0.36}"/></g></g>`;
 
-/* La Giralda al atardecer */
-const giralda = arte((u) => `<defs>${lg(u('c'), 0, 1, [[0, '#2b1b4f'], [0.45, '#b4436c'], [0.78, '#f28f3b'], [1, '#ffd17a']])}${rg(u('s'), 0.5, 0.5, 0.5, [[0, '#fff3c4'], [0.4, '#ffd27a', 0.9], [1, '#ffb347', 0]])}
-  ${lg(u('t'), 1, 0, [[0, '#3a1d3f'], [0.5, '#4d2448'], [1, '#2a1430']])}${velo(u, '#1a0f2e', 0.45)}</defs>
-  <rect width="400" height="250" fill="url(#${u('c')})"/>
-  <circle cx="262" cy="176" r="74" fill="url(#${u('s')})"/><circle cx="262" cy="176" r="30" fill="#ffe7a8"/>
-  ${estrellas([[40, 20], [90, 36, 0.8], [150, 14], [210, 30, 0.8], [372, 22], [330, 44, 0.7]])}
-  <!-- tejados lejanos -->
-  <path d="M0 214 h40 v-10 h26 v6 h30 v-14 h22 v10 h40 v-6 h36 v12 h30 v-8 h40 v10 h36 v-6 h28 v8 h72 V250 H0z" fill="#6e2f57" opacity=".55"/>
-  <!-- catedral -->
-  <g fill="#3a1d3f">
-    <path d="M150 250 V198 l6 -14 l6 14 v-6 h20 v-10 l5 -12 l5 12 v10 h40 v-16 l6 -14 l6 14 v16 h30 V250z"/>
-    <path d="M228 168 q20 -26 40 0z"/><rect x="246" y="150" width="4" height="10"/>
-  </g>
-  <!-- la torre -->
-  <g fill="url(#${u('t')})">
-    <rect x="296" y="96" width="50" height="160"/>
-    <rect x="300" y="64" width="42" height="34"/><rect x="292" y="94" width="58" height="5"/>
-    <rect x="306" y="40" width="30" height="26"/><rect x="298" y="62" width="46" height="4"/>
-    <rect x="311" y="24" width="20" height="18"/><rect x="304" y="38" width="34" height="4"/>
-    <path d="M311 24 q10 -18 20 0z"/><rect x="319.5" y="0" width="3" height="10"/>
-  </g>
-  <path d="M321 2 l9 5 l-9 3z" fill="#3a1d3f"/>
-  <g fill="#ffcf7a" opacity=".8">
-    <path d="M305 76 v-6 a3 3 0 0 1 6 0 v6z M318 76 v-6 a3 3 0 0 1 6 0 v6z M331 76 v-6 a3 3 0 0 1 6 0 v6z"/>
-    <path d="M313 54 v-5 a2.5 2.5 0 0 1 5 0 v5z M324 54 v-5 a2.5 2.5 0 0 1 5 0 v5z"/>
-  </g>
-  <g fill="#ffcf7a" opacity=".45"><rect x="309" y="118" width="6" height="12" rx="3"/><rect x="327" y="118" width="6" height="12" rx="3"/><rect x="309" y="156" width="6" height="12" rx="3"/><rect x="327" y="156" width="6" height="12" rx="3"/><rect x="318" y="190" width="6" height="12" rx="3"/></g>
-  <path d="M296 96 h50" stroke="#ffb35c" stroke-opacity=".5"/>
-  ${palmera(372, 252, 70, '#2a1430')}${palmera(130, 252, 52, '#3a1d3f')}
+/* Estilo «tarjeta de lujo»: fondo con un dibujo ornamental muy suave y el monumento en trazo fino (dorado o crema),
+   con un halo de luz detrás. Todos comparten el mismo estilo, como el azulejo. */
+const ORO = '#E9C77B', CREMA = '#F5E9D0';
+const pat = (id, w, h, inner) => `<pattern id="${id}" patternUnits="userSpaceOnUse" width="${w}" height="${h}">${inner}</pattern>`;
+const trazo = (c, w, inner, op = 1) => `<g fill="none" stroke="${c}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" opacity="${op}">${inner}</g>`;
+const arco = (x, y, w, h) => `<path d="M${x} ${y + h} V${y + w / 2} A${w / 2} ${w / 2} 0 0 1 ${x + w} ${y + w / 2} V${y + h}"/>`;
+const halo = (u, cx, cy, r, c = ORO, a = 0.22) => `${rg(u('h'), 0.5, 0.5, 0.5, [[0, c, a], [1, c, 0]])}<circle cx="${cx}" cy="${cy}" r="${r}" fill="url(#${u('h')})"/>`;
+const base = (u, c1, c2, patron) => `<defs>${lg(u('c'), 1, 1, [[0, c1], [1, c2]])}${patron}</defs><rect width="400" height="250" fill="url(#${u('c')})"/><rect width="400" height="250" fill="url(#${u('p')})"/>`;
+const almenas = (x0, x1, y, h, w) => { let d = `M${x0} ${y}`; for (let x = x0; x + w <= x1 + 0.1; x += 2 * w) d += ` v${-h} h${w} v${h} h${Math.min(w, x1 - x - w)}`; return `<path d="${d}"/>`; };
+const lineas = (y0, n, x0, x1, paso, op) => Array.from({ length: n }, (_, i) => { const m = (x1 - x0) * (1 - i / (n + 1)) / 2, c = (x0 + x1) / 2; return `<path d="M${c - m} ${y0 + i * paso} H${c + m}" opacity="${op * (1 - i / n)}"/>`; }).join('');
+
+/* La Giralda: la torre en oro sobre granate, con la sebka (los rombos de la torre) de fondo */
+const giralda = arte((u) => `${base(u, '#7c1f36', '#2e0815', pat(u('p'), 18, 18, `<path d="M0 9L9 0L18 9L9 18Z" fill="none" stroke="${ORO}" stroke-opacity=".08" stroke-width="1"/>`) + pat(u('s'), 8, 8, `<path d="M0 4L4 0L8 4L4 8Z" fill="none" stroke="${ORO}" stroke-opacity=".55" stroke-width=".8"/>`) + velo(u, '#1a0510', 0.45))}
+  ${halo(u, 315, 130, 150)}
+    <rect x="298" y="150" width="34" height="86" fill="url(#${u('s')})"/>
+  ${trazo(ORO, 2.2, `<path d="M290 250 V104 H340 V250"/><path d="M284 104 H346 M284 98 H346"/>
+    <rect x="298" y="150" width="34" height="86"/>${arco(301, 116, 10, 24)}${arco(319, 116, 10, 24)}
+    <path d="M294 98 V66 H336 V98"/>${arco(299, 72, 9, 22)}${arco(310.5, 72, 9, 22)}${arco(322, 72, 9, 22)}<path d="M290 66 H340"/>
+    <path d="M300 66 V44 H330 V66"/>${arco(311, 49, 8, 13)}<path d="M296 44 H334"/>
+    <path d="M305 44 V30 H325 V44"/><path d="M305 30 Q315 12 325 30"/><path d="M315 16 V4"/><path d="M315 5 l9 2.5 l-9 3"/>`)}
+  <circle cx="315" cy="13" r="2.4" fill="${ORO}"/><circle cx="315" cy="8.5" r="1.8" fill="${ORO}"/>
   ${veloRect(u)}`);
 
-/* La Torre del Oro y el Guadalquivir, de noche */
-const torreoro = arte((u) => `<defs>${lg(u('c'), 0, 1, [[0, '#0b1d3a'], [0.6, '#1f3f74'], [1, '#3f6aa3']])}${lg(u('t'), 1, 0, [[0, '#f4c35a'], [0.55, '#e6a93a'], [1, '#b97a1d']])}
-  ${lg(u('r'), 0, 1, [[0, '#24467b'], [1, '#0a1a33']])}${rg(u('g'), 0.5, 0.5, 0.5, [[0, '#ffd577', 0.45], [1, '#ffd577', 0]])}${velo(u, '#06122a', 0.5)}</defs>
-  <rect width="400" height="250" fill="url(#${u('c')})"/>
-  ${estrellas([[30, 18], [70, 40, 0.8], [120, 12], [180, 30, 0.7], [230, 16], [380, 30], [260, 50, 0.7], [160, 60, 0.6]])}
-  <circle cx="372" cy="46" r="13" fill="#fdf2c8"/><circle cx="378" cy="41" r="11" fill="#1f3f74"/>
-  <!-- orilla de Triana -->
-  <path d="M0 196 h30 v-14 h24 v8 h22 v-18 h18 v12 h28 v-6 h30 v14 h40 V206 H0z" fill="#0d2347"/>
-  <g fill="#ffd577" opacity=".7"><rect x="36" y="188" width="3" height="4"/><rect x="58" y="194" width="3" height="4"/><rect x="98" y="184" width="3" height="4"/><rect x="132" y="192" width="3" height="4"/></g>
-  <ellipse cx="312" cy="150" rx="90" ry="80" fill="url(#${u('g')})"/>
-  <!-- la torre: tres cuerpos -->
-  <g fill="url(#${u('t')})">
-    <path d="M262 210 V126 h100 V210z"/>
-    <path d="M258 126 v-12 h9 v6 h9 v-6 h9 v6 h9 v-6 h9 v6 h9 v-6 h9 v6 h9 v-6 h9 v6 h9 v-6 h9 v6 h9 v-6 h4 v12z"/>
-    <path d="M284 114 V78 h56 V114z"/>
-    <path d="M281 78 v-9 h8 v5 h8 v-5 h8 v5 h8 v-5 h8 v5 h8 v-5 h8 v5 h7 v9z"/>
-    <path d="M298 69 V50 h28 V69z"/><path d="M294 50 q18 -30 36 0z"/><rect x="310.5" y="12" width="3" height="10"/>
-  </g>
-  <path d="M312 126 V210 M312 78 V114" stroke="#a0661a" stroke-opacity=".35" stroke-width="10"/>
-  <g fill="#7a4a12" opacity=".75"><path d="M276 162 v-12 a5 5 0 0 1 10 0 v12z M338 162 v-12 a5 5 0 0 1 10 0 v12z M307 100 v-10 a5 5 0 0 1 10 0 v10z M307 188 v-14 a5 5 0 0 1 10 0 v14z"/></g>
-  <!-- río con reflejos -->
-  <rect y="206" width="400" height="44" fill="url(#${u('r')})"/>
-  <g fill="#f4c35a" opacity=".55"><rect x="276" y="212" width="72" height="2.5" rx="1.2"/><rect x="284" y="219" width="56" height="2" rx="1"/><rect x="292" y="226" width="40" height="2" rx="1"/><rect x="300" y="233" width="24" height="1.6" rx=".8"/></g>
-  <g fill="#fff" opacity=".18"><rect x="30" y="216" width="40" height="1.5"/><rect x="120" y="224" width="60" height="1.5"/><rect x="190" y="214" width="30" height="1.5"/><rect x="360" y="222" width="30" height="1.5"/></g>
-  ${palmera(388, 208, 56, '#081831')}
+/* La Torre del Oro: trazo dorado sobre azul noche, con el río y sus reflejos */
+const torreoro = arte((u) => `${base(u, '#123764', '#06162c', pat(u('p'), 28, 14, `<path d="M0 7 q7 -6 14 0 t14 0" fill="none" stroke="${CREMA}" stroke-opacity=".06"/>`) + velo(u, '#040e1f', 0.5))}
+  ${halo(u, 310, 140, 140)}
+  ${estrellas([[150, 30, 0.9], [210, 18, 0.7], [250, 48, 0.8], [380, 26, 0.9], [360, 70, 0.6]], CREMA)}
+  ${trazo(ORO, 2.2, `<path d="M266 214 V128 H354 V214"/>${almenas(262, 358, 128, 9, 8)}
+    <g opacity=".45"><path d="M288 128 V214 M310 128 V214 M332 128 V214"/></g>
+    ${arco(272, 156, 9, 16)}${arco(339, 156, 9, 16)}${arco(304, 176, 12, 38)}
+    <path d="M286 119 V92 H334 V119"/>${almenas(283, 337, 92, 7, 6)}<g opacity=".45"><path d="M302 92 V119 M318 92 V119"/></g>${arco(305, 98, 10, 16)}
+    <path d="M299 85 V68 H321 V85"/><path d="M296 68 Q310 40 324 68"/><path d="M310 46 V34"/>`)}
+  <circle cx="310" cy="32" r="2.2" fill="${ORO}"/>
+  ${trazo(ORO, 1.8, `<path d="M214 214 H400"/>${lineas(222, 4, 262, 358, 7, 0.6)}`)}
+  ${trazo(CREMA, 1.2, `<path d="M230 240 h40 M370 236 h24"/>`, 0.25)}
   ${veloRect(u)}`);
 
-/* Triana: el puente de Isabel II y las casas de la calle Betis */
-const triana = arte((u) => `<defs>${lg(u('c'), 0, 1, [[0, '#ff9a62'], [0.5, '#ffc785'], [1, '#ffe2b0']])}${lg(u('r'), 0, 1, [[0, '#3b7fa6'], [1, '#1d4a6b']])}${velo(u, '#4a1f0c', 0.45)}</defs>
-  <rect width="400" height="250" fill="url(#${u('c')})"/>
-  <circle cx="300" cy="70" r="26" fill="#fff4d6" opacity=".9"/>
-  <!-- casas de colores de la calle Betis -->
-  <g>
-    <rect x="150" y="118" width="34" height="62" fill="#f2c14e"/><rect x="184" y="104" width="30" height="76" fill="#fbf4e4"/><rect x="214" y="124" width="28" height="56" fill="#d9603b"/>
-    <rect x="242" y="110" width="36" height="70" fill="#f6e3b4"/><rect x="278" y="120" width="26" height="60" fill="#3f8f8a"/><rect x="304" y="100" width="34" height="80" fill="#f2c14e"/>
-    <rect x="338" y="116" width="30" height="64" fill="#c94f4f"/><rect x="368" y="106" width="32" height="74" fill="#fbf4e4"/>
-    <g fill="#7a4b2a" opacity=".55">
-      ${[156, 166, 190, 200, 219, 229, 248, 262, 283, 310, 322, 344, 354, 374, 386].map((x, i) => `<rect x="${x}" y="${126 + (i % 3) * 3}" width="6" height="10" rx="1"/><rect x="${x}" y="${148 + (i % 2) * 2}" width="6" height="10" rx="1"/>`).join('')}
-    </g>
-    <path d="M150 118 h34 M184 104 h30 M214 124 h28 M242 110 h36 M278 120 h26 M304 100 h34 M338 116 h30 M368 106 h32" stroke="#8a4a26" stroke-width="3"/>
-  </g>
-  <!-- el puente: arcos de hierro con sus anillos (solo a la derecha, para no tapar el saldo) -->
-  <rect y="182" width="400" height="68" fill="url(#${u('r')})"/>
-  <g fill="#2a3b4f"><rect x="150" y="172" width="250" height="8"/>${[150, 232, 314, 396].map((x) => `<rect x="${x - 5}" y="178" width="10" height="40"/>`).join('')}</g>
-  <g fill="none" stroke="#2a3b4f" stroke-width="3">
-    ${[150, 232, 314].map((x) => `<path d="M${x + 4} 218 Q ${x + 41} 170 ${x + 78} 218"/>${[0.22, 0.36, 0.5, 0.64, 0.78].map((t) => `<circle cx="${x + 4 + 74 * t}" cy="${182 + Math.abs(t - 0.5) * 14}" r="${3 + (1 - Math.abs(t - 0.5) * 2) * 1.4}"/>`).join('')}`).join('')}
-  </g>
-  <path d="M150 164 h250 M150 172 h250" stroke="#2a3b4f" stroke-width="2"/>
-  <g stroke="#2a3b4f" stroke-width="1.6">${Array.from({ length: 25 }, (_, i) => `<path d="M${154 + i * 10} 164 v8"/>`).join('')}</g>
-  <g fill="#fff" opacity=".35"><rect x="40" y="222" width="50" height="2" rx="1"/><rect x="150" y="232" width="70" height="2" rx="1"/><rect x="270" y="220" width="40" height="2" rx="1"/><rect x="330" y="236" width="50" height="2" rx="1"/></g>
-  ${veloRect(u)}`);
+/* Triana: la capillita del Carmen y el puente con sus anillos, en crema sobre verde azulado */
+const triana = arte((u) => {
+  let puente = '';
+  for (const x of [242, 294, 346]) {
+    puente += `<path d="M${x} 206 Q${x + 26} 180 ${x + 52} 206"/>`;
+    for (const t of [0.2, 0.4, 0.6, 0.8]) {
+      const cx = x + 52 * t, yArco = 206 - 52 * t * (1 - t);
+      const r = Math.min(5.2, Math.max(2, (yArco - 168) / 2 - 1.5));
+      puente += `<circle cx="${cx.toFixed(1)}" cy="${(168 + (yArco - 168) / 2).toFixed(1)}" r="${r.toFixed(1)}"/>`;
+    }
+  }
+  return `${base(u, '#145566', '#062630', pat(u('p'), 16, 16, `<circle cx="8" cy="8" r="1.2" fill="${CREMA}" fill-opacity=".09"/>`) + velo(u, '#03161c', 0.5))}
+    ${halo(u, 300, 150, 150, '#ffd9a0', 0.16)}
+    ${trazo(ORO, 1.8, `<circle cx="352" cy="64" r="15"/>`, 0.8)}
+    ${trazo(CREMA, 2.2, `<path d="M208 214 V160 H238 V214"/>${arco(217, 182, 12, 32)}<path d="M212 160 V140 H234 V160"/><path d="M212 140 Q223 118 234 140"/><path d="M223 122 V110 M218.5 115 H227.5"/>
+      <path d="M238 152 H400 M238 160 H400 M238 168 H400"/>${Array.from({ length: 20 }, (_, i) => `<path d="M${244 + i * 8} 152 V160"/>`).join('')}
+      <path d="M242 168 V214 M294 168 V214 M346 168 V214 M398 168 V214"/>${puente}`)}
+    ${trazo(CREMA, 1.8, `<path d="M214 214 H400"/>${lineas(222, 4, 240, 400, 7, 0.5)}`)}
+    ${veloRect(u)}`;
+});
 
 /* Azulejo sevillano: panel de loza con cenefa */
 const tesela = (x, y, s, u) => `<g transform="translate(${x} ${y})"><use href="#${u('a')}" width="${s}" height="${s}"/></g>`;
@@ -148,178 +123,113 @@ const azulejo = arte((u) => {
     ${veloRect(u)}`;
 });
 
-/* Feria: la portada iluminada de noche */
-const feriaportada = arte((u) => {
-  const c = '#ffe9a6';
-  const torre = (x, y, w, h) => bombillas([[x, y + h], [x, y], [x + w / 2, y - w * 0.7], [x + w, y], [x + w, y + h]], 5.5, 1.5, c);
-  return `<defs>${lg(u('c'), 0, 1, [[0, '#120a2e'], [0.6, '#3b1650'], [1, '#7a2550']])}${lg(u('a'), 0, 1, [[0, '#e7b04a'], [1, '#c7862c']])}
-    ${rg(u('g'), 0.5, 0.55, 0.5, [[0, '#ffd27a', 0.55], [1, '#ffd27a', 0]])}${velo(u, '#0b0620', 0.45)}</defs>
-    <rect width="400" height="250" fill="url(#${u('c')})"/>
-    ${estrellas([[30, 20], [80, 44, 0.8], [140, 16], [200, 36, 0.7], [380, 18], [360, 60, 0.6]])}
-    <ellipse cx="290" cy="130" rx="130" ry="110" fill="url(#${u('g')})"/>
-    <g fill="#2a1240" opacity=".9">
-      <path d="M200 206 V120 l12 -14 l12 14 V206z M356 206 V120 l12 -14 l12 14 V206z"/>
-      <path d="M232 206 V96 l12 -16 l12 16 V206z M324 206 V96 l12 -16 l12 16 V206z"/>
-      <path d="M262 206 V70 l28 -36 l28 36 V206z"/>
-      <path d="M200 140 h180 v8 H200z"/>
-    </g>
-    <g>
-      ${torre(200, 120, 24, 86)}${torre(356, 120, 24, 86)}${torre(232, 96, 24, 110)}${torre(324, 96, 24, 110)}${torre(262, 70, 56, 136)}
-      ${bombillas([[200, 140], [380, 140]], 5.5, 1.5, c)}
-      ${bombillas([[268, 206], [268, 170], [290, 150], [312, 170], [312, 206]], 5, 1.6, '#fff')}
-      ${bombillas([[274, 112], [290, 96], [306, 112], [290, 128], [274, 112]], 4.5, 1.4, '#ffb3c7')}
-      <circle cx="290" cy="112" r="5" fill="#ffd27a"/><path d="M290 34 v-12" stroke="${c}" stroke-width="1.4"/><circle cx="290" cy="20" r="2.6" fill="${c}"/>
-    </g>
-    <path d="M0 206 H400 V250 H0z" fill="url(#${u('a')})"/>
-    <path d="M0 206 H400" stroke="#8a5a1c" stroke-width="2" opacity=".6"/>
-    <g fill="#8a5a1c" opacity=".25">${Array.from({ length: 30 }, (_, i) => `<circle cx="${(i * 37) % 400}" cy="${214 + (i * 13) % 32}" r="1.2"/>`).join('')}</g>
-    ${farolillos(150, 400, 0, 12, 7, 0.9)}
+/* Plaza de España: en crema y oro sobre azul cobalto (los colores del azulejo) */
+const plazaespana = arte((u) => {
+  const torre = (x) => `<path d="M${x - 12} 200 V92 H${x + 12} V200"/><path d="M${x - 15} 92 H${x + 15}"/><path d="M${x - 9} 92 V70 H${x + 9} V92"/><path d="M${x - 11} 70 H${x + 11}"/>
+    <path d="M${x - 6} 70 V56 H${x + 6} V70"/><path d="M${x - 6} 56 Q${x} 40 ${x + 6} 56"/><path d="M${x} 44 V32"/>${arco(x - 7, 104, 5, 14)}${arco(x + 2, 104, 5, 14)}${arco(x - 3, 140, 6, 18)}${arco(x - 3.5, 76, 7, 12)}`;
+  return `${base(u, '#1f55a8', '#0b2459', pat(u('p'), 22, 22, `<path d="M11 4c2 3 2 5 0 7-2-2-2-4 0-7zM11 18c2-3 2-5 0-7-2 2-2 4 0 7zM4 11c3-2 5-2 7 0-2 2-4 2-7 0zM18 11c-3-2-5-2-7 0 2 2 4 2 7 0z" fill="${CREMA}" fill-opacity=".07"/>`) + velo(u, '#061633', 0.5))}
+    ${halo(u, 300, 130, 150, CREMA, 0.14)}
+    ${trazo(CREMA, 2, `${torre(226)}${torre(374)}<path d="M238 122 H362"/><path d="M290 122 L300 110 L310 122"/>
+      ${Array.from({ length: 8 }, (_, i) => arco(244 + i * 14.5, 132, 9, 18)).join('')}<path d="M238 156 H362"/>
+      ${Array.from({ length: 7 }, (_, i) => arco(243 + i * 17, 166, 12, 34)).join('')}<path d="M206 200 H394"/>`)}
+    ${trazo(ORO, 2, `<path d="M214 214 H400"/><path d="M262 214 Q300 196 338 214"/><path d="M258 207 Q300 187 342 207"/>
+      ${Array.from({ length: 9 }, (_, i) => { const t = (i + 1) / 10, x = 258 + 84 * t, y = 207 - 80 * t * (1 - t); return `<path d="M${x.toFixed(1)} ${y.toFixed(1)} v5"/>`; }).join('')}`)}
+    ${trazo(CREMA, 1.4, lineas(224, 3, 230, 370, 8, 0.4))}
     ${veloRect(u)}`;
 });
 
-/* Feria: una caseta con sus volantes y farolillos */
-const feriacaseta = arte((u) => {
-  const rayas = Array.from({ length: 14 }, (_, i) => `<rect x="${176 + i * 16}" y="62" width="8" height="58" fill="#16a34a"/>`).join('');
-  const volantes = Array.from({ length: 14 }, (_, i) => `<path d="M${176 + i * 16} 120 q8 14 16 0z" fill="${i % 2 ? '#16a34a' : '#fff'}"/>`).join('');
-  return `<defs>${lg(u('c'), 0, 1, [[0, '#ffb1a6'], [0.6, '#ffd9b8'], [1, '#fff1d6']])}${lg(u('a'), 0, 1, [[0, '#ecbc5a'], [1, '#d39a35']])}${velo(u, '#5a1020', 0.4)}</defs>
-    <rect width="400" height="250" fill="url(#${u('c')})"/>
-    <!-- techo a dos aguas -->
-    <path d="M168 64 L288 22 L408 64z" fill="#fff"/>
-    ${Array.from({ length: 8 }, (_, i) => `<path d="M${288 - 120 + i * 30} 64 L288 22 L${288 - 120 + i * 30 + 15} 64z" fill="#16a34a"/>`).join('')}
-    <path d="M168 64 L288 22 L408 64" fill="none" stroke="#0f6b31" stroke-width="2.5"/>
-    <!-- lona a rayas y volantes -->
-    <rect x="176" y="62" width="224" height="58" fill="#fff"/>${rayas}${volantes}
-    <!-- fondo de la caseta -->
-    <rect x="176" y="126" width="224" height="80" fill="#7a1028"/>
-    <path d="M176 126 h224" stroke="#5a0b1d" stroke-width="3"/>
-    ${farolillos(182, 398, 132, 6, 6, 0.85)}
-    <!-- barandilla verde -->
-    <g fill="#0f6b31"><rect x="176" y="184" width="224" height="5"/><rect x="176" y="204" width="224" height="4"/>${Array.from({ length: 15 }, (_, i) => `<rect x="${180 + i * 15}" y="188" width="3" height="16"/>`).join('')}</g>
-    <path d="M0 206 H400 V250 H0z" fill="url(#${u('a')})"/>
-    <g fill="#9b6a1e" opacity=".25">${Array.from({ length: 26 }, (_, i) => `<circle cx="${(i * 41) % 400}" cy="${214 + (i * 11) % 32}" r="1.2"/>`).join('')}</g>
-    <!-- abanico -->
-    <g transform="translate(110 226) rotate(-14)"><path d="M0 0 L-34 -30 A45 45 0 0 1 34 -30z" fill="#e11d48"/><g stroke="#8f0d2c" stroke-width="1.2">${[-30, -18, -6, 6, 18, 30].map((a) => `<path d="M0 0 L${44 * Math.sin(a * Math.PI / 180)} ${-44 * Math.cos(a * Math.PI / 180)}"/>`).join('')}</g>
-      <circle cx="-14" cy="-28" r="3" fill="#fff"/><circle cx="0" cy="-36" r="3" fill="#fff"/><circle cx="14" cy="-28" r="3" fill="#fff"/><circle r="3" fill="#facc15"/></g>
-    ${veloRect(u)}`;
-});
-
-/* Semana Santa: paso de palio con su candelería */
-const semanasantapalio = arte((u) => {
-  const velas = [];
-  for (let f = 0; f < 4; f++) for (let i = 0; i < 9 - f; i++) {
-    const x = 214 + f * 8 + i * 18, y = 168 - f * 12;
-    velas.push(`<rect x="${x - 1.6}" y="${y}" width="3.2" height="${22 + f * 2}" fill="#fff7e0"/><circle cx="${x}" cy="${y - 3}" r="6" fill="url(#${u('l')})"/><path d="M${x} ${y - 8}c2.6 3 2.4 5 0 6.4-2.4-1.4-2.6-3.4 0-6.4z" fill="#ffd36b"/>`);
-  }
-  const borlas = Array.from({ length: 12 }, (_, i) => `<path d="M${206 + i * 16} 86 q8 14 16 0" fill="none" stroke="#e8c46a" stroke-width="1.4"/><path d="M${214 + i * 16} 94 v6" stroke="#e8c46a" stroke-width="1.6"/><circle cx="${214 + i * 16}" cy="101" r="1.8" fill="#e8c46a"/>`).join('');
-  return `<defs>${lg(u('c'), 0, 1, [[0, '#0d0618'], [0.6, '#2a1140'], [1, '#43195e']])}${rg(u('l'), 0.5, 0.5, 0.5, [[0, '#ffd36b', 0.75], [1, '#ffd36b', 0]])}
-    ${rg(u('g'), 0.5, 0.6, 0.5, [[0, '#ffbf5a', 0.4], [1, '#ffbf5a', 0]])}${lg(u('o'), 0, 1, [[0, '#f3d98b'], [1, '#b8862e']])}${velo(u, '#07030f', 0.5)}</defs>
-    <rect width="400" height="250" fill="url(#${u('c')})"/>
-    <ellipse cx="300" cy="150" rx="140" ry="110" fill="url(#${u('g')})"/>
-    <!-- techo del palio y bambalinas -->
-    <rect x="200" y="62" width="200" height="26" fill="#3d1458"/>
-    <path d="M200 62 h200" stroke="url(#${u('o')})" stroke-width="4"/>
-    <path d="M200 86 h200" stroke="url(#${u('o')})" stroke-width="2"/>
-    <g fill="#e8c46a" opacity=".85">${Array.from({ length: 9 }, (_, i) => `<path d="M${214 + i * 22} 75 l4 -6 l4 6 l-4 6z"/>`).join('')}</g>
-    ${borlas}
-    <!-- varales -->
-    <g fill="url(#${u('o')})"><rect x="206" y="88" width="4" height="124"/><rect x="236" y="88" width="3" height="124"/><rect x="362" y="88" width="3" height="124"/><rect x="390" y="88" width="4" height="124"/></g>
-    <!-- candelería -->
-    ${velas.join('')}
-    <!-- respiraderos del paso -->
-    <path d="M196 212 h204 v38 H196z" fill="#2a0d3d"/>
-    <path d="M196 212 h204" stroke="url(#${u('o')})" stroke-width="5"/>
-    <g fill="none" stroke="#e8c46a" stroke-width="1.4" opacity=".8">${Array.from({ length: 6 }, (_, i) => `<path d="M${206 + i * 32} 236 q14 -16 28 0"/><circle cx="${220 + i * 32}" cy="242" r="2"/>`).join('')}</g>
-    ${estrellas([[40, 20, 0.8], [100, 40, 0.7], [160, 18, 0.8], [60, 70, 0.6]], '#f3e6c4')}
-    ${veloRect(u)}`;
-});
-
-/* Semana Santa: fila de nazarenos con cirios por una calle estrecha */
-const semanasantanazarenos = arte((u) => {
-  const naz = (x, s, o) => `<g transform="translate(${x} 232) scale(${s})" opacity="${o}">
-    <path d="M0 -112 L-13 -64 h26z" fill="#4b1d6b"/><path d="M-15 -66 h30 l6 66 h-42z" fill="#5b2482"/>
-    <path d="M-13 -66 h26 l-3 26 h-20z" fill="#3f165b"/><ellipse cx="-4" cy="-76" rx="2" ry="1.4" fill="#0d0618"/><ellipse cx="4" cy="-76" rx="2" ry="1.4" fill="#0d0618"/>
-    <path d="M-1.2 -60 h2.4 v4 h4 v2.4 h-4 v9 h-2.4 v-9 h-4 v-2.4 h4z" fill="#e8c46a"/>
-    <rect x="13" y="-74" width="3.4" height="64" rx="1" fill="#fff4d8"/><circle cx="14.7" cy="-79" r="9" fill="url(#${u('l')})"/><path d="M14.7 -86c3 3.4 2.6 6 0 7.4-2.6-1.4-3-4 0-7.4z" fill="#ffd36b"/></g>`;
-  return `<defs>${lg(u('c'), 0, 1, [[0, '#120822'], [1, '#2d1240']])}${rg(u('l'), 0.5, 0.5, 0.5, [[0, '#ffd36b', 0.7], [1, '#ffd36b', 0]])}${velo(u, '#07030f', 0.5)}</defs>
-    <rect width="400" height="250" fill="url(#${u('c')})"/>
-    <!-- calle: fachadas con balcones -->
-    <path d="M170 0 h40 v250 h-40z M372 0 h28 v250 h-28z" fill="#241034"/>
-    <g fill="#3a1a52">${[30, 90, 150].map((y) => `<rect x="178" y="${y}" width="24" height="34" rx="2"/><rect x="366" y="${y + 10}" width="26" height="34" rx="2"/>`).join('')}</g>
-    <g stroke="#120822" stroke-width="1.4">${[64, 124, 184].map((y) => `<path d="M174 ${y} h32 M362 ${y + 10} h36"/>`).join('')}</g>
-    <g fill="#ffcf7a" opacity=".55"><rect x="184" y="38" width="12" height="18" rx="2"/><rect x="372" y="108" width="14" height="18" rx="2"/></g>
-    <!-- farola -->
-    <path d="M206 70 h14 v4 h-14z" fill="#120822"/><path d="M214 74 l-6 10 h14 l-6 -10z" fill="#ffcf7a" opacity=".9"/><circle cx="215" cy="84" r="18" fill="url(#${u('l')})"/>
-    ${naz(350, 0.8, 0.55)}${naz(318, 0.95, 0.72)}${naz(282, 1.1, 0.88)}${naz(238, 1.3, 1)}
-    <path d="M0 232 H400 V250 H0z" fill="#1a0b28"/>
-    <g fill="#ffd36b" opacity=".18">${[220, 262, 296, 326, 352].map((x) => `<ellipse cx="${x}" cy="240" rx="10" ry="2"/>`).join('')}</g>
-    ${veloRect(u)}`;
-});
-
-/* Plaza de España: el edificio en semicírculo, las torres y el canal */
-const plazaespana = arte((u) => `<defs>${lg(u('c'), 0, 1, [[0, '#5aa9e6'], [0.7, '#a9d6f5'], [1, '#e3f2fb']])}${lg(u('b'), 0, 1, [[0, '#d07a4f'], [1, '#a9573a']])}
-  ${lg(u('w'), 0, 1, [[0, '#2f7fb8'], [1, '#1b5a8a']])}${velo(u, '#0e2c4a', 0.42)}</defs>
-  <rect width="400" height="250" fill="url(#${u('c')})"/>
-  <g fill="#fff" opacity=".7"><ellipse cx="90" cy="40" rx="30" ry="8"/><ellipse cx="116" cy="34" rx="20" ry="8"/><ellipse cx="250" cy="26" rx="26" ry="6"/></g>
-  <!-- torres -->
-  ${[178, 360].map((x) => `<g fill="url(#${u('b')})"><rect x="${x}" y="70" width="30" height="110"/><rect x="${x + 4}" y="46" width="22" height="26"/><rect x="${x + 8}" y="30" width="14" height="18"/>
-    <path d="M${x + 8} 30 q7 -16 14 0z"/><rect x="${x + 14}" y="6" width="2" height="10"/></g>
-    <g fill="#f7ead6"><rect x="${x - 2}" y="68" width="34" height="4"/><rect x="${x + 2}" y="44" width="26" height="3"/><rect x="${x + 6}" y="28" width="18" height="3"/></g>
-    <g fill="#5a2a18" opacity=".55"><path d="M${x + 9} 64 v-10 a3 3 0 0 1 6 0 v10z M${x + 16} 64 v-10 a3 3 0 0 1 6 0 v10z"/><rect x="${x + 11}" y="90" width="8" height="12" rx="4"/><rect x="${x + 11}" y="120" width="8" height="12" rx="4"/></g>`).join('')}
-  <!-- edificio con galería de arcos -->
-  <path d="M208 100 h152 v80 H208z" fill="url(#${u('b')})"/>
-  <path d="M206 100 h156" stroke="#f7ead6" stroke-width="4"/>
-  <g fill="#f7ead6">${Array.from({ length: 9 }, (_, i) => `<path d="M${214 + i * 16.5} 140 v-14 a6 6 0 0 1 12 0 v14z"/>`).join('')}</g>
-  <g fill="#7a3a22" opacity=".5">${Array.from({ length: 9 }, (_, i) => `<path d="M${216 + i * 16.5} 140 v-12 a4 4 0 0 1 8 0 v12z"/>`).join('')}</g>
-  <g fill="#f7ead6">${Array.from({ length: 9 }, (_, i) => `<rect x="${216 + i * 16.5}" y="108" width="8" height="10" rx="1"/>`).join('')}</g>
-  <path d="M208 146 h152" stroke="#f7ead6" stroke-width="2"/>
-  <path d="M208 152 h152 v28 H208z" fill="#b96443"/>
-  <g fill="#f7ead6">${Array.from({ length: 10 }, (_, i) => `<path d="M${210 + i * 15.5} 180 v-16 a6 6 0 0 1 12 0 v16z"/>`).join('')}</g>
-  <!-- canal y puente de azulejos -->
-  <rect y="186" width="400" height="64" fill="url(#${u('w')})"/>
-  <path d="M0 186 h400" stroke="#f7ead6" stroke-width="3"/>
-  <path d="M232 214 q52 -40 104 0 v8 h-104z" fill="#f7ead6"/>
-  <path d="M244 222 q40 -28 80 0" fill="#1b5a8a"/>
-  <g fill="#1d4f9c">${Array.from({ length: 12 }, (_, i) => `<rect x="${236 + i * 8.4}" y="${193 - Math.sin((i + 0.5) / 12 * Math.PI) * 13}" width="4" height="4"/>`).join('')}</g>
-  <path d="M232 194 q52 -30 104 0" fill="none" stroke="#f7ead6" stroke-width="3"/>
-  <g fill="#fff" opacity=".35"><rect x="30" y="206" width="60" height="2" rx="1"/><rect x="110" y="226" width="80" height="2" rx="1"/><rect x="340" y="232" width="50" height="2" rx="1"/></g>
-  ${veloRect(u)}`);
-
-/* Las Setas (Metropol Parasol) al anochecer */
+/* Las Setas: la retícula de madera en trazo cálido sobre gris carbón */
 const setas = arte((u) => {
-  // Retícula de madera recortada con forma de seta
+  const forma = 'M186 120 C 186 60, 260 46, 300 62 C 330 36, 400 40, 404 92 C 404 124, 380 130, 360 128 C 352 150, 344 160, 344 210 h-26 C 318 170, 314 140, 300 128 C 290 132, 274 134, 262 132 C 252 150, 248 170, 248 210 h-24 C 224 170, 222 146, 214 134 C 196 132, 186 128, 186 120z';
   const ret = [];
-  for (let x = 190; x <= 400; x += 11) ret.push(`<path d="M${x} 30 V210"/>`);
-  for (let y = 40; y <= 210; y += 11) ret.push(`<path d="M180 ${y} H400"/>`);
-  return `<defs>${lg(u('c'), 0, 1, [[0, '#1c2b4a'], [0.55, '#e0607e'], [1, '#ffc58a']])}${velo(u, '#10162b', 0.45)}
-    <clipPath id="${u('k')}"><path d="M186 120 C 186 60, 260 46, 300 62 C 330 36, 400 40, 404 92 C 404 124, 380 130, 360 128 C 352 150, 344 160, 344 210 h-26 C 318 170, 314 140, 300 128 C 290 132, 274 134, 262 132 C 252 150, 248 170, 248 210 h-24 C 224 170, 222 146, 214 134 C 196 132, 186 128, 186 120z"/></clipPath></defs>
-    <rect width="400" height="250" fill="url(#${u('c')})"/>
-    <circle cx="120" cy="190" r="34" fill="#ffd9a0" opacity=".6"/>
-    <path d="M0 206 h70 v-20 h20 v12 h36 v-24 h30 v20 h30 V250 H0z" fill="#2b2140" opacity=".75"/>
-    <g clip-path="url(#${u('k')})">
-      <rect x="180" y="30" width="224" height="190" fill="#f2d7a6"/>
-      <g stroke="#b9895a" stroke-width="2.4">${ret.join('')}</g>
-      <rect x="180" y="30" width="224" height="190" fill="#ffb27a" opacity=".18"/>
-    </g>
-    <path d="M186 120 C 186 60, 260 46, 300 62 C 330 36, 400 40, 404 92" fill="none" stroke="#fff3dc" stroke-width="2" opacity=".7"/>
-    <g fill="#ffe7b8" opacity=".9">${[200, 222, 244, 266, 288, 310, 332, 354, 376].map((x) => `<circle cx="${x}" cy="${116 + Math.sin(x / 30) * 5}" r="1.6"/>`).join('')}</g>
-    <path d="M150 210 H400 V250 H150z" fill="#2b2140"/>
-    <path d="M150 210 H400" stroke="#ffd9a0" stroke-opacity=".5"/>
-    <g fill="#ffd9a0" opacity=".5">${[176, 206, 270, 300, 372].map((x) => `<rect x="${x}" y="220" width="10" height="6" rx="1"/>`).join('')}</g>
+  for (let x = 190; x <= 404; x += 10) ret.push(`<path d="M${x} 30 V214"/>`);
+  for (let y = 40; y <= 214; y += 10) ret.push(`<path d="M180 ${y} H404"/>`);
+  return `${base(u, '#2b2836', '#0f0e15', pat(u('p'), 12, 12, `<path d="M0 0H12V12" fill="none" stroke="${CREMA}" stroke-opacity=".035"/>`) + velo(u, '#08070c', 0.5)
+    + `<clipPath id="${u('k')}"><path d="${forma}"/></clipPath>`)}
+    ${halo(u, 300, 120, 150, '#f2b56b', 0.2)}
+    <g clip-path="url(#${u('k')})">${trazo('#F2C38B', 1.1, ret.join(''), 0.75)}</g>
+    ${trazo('#F2C38B', 2.4, `<path d="${forma}"/><path d="M214 214 H400"/>`)}
+    ${trazo(CREMA, 1.2, `<path d="M260 234 h60 M340 226 h50"/>`, 0.2)}
+    ${veloRect(u)}`;
+});
+
+/* Feria: la portada hecha de bombillas, sobre noche con lunares muy suaves */
+const feriaportada = arte((u) => {
+  const c = '#FFE3A1';
+  const torre = (x, y, w, h) => bombillas([[x, y + h], [x, y], [x + w / 2, y - w * 0.75], [x + w, y], [x + w, y + h]], 6, 1.5, c);
+  return `${base(u, '#22124d', '#0a0620', pat(u('p'), 24, 24, `<circle cx="6" cy="6" r="2.4" fill="#fff" fill-opacity=".05"/><circle cx="18" cy="18" r="2.4" fill="#fff" fill-opacity=".05"/>`) + velo(u, '#06031a', 0.5))}
+    ${halo(u, 300, 130, 150, '#ffd27a', 0.3)}
+    ${torre(214, 122, 22, 88)}${torre(364, 122, 22, 88)}${torre(244, 96, 24, 114)}${torre(332, 96, 24, 114)}${torre(274, 68, 52, 142)}
+    ${bombillas([[214, 146], [386, 146]], 6, 1.5, c)}${bombillas([[214, 210], [386, 210]], 6, 1.5, c)}
+    ${bombillas([[282, 210], [282, 174], [300, 156], [318, 174], [318, 210]], 5.5, 1.6, '#fff')}
+    ${bombillas([[284, 112], [300, 96], [316, 112], [300, 128], [284, 112]], 5, 1.4, '#ffb3c7')}
+    <circle cx="300" cy="112" r="4.5" fill="${ORO}"/>
+    ${trazo(ORO, 1.6, `<path d="M300 29 V16"/>`)}<circle cx="300" cy="14" r="2.6" fill="${c}"/>
+    ${trazo(ORO, 1.8, `<path d="M214 218 H400"/>${lineas(226, 3, 214, 386, 7, 0.45)}`)}
+    ${veloRect(u)}`;
+});
+
+/* Feria: la caseta en trazo blanco sobre rojo flamenco con lunares */
+const feriacaseta = arte((u) => {
+  const fols = Array.from({ length: 6 }, (_, i) => { const x = 236 + i * 28, y = 122 + Math.sin((i + 0.5) / 6 * Math.PI) * 10;
+    return `<path d="M${x} ${y - 6} c-7 0 -8 5 -8 9 s1 9 8 9 s8 -5 8 -9 s-1 -9 -8 -9z"/><path d="M${x - 8} ${y + 3} h16"/>`; }).join('');
+  return `${base(u, '#cf1733', '#7a0a1e', pat(u('p'), 26, 26, `<circle cx="6.5" cy="6.5" r="3.6" fill="#fff" fill-opacity=".13"/><circle cx="19.5" cy="19.5" r="3.6" fill="#fff" fill-opacity=".13"/>`) + velo(u, '#3d0410', 0.45))}
+    ${halo(u, 300, 130, 140, '#ffe1b0', 0.18)}
+    ${trazo('#fff', 2.2, `<path d="M206 94 L300 52 L394 94 Z"/>${[-3, -2, -1, 0, 1, 2, 3].map((k) => `<path d="M300 52 L${300 + k * 27} 94"/>`).join('')}
+      <path d="M206 94 ${Array.from({ length: 12 }, () => 'q7.8 12 15.7 0').join(' ')}"/>
+      <path d="M216 100 V208 M384 100 V208"/><path d="M228 116 Q300 132 372 116"/>${fols}
+      <path d="M216 180 H384 M216 196 H384"/>${Array.from({ length: 14 }, (_, i) => `<path d="M${226 + i * 12} 180 V196"/>`).join('')}`)}
+    ${trazo(ORO, 1.6, `<path d="M300 52 V40"/><path d="M296 42 l4 -8 l4 8"/>`)}
+    ${trazo('#fff', 1.8, `<path d="M214 210 H400"/>`, 0.7)}
+    ${veloRect(u)}`;
+});
+
+/* Semana Santa: el palio en oro sobre terciopelo morado, con la candelería encendida */
+const damasco = (u) => pat(u('p'), 30, 30, `<g fill="${ORO}" fill-opacity=".08"><path d="M15 5c2.4 3.4 2.4 5.6 0 8-2.4-2.4-2.4-4.6 0-8zM15 25c2.4-3.4 2.4-5.6 0-8-2.4 2.4-2.4 4.6 0 8zM5 15c3.4-2.4 5.6-2.4 8 0-2.4 2.4-4.6 2.4-8 0zM25 15c-3.4-2.4-5.6-2.4-8 0 2.4 2.4 4.6 2.4 8 0z"/><circle cx="15" cy="15" r="1.6"/></g>`);
+const llama = (u, x, y, s = 1) => `<circle cx="${x}" cy="${y}" r="${7 * s}" fill="url(#${u('l')})"/><path d="M${x} ${y - 5 * s}c${2.6 * s} ${3 * s} ${2.4 * s} ${5 * s} 0 ${6.4 * s}c${-2.4 * s} ${-1.4 * s} ${-2.6 * s} ${-3.4 * s} 0 ${-6.4 * s}z" fill="#FFD36B"/>`;
+const semanasantapalio = arte((u) => {
+  let velas = '';
+  for (let f = 0; f < 3; f++) for (let i = 0; i < 8 - f; i++) {
+    const x = 236 + f * 9 + i * 18, y = 166 - f * 13, h = 26 + f * 4;
+    velas += `<rect x="${x - 1.4}" y="${y}" width="2.8" height="${h}" rx="1" fill="${CREMA}"/>${llama(u, x, y - 4, 0.9)}`;
+  }
+  return `${base(u, '#4f1d72', '#1b062b', damasco(u) + rg(u('l'), 0.5, 0.5, 0.5, [[0, '#ffd36b', 0.6], [1, '#ffd36b', 0]]) + velo(u, '#0d0316', 0.5))}
+    ${halo(u, 305, 150, 150, '#ffc768', 0.22)}
+    ${trazo(ORO, 2.2, `<rect x="212" y="62" width="180" height="22" rx="2"/><path d="M220 73 H384" stroke-dasharray="2 6"/>
+      <path d="M212 84 ${Array.from({ length: 12 }, () => 'q7.5 11 15 0').join(' ')}"/>
+      <path d="M218 90 V196 M242 90 V196 M362 90 V196 M386 90 V196"/>
+      <path d="M212 196 H400 V224 H212 Z"/>${Array.from({ length: 6 }, (_, i) => arco(219 + i * 30, 202, 19, 16)).join('')}`)}
+    <g fill="${ORO}">${Array.from({ length: 12 }, (_, i) => `<circle cx="${219.5 + i * 15}" cy="94" r="1.8"/>`).join('')}</g>
+    ${velas}
+    ${trazo(ORO, 1.6, `<path d="M214 232 H400"/>`, 0.5)}
+    ${veloRect(u)}`;
+});
+
+/* Semana Santa: nazarenos con sus cirios, en trazo dorado */
+const semanasantanazarenos = arte((u) => {
+  const naz = (x, s, o) => `<g transform="translate(${x} 222) scale(${s})" opacity="${o}">
+    ${trazo(ORO, 2 / s, `<path d="M0 -118 L-14 -66 H14 Z"/><path d="M-16 -66 H16 L22 0 H-22 Z"/><path d="M-14 -66 H14 L11 -38 H-11 Z"/><path d="M0 -60 V-44 M-5 -54 H5"/><path d="M17 -78 V-6"/>`)}
+    <ellipse cx="-4.5" cy="-80" rx="2" ry="1.4" fill="${ORO}"/><ellipse cx="4.5" cy="-80" rx="2" ry="1.4" fill="${ORO}"/>${llama(u, 17, -84, 1.1)}</g>`;
+  return `${base(u, '#2a0f3e', '#0a0412', damasco(u) + rg(u('l'), 0.5, 0.5, 0.5, [[0, '#ffd36b', 0.65], [1, '#ffd36b', 0]]) + velo(u, '#050208', 0.5))}
+    ${halo(u, 300, 140, 150, '#ffc768', 0.16)}
+    ${trazo(ORO, 1.4, `<path d="M214 222 L300 150 L400 222"/><path d="M200 70 V222 M392 60 V222"/><path d="M200 70 h-8 M392 60 h8"/>`, 0.3)}
+    ${naz(352, 0.7, 0.55)}${naz(322, 0.85, 0.72)}${naz(286, 1.02, 0.88)}${naz(242, 1.22, 1)}
+    ${trazo(ORO, 1.8, `<path d="M214 224 H400"/>`, 0.6)}
     ${veloRect(u)}`;
 });
 
 const DISENOS = {};
 const def = (k, nombre, fondo, fn) => { DISENOS[k] = { nombre, fondo, get svg() { return fn(); } }; };
-def('giralda', 'La Giralda', '#b4436c', giralda);
-def('torreoro', 'Torre del Oro', '#1f3f74', torreoro);
-def('triana', 'Puente de Triana', '#ffc785', triana);
+def('giralda', 'La Giralda', '#5a1426', giralda);
+def('torreoro', 'Torre del Oro', '#0c2748', torreoro);
+def('triana', 'Puente de Triana', '#0d3d4a', triana);
 def('azulejo', 'Azulejo', '#123f8c', azulejo);
-def('plazaespana', 'Plaza de España', '#5aa9e6', plazaespana);
-def('setas', 'Las Setas', '#e0607e', setas);
-def('feriaportada', 'Portada de Feria', '#3b1650', feriaportada);
-def('feriacaseta', 'Caseta de Feria', '#ffd9b8', feriacaseta);
-def('semanasantapalio', 'Paso de palio', '#2a1140', semanasantapalio);
-def('semanasantanazarenos', 'Nazarenos', '#2d1240', semanasantanazarenos);
+def('plazaespana', 'Plaza de España', '#15397f', plazaespana);
+def('setas', 'Las Setas', '#1d1b26', setas);
+def('feriaportada', 'Portada de Feria', '#160c36', feriaportada);
+def('feriacaseta', 'Caseta de Feria', '#a5112a', feriacaseta);
+def('semanasantapalio', 'Paso de palio', '#35114f', semanasantapalio);
+def('semanasantanazarenos', 'Nazarenos', '#1a0828', semanasantanazarenos);
 
 /* Marcos de la tarjeta (se dibujan encima, siguiendo las esquinas redondeadas) */
 const MARCOS = [
