@@ -21,6 +21,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(BusSevWidgetPlugin.class);
         registerPlugin(ActualizadorPlugin.class);
         registerPlugin(ViajePlugin.class);
+        registerPlugin(ClavePlugin.class);
         super.onCreate(savedInstanceState);
         handleIntent(getIntent());
 

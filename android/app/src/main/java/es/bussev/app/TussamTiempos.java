@@ -46,12 +46,22 @@ class TussamTiempos {
         return sb.toString();
     }
 
-    static String token(SharedPreferences p) throws Exception {
+    // Token en memoria (TUSSAM los da para 5 minutos): se reutiliza mientras valga
+    private static String tokenGuardado = null;
+    private static long tokenHasta = 0;
+
+    /** Compatibilidad: antes las credenciales venían de la app; ahora van cifradas dentro de Android (Claves). */
+    static String token(SharedPreferences p) throws Exception { return token(false); }
+
+    /** Pide un token a TUSSAM con las credenciales cifradas de Claves (nunca salen de aquí). */
+    static synchronized String token(boolean nuevo) throws Exception {
+        if (!nuevo && tokenGuardado != null && System.currentTimeMillis() < tokenHasta) return tokenGuardado;
+        if (!Claves.hay()) throw new Exception("Faltan las credenciales de TUSSAM en esta compilación");
         String body = "grant_type=password"
-                + "&client_id=" + enc(p.getString("clientId", ""))
-                + "&client_secret=" + enc(p.getString("clientSecret", ""))
-                + "&username=" + enc(p.getString("user", ""))
-                + "&password=" + enc(p.getString("pass", ""));
+                + "&client_id=" + enc(Claves.clientId())
+                + "&client_secret=" + enc(Claves.clientSecret())
+                + "&username=" + enc(Claves.usuario())
+                + "&password=" + enc(Claves.clave());
         HttpURLConnection c = (HttpURLConnection) new URL(URL_TOKEN).openConnection();
         try {
             c.setRequestMethod("POST");
@@ -63,8 +73,13 @@ class TussamTiempos {
             OutputStream os = c.getOutputStream();
             os.write(body.getBytes(StandardCharsets.UTF_8));
             os.close();
-            if (c.getResponseCode() != 200) throw new Exception("token " + c.getResponseCode());
-            return new JSONObject(leer(c.getInputStream())).optString("access_token", null);
+            if (c.getResponseCode() != 200) { tokenGuardado = null; throw new Exception("token " + c.getResponseCode()); }
+            JSONObject j = new JSONObject(leer(c.getInputStream()));
+            String t = j.optString("access_token", "");
+            if (t.isEmpty()) { tokenGuardado = null; return null; }
+            tokenGuardado = t;
+            tokenHasta = System.currentTimeMillis() + Math.max(30, j.optInt("expires_in", 300) - 40) * 1000L;
+            return t;
         } finally {
             c.disconnect();
         }

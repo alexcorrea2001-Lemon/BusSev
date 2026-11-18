@@ -138,7 +138,7 @@ jobs:
           node pruebas/ejecutar.mjs
 
       # Credenciales de la API de TUSSAM: viven en un Secret del repositorio (nunca en el código).
-      # Aquí se escribe www/secrets.js al vuelo, antes de meter la app en el APK.
+      # Aquí se cifran dentro de Android (Claves.java) antes de compilar el APK.
       - name: Credenciales de TUSSAM
         if: steps.seguir.outputs.si == 'si'
         env:
@@ -149,7 +149,10 @@ jobs:
             echo "::error::Falta el secreto TUSSAM_SECRETS_JS (Settings → Secrets and variables → Actions). Mira el README."
             exit 1
           fi
-          printf '%s\n' "$TUSSAM_SECRETS_JS" > www/secrets.js
+          # Las credenciales van CIFRADAS dentro de Android (Claves.java), no en un archivo de texto del APK.
+          # www/secrets.js queda sin credenciales (solo con el permiso de actualizaciones, si lo hay).
+          node scripts/generar_claves.mjs
+          printf '/* Sin credenciales: van cifradas dentro de Android. */\n' > www/secrets.js
           # Repositorio privado: permiso de SOLO LECTURA de este repositorio, para que la app vea y descargue
           # las versiones nuevas. Si no está, la app funciona igual pero no puede buscar actualizaciones.
           if [ -n "$ACTUALIZAR_TOKEN" ]; then
