@@ -35,7 +35,7 @@ export async function arrancar({ hash = '#favoritas', ls = {}, reduce = false, l
   w.BUSSEV_TUSSAM = { clientId: 'x', clientSecret: 'y', user: 'u', pass: 'p' };
   w.addEventListener('error', (e) => errores.push('error: ' + (e.error?.stack || e.message)));
   w.addEventListener('unhandledrejection', (e) => errores.push('promesa: ' + (e.reason?.stack || e.reason)));
-  for (const f of ['version.js', 'data.js', 'recorridos.js', 'backend.js', 'app.js', 'tarjeta.js', 'avisos-tussam.js', 'tarifas.js', 'extras.js']) {
+  for (const f of ['version.js', 'data.js', 'recorridos.js', 'backend.js', 'app.js', 'disenos.js', 'tarjeta.js', 'avisos-tussam.js', 'tarifas.js', 'extras.js']) {
     try { new vm.Script(f === 'version.js' && version ? `window.BUSSEV_VERSION = ${JSON.stringify(version)};` : fs.readFileSync(R + f, 'utf8'), { filename: f }).runInContext(dom.getInternalVMContext()); } catch (e) { errores.push(`${f}: ${e.stack}`); }
   }
   const espera = (ms) => new Promise((r) => setTimeout(r, ms));

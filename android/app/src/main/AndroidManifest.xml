@@ -20,11 +20,6 @@
             android:exported="true">
 
             <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-
-            <intent-filter>
                 <action android:name="android.nfc.action.TECH_DISCOVERED" />
             </intent-filter>
             <meta-data
@@ -32,6 +27,100 @@
                 android:resource="@xml/nfc_tech_filter" />
 
         </activity>
+
+        <!-- Icono de la app a elegir (Ajustes → Icono de la app): cada uno es un «alias» que abre la misma app;
+             solo uno está activo a la vez. -->
+        <activity-alias
+            android:name=".IconoClasico"
+            android:targetActivity=".MainActivity"
+            android:icon="@mipmap/ic_launcher"
+            android:roundIcon="@mipmap/ic_launcher_round"
+            android:label="@string/app_name"
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+        <activity-alias
+            android:name=".IconoNoche"
+            android:targetActivity=".MainActivity"
+            android:icon="@drawable/ic_alt_noche"
+            android:roundIcon="@drawable/ic_alt_noche"
+            android:label="@string/app_name"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+        <activity-alias
+            android:name=".IconoAzulejo"
+            android:targetActivity=".MainActivity"
+            android:icon="@drawable/ic_alt_azulejo"
+            android:roundIcon="@drawable/ic_alt_azulejo"
+            android:label="@string/app_name"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+        <activity-alias
+            android:name=".IconoFeria"
+            android:targetActivity=".MainActivity"
+            android:icon="@drawable/ic_alt_feria"
+            android:roundIcon="@drawable/ic_alt_feria"
+            android:label="@string/app_name"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+        <activity-alias
+            android:name=".IconoSemanaSanta"
+            android:targetActivity=".MainActivity"
+            android:icon="@drawable/ic_alt_semanasanta"
+            android:roundIcon="@drawable/ic_alt_semanasanta"
+            android:label="@string/app_name"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+        <activity-alias
+            android:name=".IconoGiralda"
+            android:targetActivity=".MainActivity"
+            android:icon="@drawable/ic_alt_giralda"
+            android:roundIcon="@drawable/ic_alt_giralda"
+            android:label="@string/app_name"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+        <activity-alias
+            android:name=".IconoVerde"
+            android:targetActivity=".MainActivity"
+            android:icon="@drawable/ic_alt_verde"
+            android:roundIcon="@drawable/ic_alt_verde"
+            android:label="@string/app_name"
+            android:enabled="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
 
         <provider
             android:name="androidx.core.content.FileProvider"

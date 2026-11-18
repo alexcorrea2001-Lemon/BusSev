@@ -11,6 +11,7 @@ const env = { ...process.env, PRUEBAS_TMP: TMP };
 const PRUEBAS = [
   ['Primer y último autobús (cálculo)', 'python3', ['-I', 'horario_gtfs.py']],
   ['Metro de Sevilla (cálculo del horario)', 'python3', ['-I', 'metro_gtfs.py']],
+  ['Cercanías de Sevilla (cálculo del horario)', 'python3', ['-I', 'cercanias_gtfs.py']],
   ['Primer y último autobús (en la app)', 'node', ['horas.mjs']],
   ['Novedades al actualizar', 'node', ['novedades.mjs']],
   ['Líneas juntas en el mapa (carriles)', 'node', ['carriles.mjs']],
@@ -22,6 +23,7 @@ const PRUEBAS = [
   ['Avisos de TUSSAM en las paradas', 'node', ['avisos_parada.mjs']],
   ['Avisos configurables y scroll al volver', 'node', ['ajustes_avisos.mjs']],
   ['Horario por parada, Cómo llegar y avisos de viaje', 'node', ['viaje.mjs']],
+  ['Personalizar favoritas, tarjetas y parada', 'node', ['personalizar.mjs']],
   ['Todas las pantallas sin errores', 'node', ['pantallas.mjs']],
 ];
 let fallos = 0;

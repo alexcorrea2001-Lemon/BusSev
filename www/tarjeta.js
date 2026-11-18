@@ -58,7 +58,9 @@ const tarjeta = {
   url: (num) => `https://recargas.tussam.es/TPW/index.html?client_id=APPTUSSAM&id_tarjeta=${encodeURIComponent(num)}`,
   list: () => store.get('cards', []),
   get(num) { return this.list().find((c) => c.num === num) || null; },
-  save(card) { const l = this.list().filter((c) => c.num !== card.num); l.unshift(card); store.set('cards', l.slice(0, 10)); },
+  // Si ya estaba, se queda en su sitio (antes subía la primera al guardar); si es nueva, va la primera
+  save(card) { const l = this.list(); const i = l.findIndex((c) => c.num === card.num); if (i >= 0) l[i] = card; else l.unshift(card); store.set('cards', l.slice(0, 10)); },
+  move(num, d) { const l = this.list(); const i = l.findIndex((c) => c.num === num); const j = d === 'primera' ? 0 : i + d; if (i < 0 || j < 0 || j >= l.length || i === j) return; const [x] = l.splice(i, 1); l.splice(j, 0, x); store.set('cards', l); },
   update(num, patch) { store.set('cards', this.list().map((c) => (c.num === num ? { ...c, ...patch } : c))); },
   remove(num) { store.set('cards', this.list().filter((c) => c.num !== num)); this.setFoto(num, ''); this.setFoto(num, '', 'retrato'); },
   foto(num, cual = 'fondo') {
@@ -186,6 +188,8 @@ const tarjeta = {
 /* ---------- Diseño de la tarjeta ---------- */
 function cardBackground(c, tipoId) {
   const foto = c?.num ? tarjeta.foto(c.num) : '';
+  const dis = !foto && c?.diseno && window.DISENOS_TARJETA?.[c.diseno];
+  if (dis) return `background:${dis.fondo}`;
   if (foto) return `background-image:linear-gradient(180deg, rgb(0 0 0 / .05), rgb(0 0 0 / .55)), url('${foto}');background-size:cover;background-position:center`;
   const col = c?.color ? safeColor(c.color) : null;
   const [a, b] = col ? [col, `color-mix(in srgb, ${col} 45%, #000)`] : (tipoPorId(tipoId)?.colores || TIPO_GENERICO.colores);
@@ -204,12 +208,20 @@ function tcardHTML(num, c, res, { mini = false } = {}) {
     : sinSaldo ? '<div class="tc-saldo tc-dim tc-sinsaldo">Sin saldo en la web</div>'
     : mostrarSaldo ? '<div class="tc-saldo tc-dim">— €</div>'
     : '';
-  return `<div class="tcard${mini ? ' mini' : ''}" style="${cardBackground(c || { num }, tipoId)}">
-    ${tarjeta.foto(num) ? '' : ondas}
-    <div class="tc-top"><span class="tc-brand">${esc(c?.name || titulo)}</span>${ICON.nfc}</div>
+  const foto = tarjeta.foto(num);
+  const dis = !foto && c?.diseno && window.DISENOS_TARJETA?.[c.diseno];
+  const marco = c?.marco && (window.MARCOS_TARJETA || []).some(([k]) => k === c.marco) ? ` marco-${c.marco}` : '';
+  const pegas = (c?.pegatinas || []).map((k) => window.PEGATINAS_TARJETA?.[k]).filter(Boolean).slice(0, 2);
+  // Número tapado (•••• 1234) si lo has pedido, para enseñar el móvil sin que se vea entero
+  const numTxt = c?.ocultarNum ? `•••• •••• ${String(num).slice(-4)}` : tarjeta.fmt(num);
+  return `<div class="tcard${mini ? ' mini' : ''}${marco}${c?.brillo ? ' brillo' : ''}${dis ? ' con-diseno' : ''}" style="${cardBackground(c || { num }, tipoId)}">
+    ${foto ? '' : dis ? (dis.svg || '') : ondas}
+    ${pegas.length ? `<div class="tc-pegas">${pegas.map((p, i) => `<span class="tc-pega p${i}">${p.svg}</span>`).join('')}</div>` : ''}
+    ${c?.brillo ? '<i class="tc-brillo" aria-hidden="true"></i>' : ''}
+    <div class="tc-top"><span class="tc-brand">${c?.emoji ? `<span class="tc-emoji">${esc(c.emoji)}</span>` : ''}${esc(c?.name || titulo)}</span>${ICON.nfc}</div>
     <div class="tc-mid">${saldoHTML}
       <div class="tc-tipo">${esc(c?.name ? titulo : (res?.titulo || c?.ultimo?.titulo || titulo))}</div></div>
-    <div class="tc-num">${esc(tarjeta.fmt(num))}</div></div>`;
+    <div class="tc-num">${esc(numTxt)}</div></div>`;
 }
 function leerFoto(file) {
   return new Promise((resolve, reject) => {
@@ -496,16 +508,28 @@ views.tarjeta = (el) => {
   function editCard(num, nueva = false) {
     const prev = tarjeta.get(num);
     const c = prev || { num, name: '', color: '', tipo: '' };
-    let color = c.color || '';
+    let color = c.color || '', emoji = c.emoji || '', diseno = c.diseno || '', marco = c.marco || '', pegas = [...(c.pegatinas || [])];
     const detect = tipoDetectado(c, detalle?.res?.ok ? detalle.res : null);   // si TUSSAM dice el tipo, no se puede cambiar
     const originalFondo = tarjeta.foto(num);
+    const D = window.DISENOS_TARJETA || {}, MC = window.MARCOS_TARJETA || [], PG = window.PEGATINAS_TARJETA || {};
+    const actual = (m) => ({ ...c, name: $('#c-name', m).value, color, emoji, diseno, marco, pegatinas: pegas, ocultarNum: $('#c-ocu', m)?.checked, brillo: $('#c-bri', m)?.checked, tipo: detect ? '' : (c.tipo || '') });
     const preview = (m) => {
-      $('#c-prev', m).innerHTML = tcardHTML(num, { ...c, name: $('#c-name', m).value, color, tipo: detect ? '' : (c.tipo || '') }, detalle?.res?.ok ? detalle.res : null, { mini: true });
+      $('#c-prev', m).innerHTML = tcardHTML(num, actual(m), detalle?.res?.ok ? detalle.res : null, { mini: true });
     };
+    const EMOJIS = ['💳', '🙋', '👩', '👨', '👵', '👴', '👧', '👦', '💼', '🎓', '❤️', '⭐', '🌸', '🍊', '💃', '🐶'];
+    const varias = tarjeta.list().length > 1 && !nueva;
     openModal(`<h2>${nueva ? 'Guardar tarjeta' : 'Personalizar tarjeta'}</h2>
       <div id="c-prev"></div>
       <div class="field"><label for="c-name">Nombre</label><input id="c-name" maxlength="24" placeholder="Por ejemplo: Mía, Mamá, Trabajo" value="${esc(c.name || '')}"></div>
+      <div class="field"><label>Icono</label><div class="emoji-picks"><button type="button" class="emoji-pick ninguno" data-cem="" aria-pressed="${!emoji}">Ninguno</button>${EMOJIS.map((e) => `<button type="button" class="emoji-pick" data-cem="${e}" aria-pressed="${emoji === e}">${e}</button>`).join('')}</div></div>
       <div class="field"><label>Color</label>${swatchesHTML(color, 'data-cc')}<p class="help">Si no eliges ninguno, se usa el diseño de su tipo.</p></div>
+      <div class="field"><label>Diseño de Sevilla</label><div class="dis-picks"><button type="button" class="dis-pick ninguno" data-dis="" aria-pressed="${!diseno}"><span>Ninguno</span></button>${Object.entries(D).map(([k, d]) => `<button type="button" class="dis-pick" data-dis="${k}" aria-pressed="${diseno === k}" style="background:${d.fondo}">${d.svg}<span>${esc(d.nombre)}</span></button>`).join('')}</div>
+        <p class="help">Si pones una foto de fondo, se ve la foto en lugar del diseño.</p></div>
+      <div class="field"><label>Marco</label><div class="marco-picks">${MC.map(([k, n]) => `<button type="button" class="marco-pick${k ? ` marco-${k}` : ''}" data-mc="${k}" aria-pressed="${marco === k}"><span>${n}</span></button>`).join('')}</div></div>
+      <div class="field"><label>Pegatinas <span class="muted small">(hasta dos)</span></label><div class="pega-picks">${Object.entries(PG).map(([k, p]) => `<button type="button" class="pega-pick" data-pg="${k}" aria-pressed="${pegas.includes(k)}" aria-label="${esc(p.nombre)}" title="${esc(p.nombre)}">${p.svg}</button>`).join('')}</div></div>
+      <div class="switch-row"><div><h3>Efecto brillo</h3><p>La tarjeta brilla un poco al mover el móvil, como una de verdad.</p></div><input class="switch" type="checkbox" id="c-bri" ${c.brillo ? 'checked' : ''} aria-label="Efecto brillo"></div>
+      <div class="switch-row"><div><h3>Ocultar el número</h3><p>Solo se ven los 4 últimos (•••• 1234), por si enseñas el móvil.</p></div><input class="switch" type="checkbox" id="c-ocu" ${c.ocultarNum ? 'checked' : ''} aria-label="Ocultar el número"></div>
+      ${varias ? `<div class="field"><label>Orden</label><div class="btn-row"><button class="btn ghost" type="button" data-cmv="primera">⭐ Ponerla la primera</button><button class="btn ghost" type="button" data-cmv="-1">${ICON.arriba}Subir</button><button class="btn ghost" type="button" data-cmv="1">${ICON.abajo}Bajar</button></div><p class="help" id="c-pos"></p></div>` : ''}
       <div class="field"><label>Foto de fondo</label>
         <div class="btn-row"><label class="btn ghost" for="c-foto" style="cursor:pointer">Elegir foto de fondo</label><button class="btn ghost" type="button" id="c-sinfoto">Quitar</button></div>
         <input id="c-foto" type="file" accept="image/*" hidden></div>
@@ -514,6 +538,20 @@ views.tarjeta = (el) => {
     (m, close) => {
       preview(m);
       $('#c-name', m).oninput = () => preview(m);
+      const marcar = (sel, attr, val) => m.querySelectorAll(sel).forEach((x) => x.setAttribute('aria-pressed', x.dataset[attr] === val));
+      m.querySelectorAll('[data-cem]').forEach((b) => { b.onclick = () => { emoji = b.dataset.cem; marcar('[data-cem]', 'cem', emoji); preview(m); }; });
+      m.querySelectorAll('[data-dis]').forEach((b) => { b.onclick = () => { diseno = b.dataset.dis; marcar('[data-dis]', 'dis', diseno); preview(m); }; });
+      m.querySelectorAll('[data-mc]').forEach((b) => { b.onclick = () => { marco = b.dataset.mc; marcar('[data-mc]', 'mc', marco); preview(m); }; });
+      m.querySelectorAll('[data-pg]').forEach((b) => { b.onclick = () => {
+        const k = b.dataset.pg;
+        if (pegas.includes(k)) pegas = pegas.filter((x) => x !== k); else { pegas.push(k); if (pegas.length > 2) pegas.shift(); }
+        m.querySelectorAll('[data-pg]').forEach((x) => x.setAttribute('aria-pressed', pegas.includes(x.dataset.pg)));
+        preview(m);
+      }; });
+      for (const id of ['#c-bri', '#c-ocu']) $(id, m).onchange = () => preview(m);
+      const posTxt = () => { const l = tarjeta.list(); const i = l.findIndex((x) => x.num === num); const p = $('#c-pos', m); if (p && i >= 0) p.textContent = i === 0 ? 'Es la primera de tus tarjetas.' : `Está la ${i + 1}.ª de ${l.length}.`; };
+      posTxt();
+      m.querySelectorAll('[data-cmv]').forEach((b) => { b.onclick = () => { const d = b.dataset.cmv; tarjeta.move(num, d === 'primera' ? 'primera' : Number(d)); vibrar(12); posTxt(); }; });
       m.querySelectorAll('[data-cc]').forEach((b) => { b.onclick = () => {
         color = color === b.dataset.cc ? '' : b.dataset.cc;
         m.querySelectorAll('[data-cc]').forEach((x) => { const on = x.dataset.cc === color; x.setAttribute('aria-pressed', on); x.innerHTML = on ? ICON.check : ''; });
@@ -530,6 +568,7 @@ views.tarjeta = (el) => {
         const r = detalle?.res?.ok ? detalle.res : null;
         const { precio: _sinPrecio, ...resto } = base;   // el precio ya no se escribe a mano: sale de las tarifas de TUSSAM
         tarjeta.save({ ...resto, num, name: $('#c-name', m).value.trim().slice(0, 24), color, tipo: detect ? '' : (c.tipo || ''),
+          emoji, diseno, marco, pegatinas: pegas, ocultarNum: $('#c-ocu', m).checked, brillo: $('#c-bri', m).checked,
           ultimo: base.ultimo || (r ? { saldo: r.saldo, tipo: r.tipo, titulo: r.titulo, caducidad: r.caducidad, caducaEl: r.caducaEl, sinCaducidad: r.sinCaducidad, sinSaldoWeb: r.sinSaldoWeb, fecha: r.fecha } : undefined) });
         close(); toast(nueva ? 'Tarjeta guardada' : 'Cambios guardados'); pintar();
       };
@@ -540,6 +579,17 @@ views.tarjeta = (el) => {
   window.addEventListener('bussevTarjeta', onNfc);
   const onResume = () => { if (!detalle) armarLector(); };
   resumeHandlers.add(onResume);
+  /* Efecto brillo: la luz sigue al móvil cuando lo inclinas (solo en esta pantalla, y solo si hay tarjetas con brillo) */
+  let rafBrillo = 0;
+  const onIncl = (e) => {
+    if (rafBrillo || e.gamma == null) return;
+    rafBrillo = requestAnimationFrame(() => {
+      rafBrillo = 0;
+      const x = Math.max(-1, Math.min(1, e.gamma / 35));
+      el.querySelectorAll('.tcard.brillo').forEach((t) => { t.classList.add('inclinada'); t.style.setProperty('--brillo-x', `${Math.round(x * 55)}%`); t.style.setProperty('--brillo-px', `${Math.round(50 + x * 40)}%`); });
+    });
+  };
+  if (tarjeta.list().some((c) => c.brillo)) window.addEventListener('deviceorientation', onIncl, { passive: true });
   const inicioNum = window.__tarjetaPendiente; window.__tarjetaPendiente = null;
   if (inicioNum) abrir(inicioNum, { consultar: true }); else pintar();
   return {
@@ -550,6 +600,7 @@ views.tarjeta = (el) => {
       window.removeEventListener('bussevNfc', alCambiarNfc);
       window.removeEventListener('bussev-tarifas', alTarifas);
       resumeHandlers.delete(onResume);
+      window.removeEventListener('deviceorientation', onIncl);
       document.querySelector('.scan-overlay')?.remove();
       if (tarjeta.nfc()) tarjeta.call('cancelar').catch(() => null);
     },

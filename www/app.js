@@ -166,31 +166,52 @@ function cargarMetro() {
   });
   return _metroP;
 }
+/* Cercanías Renfe de Sevilla (www/cercanias.js): igual que el metro, se carga solo cuando hace falta */
+let _cercP = null;
+function cargarCercanias() {
+  if (window.BUSSEV_CERCANIAS) return Promise.resolve(window.BUSSEV_CERCANIAS);
+  if (_cercP) return _cercP;
+  _cercP = new Promise((ok) => {
+    const sc = document.createElement('script');
+    sc.src = 'cercanias.js'; sc.async = true;
+    setTimeout(() => ok(window.BUSSEV_CERCANIAS || null), 6000);
+    sc.onload = () => ok(window.BUSSEV_CERCANIAS || null);
+    sc.onerror = () => { _cercP = null; ok(null); };
+    document.head.appendChild(sc);
+  });
+  return _cercP;
+}
 const esMetro = (k) => /^M1(\||$)/.test(String(k || ''));
-/* Horario de una línea|sentido (bus o metro) para un día: { e: {m, v}, g: grupo del día } */
+const esCercanias = (k) => /^R[A-Z0-9]+(\||$)/.test(String(k || ''));
+const esTren = (k) => esMetro(k) || esCercanias(k);
+/* Horario de una línea|sentido (bus, metro o Cercanías) para un día: { e: {m, v}, g: grupo del día } */
 function horarioDe(k, d = new Date()) {
-  const H = esMetro(k) ? window.BUSSEV_METRO?.horarios : window.BUSSEV_HORARIOS;
+  const H = esMetro(k) ? window.BUSSEV_METRO?.horarios : esCercanias(k) ? window.BUSSEV_CERCANIAS?.horarios : window.BUSSEV_HORARIOS;
   if (!H?.l?.[k]) return null;
   return { e: H.l[k], g: H.dias?.[tipoHorarioHoy(d)] };
 }
 /* Datos de una línea, también del metro */
-const lineaInfo = (n) => lineaFor(n) || (String(n) === 'M1' ? window.BUSSEV_METRO?.linea : null) || null;
-const estacionMetro = (c) => (window.BUSSEV_METRO?.estaciones || []).find((e) => e.codigo === c) || null;
-const nombreLinea = (n) => (String(n) === 'M1' ? 'Metro (línea 1)' : `línea ${n}`);
+const lineaInfo = (n) => (esCercanias(n) ? (window.BUSSEV_CERCANIAS?.lineas || []).find((l) => l.numero === String(n)) : null)
+  || lineaFor(n) || (String(n) === 'M1' ? window.BUSSEV_METRO?.linea : null) || null;
+/* Estación de metro o de Cercanías por su código (MLxx / Rxxxx) */
+const estacionMetro = (c) => (/^M/.test(c) ? window.BUSSEV_METRO?.estaciones : /^R/.test(c) ? window.BUSSEV_CERCANIAS?.estaciones : null)?.find((e) => e.codigo === c) || null;
+const nombreLinea = (n) => (String(n) === 'M1' ? 'Metro (línea 1)' : esCercanias(n) ? `Cercanías ${lineaInfo(n)?.etiqueta || n}` : `línea ${n}`);
 /* Próximos trenes en una estación (según horario), en los dos sentidos */
 function pasosMetro(codigo, d = new Date()) {
-  const M = window.BUSSEV_METRO;
+  const M = /^R/.test(codigo) ? window.BUSSEV_CERCANIAS : window.BUSSEV_METRO;
   if (!M) return [];
   const ahora = minutoServicio(d), out = [];
-  for (const sen of [1, 2]) {
-    const seq = M.recorridos.filter((r) => r[2] === sen).sort((a, b) => a[3] - b[3]).map((r) => r[0]);
-    const o = seq.indexOf(codigo), h = horarioDe(`M1|${sen}`, d);
+  const claves = [...new Set(M.recorridos.filter((r) => r[0] === codigo).map((r) => `${r[1]}|${r[2]}`))];
+  for (const k of claves) {
+    const [lin, sen] = [k.split('|')[0], Number(k.split('|')[1])];
+    const seq = M.recorridos.filter((r) => r[1] === lin && r[2] === sen).sort((a, b) => a[3] - b[3]).map((r) => r[0]);
+    const o = seq.indexOf(codigo), h = horarioDe(k, d);
     if (o < 0 || o === seq.length - 1 || !h || h.g == null || h.e.m[o] == null) continue;
     const ult = h.e.m.length - 1;
     let s0 = 0; const mins = [];
     for (const x of h.e.v[h.g] || []) { const [dd, a, b] = Array.isArray(x) ? x : [x, 0, ult]; s0 += dd; if (o >= a && o < b) mins.push(s0 + h.e.m[o]); }
     const prox = mins.filter((m) => m >= ahora).slice(0, 3);
-    out.push({ sentido: sen, destino: estacionMetro(seq[seq.length - 1])?.nombre || '', prox, ultimo: mins[mins.length - 1] });
+    out.push({ linea: lin, sentido: sen, destino: estacionMetro(seq[seq.length - 1])?.nombre || '', prox, ultimo: mins[mins.length - 1] });
   }
   return out;
 }
@@ -943,20 +964,40 @@ function freshnessPill(d) {
   }
   return '<span class="pill live">En directo</span>';
 }
+/* Estilos de tarjeta de las favoritas (Personalizar → Estilo) */
+const ESTILOS_FAV = [
+  ['clasico', 'Clásico'], ['tenido', 'Teñido'], ['degradado', 'Degradado'], ['contorno', 'Contorno'], ['neon', 'Neón'],
+  ['cristal', 'Cristal'], ['panel', 'Panel de parada'], ['azulejo', 'Azulejo'], ['retro', 'Retro'],
+  ['semanasanta', 'Semana Santa'], ['feria', 'Feria'],
+];
+const EMOJIS_FAV = ['🏠', '💼', '🏫', '🎓', '🏥', '🛒', '❤️', '👵', '👶', '⚽', '🏋️', '🍻', '☕', '🎭', '🌳', '⛪', '🚉', '✈️', '⭐', '🐶'];
 function stopCardHTML(p, { tiempos, status, distancia, limit = 4, fav = null }) {
-  const sub = [distancia != null ? `🚶 ${Math.max(1, Math.round(distancia * 1.25 / 75))} min (${fmtDist(distancia)})` : '', p.direccion_completa || p.calle || ''].filter(Boolean).join(' · ');
+  const ocultar = !!fav?.ocultarDir;
+  const sub = [distancia != null ? `🚶 ${Math.max(1, Math.round(distancia * 1.25 / 75))} min (${fmtDist(distancia)})` : '', ocultar ? '' : (p.direccion_completa || p.calle || '')].filter(Boolean).join(' · ');
   const color = fav?.color ? safeColor(fav.color) : null;
   const filtered = fav?.lineas?.length ? filtrarLineas(tiempos, fav) : tiempos;
-  return `<article class="card${fav ? ' fav' : ''}" ${color ? `style="--fc:${color}"` : ''}>
+  const estilo = fav ? (ESTILOS_FAV.some(([k]) => k === fav.estilo) ? fav.estilo : 'clasico') : '';
+  const clases = `card${fav ? ` fav est-${estilo}` : ''}${fav?.compacta ? ' compacta' : ''}${fav?.animar ? ' animar-llegando' : ''}`;
+  const etiqueta = fav?.alias || fav?.emoji ? `<div class="fav-alias">${fav.emoji ? `<span class="fav-emoji">${esc(fav.emoji)}</span>` : ''}${esc(fav.alias || '')}</div>` : '';
+  const editar = `<button type="button" class="fav-edit" data-edit-fav="${esc(p.codigo)}" aria-label="Personalizar esta parada">${ICON.edit}</button>`;
+  // Compacta: una sola línea con el nombre y el próximo autobús
+  if (fav?.compacta) {
+    const g = tiempos === undefined ? null : groupArrivals(filtered)[0];
+    const prox = tiempos === undefined ? '<span class="muted small">…</span>' : g ? `${badge(g.linea, g.color, { sm: true })}${minutesHTML(g.buses[0].tiempo_minutos)}` : '<span class="muted small">Sin buses</span>';
+    return `<article class="${clases}" ${color ? `style="--fc:${color}"` : ''}>
+      <a class="card-head" href="#parada-${esc(p.codigo)}"><span class="stop-num" aria-label="Parada número ${esc(p.codigo)}">${esc(p.codigo)}</span>
+        <div class="card-title">${etiqueta || `<h3>${esc(p.nombre)}</h3>`}</div><div class="cmp-prox">${prox}</div></a>${editar}</article>`;
+  }
+  return `<article class="${clases}" ${color ? `style="--fc:${color}"` : ''}>
     <a class="card-head" href="#parada-${esc(p.codigo)}">
       <span class="stop-num" aria-label="Parada número ${esc(p.codigo)}">${esc(p.codigo)}</span>
-      <div class="card-title">${fav?.alias ? `<div class="fav-alias">${esc(fav.alias)}</div>` : ''}<h3>${esc(p.nombre)}</h3>${sub ? `<p>${esc(sub)}</p>` : ''}
-        ${fav?.lineas?.length ? `<p>Solo líneas ${fav.lineas.map(esc).join(', ')}</p>` : ''}</div>
+      <div class="card-title">${etiqueta}<h3>${esc(p.nombre)}</h3>${sub ? `<p>${esc(sub)}</p>` : ''}
+        ${fav?.lineas?.length && !ocultar ? `<p>Solo líneas ${fav.lineas.map(esc).join(', ')}</p>` : ''}</div>
       ${ICON.chev}
     </a>
     ${fav && settings.avisosTarjetas !== false ? (window.avisosTussam?.favAvisoHTML?.(p.codigo, fav.lineas) || '') : ''}
     ${tiempos === undefined ? '<div class="board-empty">Cargando tiempos…</div>' : boardHTML(filtered, status, { limit, filtrado: !!fav?.lineas?.length, codigo: p.codigo })}
-    ${fav ? `<div class="card-tools">${settings.voz ? `<button type="button" data-speak="${esc(p.codigo)}">🔊 Escuchar</button>` : ''}<button type="button" data-edit-fav="${esc(p.codigo)}">Personalizar</button></div>` : ''}
+    ${fav ? `<div class="card-tools">${settings.voz ? `<button type="button" data-speak="${esc(p.codigo)}">🔊 Escuchar</button>` : ''}${editar}</div>` : ''}
   </article>`;
 }
 const emptyHTML = (icon, title, text, actions = '') => `<div class="empty">${icon}<h2>${title}</h2><p>${text}</p>${actions}</div>`;
@@ -1046,11 +1087,20 @@ async function editFavorite(codigo, onDone) {
   await getLineas().catch(() => null);
   const lineas = await api(`/paradas/${encodeURIComponent(codigo)}/lineas`).catch(() => []);
   let elegidas = new Set(fav.lineas?.length ? fav.lineas : lineas);
-  let color = fav.color || '';
+  let color = fav.color || '', emoji = fav.emoji || '', estilo = fav.estilo || 'clasico';
+  const grupos = [...new Set(favs.list().map((f) => (f.grupo || '').trim()).filter(Boolean))];
   openModal(`<h2>Personalizar parada</h2>
     <p class="help">${esc(fav.nombre)} · parada ${esc(codigo)}</p>
     <div class="field"><label for="fv-alias">Nombre</label><input id="fv-alias" maxlength="30" placeholder="Por ejemplo: Casa, Trabajo, Facultad" value="${esc(fav.alias || '')}"></div>
+    <div class="field"><label>Icono</label><div class="emoji-picks"><button type="button" class="emoji-pick ninguno" data-em="" aria-pressed="${!emoji}">Ninguno</button>${EMOJIS_FAV.map((e) => `<button type="button" class="emoji-pick" data-em="${e}" aria-pressed="${emoji === e}">${e}</button>`).join('')}</div></div>
     <div class="field"><label>Color</label>${swatchesHTML(color, 'data-fc')}</div>
+    <div class="field"><label>Estilo de la tarjeta</label><div class="estilo-picks">${ESTILOS_FAV.map(([k, n]) => `<button type="button" class="estilo-pick card fav est-${k}" data-est="${k}" aria-pressed="${estilo === k}" style="--fc:${safeColor(color || TAGS[0])}"><span class="ep-num">${esc(codigo)}</span><span class="ep-nom">${n}</span></button>`).join('')}</div></div>
+    <div class="field"><label for="fv-grupo">Grupo <span class="muted small">(opcional)</span></label><input id="fv-grupo" maxlength="24" placeholder="Por ejemplo: 🏠 Casa, 💼 Trabajo" value="${esc(fav.grupo || '')}">
+      ${grupos.length ? `<div class="chips-wrap" style="margin-top:6px">${grupos.map((g) => `<button type="button" class="chip" data-gr="${esc(g)}">${esc(g)}</button>`).join('')}</div>` : ''}
+      <p class="help">Las paradas del mismo grupo salen juntas en Favoritas, bajo ese título.</p></div>
+    <div class="switch-row"><div><h3>Tarjeta compacta</h3><p>Una sola línea con el nombre y el próximo autobús.</p></div><input class="switch" type="checkbox" id="fv-cmp" ${fav.compacta ? 'checked' : ''} aria-label="Tarjeta compacta"></div>
+    <div class="switch-row"><div><h3>Ocultar la dirección</h3><p>Sin la calle ni «Solo líneas…» debajo del nombre.</p></div><input class="switch" type="checkbox" id="fv-dir" ${fav.ocultarDir ? 'checked' : ''} aria-label="Ocultar la dirección"></div>
+    <div class="switch-row"><div><h3>«Llegando» animado</h3><p>Cuando el autobús está llegando, el aviso late para que se vea más.</p></div><input class="switch" type="checkbox" id="fv-anim" ${fav.animar ? 'checked' : ''} aria-label="Llegando animado"></div>
     <div class="field"><label>Líneas que quieres ver</label>
       <p class="help">En Favoritas solo saldrán los tiempos de las líneas marcadas. Sirve para no ver autobuses que nunca coges en esta parada. Si las dejas todas marcadas, se ven todas.</p>
       <div class="line-picks">${[...lineas].sort(ordenLineas).map((n) => `<button class="line-pick" type="button" data-ln="${esc(n)}" aria-pressed="${elegidas.has(n)}">${badge(etiquetaLinea(lineaFor(n)?.numero || n), lineaFor(n)?.color)}</button>`).join('') || '<span class="help">Sin datos de líneas.</span>'}</div></div>
@@ -1062,7 +1112,11 @@ async function editFavorite(codigo, onDone) {
     m.querySelectorAll('[data-fc]').forEach((b) => { b.onclick = () => {
       color = color === b.dataset.fc ? '' : b.dataset.fc;
       m.querySelectorAll('[data-fc]').forEach((x) => { const on = x.dataset.fc === color; x.setAttribute('aria-pressed', on); x.innerHTML = on ? ICON.check : ''; });
+      m.querySelectorAll('[data-est]').forEach((x) => x.style.setProperty('--fc', safeColor(color || TAGS[0])));
     }; });
+    m.querySelectorAll('[data-em]').forEach((b) => { b.onclick = () => { emoji = b.dataset.em; m.querySelectorAll('[data-em]').forEach((x) => x.setAttribute('aria-pressed', x.dataset.em === emoji)); vibrar(10); }; });
+    m.querySelectorAll('[data-est]').forEach((b) => { b.onclick = () => { estilo = b.dataset.est; m.querySelectorAll('[data-est]').forEach((x) => x.setAttribute('aria-pressed', x.dataset.est === estilo)); vibrar(10); }; });
+    m.querySelectorAll('[data-gr]').forEach((b) => { b.onclick = () => { $('#fv-grupo', m).value = b.dataset.gr; }; });
     m.querySelectorAll('[data-ln]').forEach((b) => { b.onclick = () => {
       const n = b.dataset.ln; if (elegidas.has(n)) elegidas.delete(n); else elegidas.add(n);
       b.setAttribute('aria-pressed', elegidas.has(n));
@@ -1085,7 +1139,8 @@ async function editFavorite(codigo, onDone) {
     $('#fv-del', m).onclick = () => { favs.remove(codigo); close(); toast('Quitada de favoritas'); onDone?.(); };
     $('#fv-ok', m).onclick = () => {
       const sel = lineas.filter((n) => elegidas.has(n));
-      favs.update(codigo, { alias: $('#fv-alias', m).value.trim().slice(0, 30), color, lineas: sel.length && sel.length < lineas.length ? sel : null });
+      favs.update(codigo, { alias: $('#fv-alias', m).value.trim().slice(0, 30), color, lineas: sel.length && sel.length < lineas.length ? sel : null,
+        emoji, estilo, grupo: $('#fv-grupo', m).value.trim().slice(0, 24), compacta: $('#fv-cmp', m).checked, ocultarDir: $('#fv-dir', m).checked, animar: $('#fv-anim', m).checked });
       close(); toast('Cambios guardados'); onDone?.();
     };
   });
@@ -1182,7 +1237,29 @@ function geoErrorText(err) {
 /* ================================================================== */
 /* Mapas (MapLibre + OpenFreeMap, sin clave)                           */
 /* ================================================================== */
-if (window.maplibregl) window.maplibregl.setWorkerUrl('/vendor/maplibre/maplibre-gl-csp-worker.js');
+/* La librería del mapa (730 KB) y los recorridos por calle (180 KB) se cargan cuando hace falta un mapa, no al
+   abrir la app: así Favoritas sale antes y el móvil trabaja menos. Unos segundos después de abrir se cargan solas
+   (sin prisa) para que el Mapa abra al momento si lo tocas. */
+let _mapaP = null;
+function cargarMapa() {
+  if (window.maplibregl && window.BUSSEV_RECORRIDOS) return Promise.resolve(true);
+  if (_mapaP) return _mapaP;
+  const carga = (src) => new Promise((ok) => {
+    const sc = document.createElement('script');
+    sc.src = src; sc.async = true;
+    sc.onload = () => ok(true); sc.onerror = () => ok(false);
+    document.head.appendChild(sc);
+  });
+  _mapaP = Promise.all([window.maplibregl ? true : carga('/vendor/maplibre/maplibre-gl-csp.js'), window.BUSSEV_RECORRIDOS ? true : carga('/recorridos.js')])
+    .then(() => {
+      if (!window.maplibregl) { _mapaP = null; return false; }
+      try { window.maplibregl.setWorkerUrl('/vendor/maplibre/maplibre-gl-csp-worker.js'); } catch { /* */ }
+      return true;
+    });
+  return _mapaP;
+}
+if (window.maplibregl) window.maplibregl.setWorkerUrl?.('/vendor/maplibre/maplibre-gl-csp-worker.js');
+setTimeout(() => { if (document.visibilityState === 'visible') (window.requestIdleCallback || ((f) => setTimeout(f, 0)))(() => cargarMapa()); }, 6000);
 // Satélite: fotos aéreas oficiales (PNOA, Instituto Geográfico Nacional) con los nombres de las calles encima.
 // Cuenta como mapa oscuro para los bordes de las líneas y demás.
 const mapIsDark = () => settings.mapStyle === 'oscuro' || settings.mapStyle === 'satelite' || (settings.mapStyle === 'tema' && resolvedTheme === 'dark');
@@ -1264,6 +1341,9 @@ function aplicarCapasMapa(bm) {
   vis('bs-stops-hit', settings.mapaParadas !== false);
   for (const id of ['bs-route-casing', 'bs-route', 'bs-route-stops', 'bs-paths-casing', 'bs-paths']) vis(id, settings.mapaRecorridos !== false);
   for (const id of ['bs-metro-casing', 'bs-metro', 'bs-metro-st', 'bs-metro-hit']) vis(id, settings.mapaMetro !== false);
+  for (const id of ['bs-renfe', 'bs-renfe-st', 'bs-renfe-hit']) vis(id, settings.mapaRenfe !== false);
+  for (const id of ['bs-sevici', 'bs-sevici-hit']) vis(id, settings.mapaSevici !== false);
+  if (settings.mapaSevici !== false && !sevici.datos && bm === mapState.bm) mapState.seviciPintar?.();
   // Nombres de calles y sitios = las capas de texto del mapa base
   try { for (const l of m.getStyle()?.layers || []) if (l.type === 'symbol') m.setLayoutProperty(l.id, 'visibility', settings.mapaCalles !== false ? 'visible' : 'none'); } catch { /* */ }
 }
@@ -1286,7 +1366,10 @@ async function addStopDots(bm, onClick) {
   } });
   const tocar = (e) => {
     // Si justo ahí hay una estación de metro, manda la estación (si no, salían las dos ventanas a la vez)
-    try { if (bm.m.getLayer('bs-metro-hit') && settings.mapaMetro !== false && bm.m.queryRenderedFeatures(e.point, { layers: ['bs-metro-hit'] }).length) return; } catch { /* */ }
+    try {
+      const capas = ['bs-metro-hit', 'bs-renfe-hit', 'bs-sevici-hit'].filter((id) => bm.m.getLayer(id) && bm.m.getLayoutProperty(id, 'visibility') !== 'none');
+      if (capas.length && bm.m.queryRenderedFeatures(e.point, { layers: capas }).length) return;
+    } catch { /* */ }
     const c = e.features?.[0]?.properties?.codigo; const p = c && cache.paradaByCode.get(String(c)); if (p) onClick(p);
   };
   bm.m.on('click', 'bs-stops-hit', tocar);
@@ -1308,14 +1391,88 @@ async function addMetroLayer(bm) {
   bm.m.on('click', 'bs-metro-hit', (e) => { const c = e.features?.[0]?.properties?.codigo; if (c) estacionModal(String(c)); });
   aplicarCapasMapa(bm);
 }
+async function addCercaniasLayer(bm) {
+  const C = await cargarCercanias().catch(() => null);
+  if (!C || !bm?.m) return;
+  const lineas = C.lineas.map((l) => {
+    const seq = C.recorridos.filter((r) => r[1] === l.numero && r[2] === 1).sort((a, b) => a[3] - b[3]).map((r) => estacionMetro(r[0])).filter(Boolean);
+    return lineF(seq.map((e) => [e.latitud, e.longitud]), { color: safeColor(l.color, '#c2185b') });
+  });
+  bm.source('bs-renfe', fc(lineas));
+  bm.source('bs-renfe-st', fc(C.estaciones.map((e) => pointF([e.latitud, e.longitud], { codigo: e.codigo }))));
+  bm.layer({ id: 'bs-renfe', type: 'line', source: 'bs-renfe', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': ['get', 'color'], 'line-width': ['interpolate', ['linear'], ['zoom'], 10, 1.6, 16, 4.5], 'line-dasharray': [1, 1.4], 'line-opacity': 0.9 } });
+  bm.layer({ id: 'bs-renfe-st', type: 'circle', source: 'bs-renfe-st', paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 3, 15, 7], 'circle-color': '#ffffff', 'circle-stroke-color': '#c2185b', 'circle-stroke-width': ['interpolate', ['linear'], ['zoom'], 10, 2, 15, 3.5] } });
+  bm.layer({ id: 'bs-renfe-hit', type: 'circle', source: 'bs-renfe-st', paint: { 'circle-radius': 16, 'circle-color': '#000000', 'circle-opacity': 0 } });
+  bm.m.on('click', 'bs-renfe-hit', (e) => { const c = e.features?.[0]?.properties?.codigo; if (c) estacionModal(String(c)); });
+  aplicarCapasMapa(bm);
+}
+/* ---------- Sevici: bicis y huecos libres en tiempo real (CityBikes, gratis y sin clave) ---------- */
+const sevici = {
+  datos: null, at: 0, red: 'sevici', _p: null,
+  /* Como mucho una consulta cada 90 s (CityBikes permite 300 por hora y así se gasta poca batería y datos) */
+  async cargar(forzar = false) {
+    if (!forzar && this.datos && Date.now() - this.at < 90_000) return this.datos;
+    if (this._p) return this._p;
+    this._p = (async () => {
+      const pedir = async (id) => { const r = await fetch(`https://api.citybik.es/v2/networks/${id}?fields=stations`, { credentials: 'omit' }); if (!r.ok) throw new Error(String(r.status)); return r.json(); };
+      let j;
+      try { j = await pedir(this.red); } catch {
+        // Por si CityBikes cambia el nombre de la red: se busca la de Sevilla
+        const l = await (await fetch('https://api.citybik.es/v2/networks?fields=id,location', { credentials: 'omit' })).json();
+        const n = (l.networks || []).find((x) => /sevilla|seville/i.test(x.location?.city || ''));
+        if (!n) throw new Error('sin red');
+        this.red = n.id; j = await pedir(n.id);
+      }
+      this.datos = (j.network?.stations || []).map((e) => ({ id: String(e.id), nombre: String(e.name || '').replace(/^\d+[_\s-]+/, ''), lat: +e.latitude, lon: +e.longitude, bicis: e.free_bikes ?? 0, huecos: e.empty_slots ?? 0 }))
+        .filter((e) => Number.isFinite(e.lat) && Number.isFinite(e.lon));
+      this.at = Date.now();
+      return this.datos;
+    })().finally(() => { this._p = null; });
+    return this._p;
+  },
+  /* Estaciones cerca de un punto, con bicis (para coger) o con huecos (para dejar) */
+  cerca(pos, { conBicis = false, conHuecos = false, radio = 500 } = {}) {
+    return (this.datos || []).map((e) => ({ ...e, d: haversine(pos, [e.lat, e.lon]) }))
+      .filter((e) => e.d <= radio && (!conBicis || e.bicis > 0) && (!conHuecos || e.huecos > 0)).sort((a, b) => a.d - b.d);
+  },
+};
+window.sevici = sevici;
+async function addSeviciLayer(bm) {
+  if (!bm?.m) return;
+  const pintar = async (forzar) => {
+    if (settings.mapaSevici === false) return;
+    try {
+      const ds = await sevici.cargar(forzar);
+      bm.source('bs-sevici', fc(ds.map((e) => pointF([e.lat, e.lon], { id: e.id, n: e.bicis, c: e.bicis === 0 ? '#9ca3af' : e.bicis < 3 ? '#f59e0b' : '#16a34a' }))));
+    } catch { /* sin conexión o CityBikes no responde: no pasa nada */ }
+  };
+  bm.layer({ id: 'bs-sevici', type: 'circle', source: 'bs-sevici', minzoom: 12.5, paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 13, 3, 16, 7], 'circle-color': ['get', 'c'], 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 1.5 } });
+  bm.layer({ id: 'bs-sevici-hit', type: 'circle', source: 'bs-sevici', minzoom: 12.5, paint: { 'circle-radius': 14, 'circle-color': '#000000', 'circle-opacity': 0 } });
+  bm.m.on('click', 'bs-sevici-hit', (e) => {
+    const id = String(e.features?.[0]?.properties?.id || '');
+    const st = (sevici.datos || []).find((x) => x.id === id);
+    if (!st) return;
+    openModal(`<h2>🚲 ${esc(st.nombre || 'Estación Sevici')}</h2><p class="help">Sevici · en este momento (se actualiza cada minuto y medio).</p>
+      <div class="sv-num"><div><b>${st.bicis}</b><span>bicis</span></div><div><b>${st.huecos}</b><span>huecos libres</span></div></div>
+      <div class="actions">${settings.modoSencillo ? '' : '<button class="btn ghost" type="button" id="sv-ruta">Cómo llegar aquí</button>'}<button class="btn" type="button" id="sv-x">Cerrar</button></div>`, (m, close) => {
+      $('#sv-x', m).onclick = close;
+      $('#sv-ruta', m)?.addEventListener('click', () => { close(); irARuta({ tipo: 'lugar', nombre: `Sevici ${st.nombre}`, pos: [st.lat, st.lon] }); });
+    });
+  });
+  mapState.seviciPintar = () => pintar(false);
+  await pintar(false);
+  // Solo se refresca mientras el Mapa está abierto y la app a la vista (nada en segundo plano)
+  clearInterval(mapState.seviciT);
+  mapState.seviciT = setInterval(() => { if (active.name === 'mapa' && appVisible && settings.mapaSevici !== false) pintar(true); }, 120_000);
+}
 function estacionModal(codigo) {
-  const est = estacionMetro(codigo), M = window.BUSSEV_METRO;
+  const est = estacionMetro(codigo), cer = /^R/.test(codigo), M = cer ? window.BUSSEV_CERCANIAS : window.BUSSEV_METRO;
   if (!est || !M) return;
-  const filas = pasosMetro(codigo).map((p) => `<div class="row-flat"><div style="flex:1;min-width:0"><b>Hacia ${esc(p.destino)}</b><p class="help">${p.prox.length ? p.prox.map(hhmmDe).join(' · ') : 'Hoy ya no pasa más'}${p.ultimo != null && p.prox.length ? ` · último ${hhmmDe(p.ultimo)}` : ''}</p></div></div>`).join('');
-  openModal(`<h2>Ⓜ ${esc(est.nombre)}</h2><p class="help">Metro de Sevilla · próximos trenes según el horario oficial.</p>${filas || '<p class="help">Sin horario para hoy.</p>'}
+  const filas = pasosMetro(codigo).map((p) => `<div class="row-flat">${cer ? badge(lineaInfo(p.linea)?.etiqueta || p.linea, lineaInfo(p.linea)?.color, { sm: true }) : ''}<div style="flex:1;min-width:0"><b>Hacia ${esc(p.destino)}</b><p class="help">${p.prox.length ? p.prox.map(hhmmDe).join(' · ') : 'Hoy ya no pasa más'}${p.ultimo != null && p.prox.length ? ` · último ${hhmmDe(p.ultimo)}` : ''}</p></div></div>`).join('');
+  openModal(`<h2>${cer ? '🚆' : 'Ⓜ'} ${esc(est.nombre)}</h2><p class="help">${cer ? 'Cercanías Renfe' : 'Metro de Sevilla'} · próximos trenes según el horario oficial.</p>${filas || '<p class="help">Sin horario para hoy.</p>'}
     <div class="actions">${settings.modoSencillo ? '' : '<button class="btn ghost" type="button" id="me-ruta">Cómo llegar aquí</button>'}<button class="btn" type="button" id="me-x">Cerrar</button></div>`, (m, close) => {
     $('#me-x', m).onclick = close;
-    $('#me-ruta', m)?.addEventListener('click', () => { close(); irARuta({ tipo: 'lugar', nombre: `Metro ${est.nombre}`, pos: [est.latitud, est.longitud] }); });
+    $('#me-ruta', m)?.addEventListener('click', () => { close(); irARuta({ tipo: 'lugar', nombre: `${cer ? 'Estación' : 'Metro'} ${est.nombre}`, pos: [est.latitud, est.longitud] }); });
   });
 }
 /* Capas para recorrido de línea y caminos de los buses */
@@ -1784,7 +1941,7 @@ views.favoritas = (el) => {
       return false;
     }
     const avs = window.avisos ? avisos.list() : [];
-    const cards = list.map((f) => {
+    const tarjetaDe = (f) => {
         const p = cache.paradaByCode.get(f.codigo) || { codigo: f.codigo, nombre: f.nombre };
         const r = results?.get(f.codigo);
         if (r && r.status === 'fulfilled') return stopCardHTML(p, { tiempos: r.value.tiempos || [], status: r.value.upstream_status || 'ok', limit: 5, fav: f });
@@ -1793,7 +1950,12 @@ views.favoritas = (el) => {
         if (u) return stopCardHTML(p, { tiempos: u.tiempos || [], status: 'ok', limit: 5, fav: f });
         if (r && r.status === 'rejected') return stopCardHTML(p, { tiempos: [], status: 'error', fav: f });
         return stopCardHTML(p, { fav: f });
-      }).join('');
+      };
+    // Grupos («🏠 Casa», «💼 Trabajo»…): cada grupo con su título, en el orden en que aparece; las sueltas, primero
+    const grupos = new Map();
+    for (const f of list) { const g = (f.grupo || '').trim(); if (!grupos.has(g)) grupos.set(g, []); grupos.get(g).push(f); }
+    const cards = [...grupos.entries()].sort(([a], [b]) => (a ? 1 : 0) - (b ? 1 : 0))
+      .map(([g, fs]) => (g ? `<h2 class="fav-grupo">${esc(g)}</h2>` : '') + fs.map(tarjetaDe).join('')).join('');
     const marco = `${list.map((f) => f.codigo).join(',')}|${avs.map((a) => a.id + ':' + a.at).join(',')}`;
     if (el.__marco === marco && $('#fav-cards', el)) {
       setHTML($('#fav-cards', el), cards);
@@ -2114,6 +2276,11 @@ function mantenerPulsado(bm, cb) {
   bm.m.on('contextmenu', (e) => { parar(); cb([e.lngLat.lat, e.lngLat.lng]); });
 }
 views.mapa = (el) => {
+  // La primera vez que se abre el Mapa se carga su librería (antes se cargaba siempre al abrir la app)
+  if (!mapState.bm && !window.maplibregl) {
+    cargarMapa().then((ok) => { if (active.name === 'mapa') { if (ok) show('mapa'); else createMap($('#map-all', el)); } });
+    return {};
+  }
   if (!mapState.bm) {
     const bm = mapState.bm = createMap($('#map-all', el), SEVILLA, 14);
     if (!bm) return {};
@@ -2122,6 +2289,8 @@ views.mapa = (el) => {
     addStopDots(bm, selectStop);
     addRouteLayers(bm);
     addMetroLayer(bm);
+    addCercaniasLayer(bm);
+    addSeviciLayer(bm);
     mapState.line = lineController(bm, mapState.lineMarkers, { onStatus: (t, html) => { const n = $('#ml-live'); if (n) { if (html) n.innerHTML = t; else n.textContent = t; } } });
     $('#btn-locate', el).onclick = async () => {
       try {
@@ -2243,6 +2412,8 @@ views.linea = (el, numero) => {
         toast(on ? 'Autobuses en directo activados' : 'Autobuses en directo desactivados');
         if (ctl && bm) bm.ready.then(() => { if (!dead) ctl.show(l, sentido); }); else drawTimeline([]);
       };
+      await cargarMapa();   // la librería del mapa se carga ahora, no al abrir la app
+      if (dead) return;
       bm = createMap($('#l-map', el), SEVILLA, 12);
       /* Nombre en dos líneas: «Camino de los Descubrimientos» y debajo «Torre Sevilla» */
       const partirNombre = (n) => { const m = String(n).match(/^(.*?)\s*\(([^()]+)\)\s*$/); return m ? [m[1], m[2]] : [String(n), '']; };
@@ -2355,16 +2526,48 @@ views.parada = (el, codigo) => {
       : info.accesible === 0
         ? `<span class="pill pill-acc-no" title="Parada sin acceso para silla de ruedas">${ICON.silla}No accesible</span>`
         : '';
-    return { fb, html: backHead(`<div class="grow"><h2>${esc(info.nombre)}</h2><p><span class="stop-num" style="display:inline-grid;height:22px;min-width:0;font-size:15px;vertical-align:-3px">${esc(codigo)}</span> ${esc(info.direccion_completa || '')}</p>${acc}</div>${fb.html}`) };
+    // Debajo del nombre, en una línea: tu emoji y nombre (si es favorita) · número · dirección
+    const f = favs.get(codigo);
+    const mio = f?.alias || f?.emoji ? `<span class="p-mio">${f.emoji ? `${esc(f.emoji)} ` : ''}${esc(f.alias || '')}</span>` : '';
+    const sub = [mio, `<span class="p-num">${esc(codigo)}</span>`].filter(Boolean).join('<span class="p-sep">·</span>');
+    const dir = info.direccion_completa ? `<p class="p-dir">${esc(info.direccion_completa)}</p>` : '';
+    return { fb, html: backHead(`<div class="grow"><h2>${esc(info.nombre)}</h2><p class="p-sub">${sub}</p>${dir}${acc}</div>${fb.html}`) };
   }
+  /* Una fila de botones iguales: Personalizar (o Guardar) · Cómo llegar · Avisar */
   function paintTools() {
     const box = $('#p-tools', el);
     if (!box) return;
     const f = favs.get(codigo);
-    const ruta = !settings.modoSencillo && info?.latitud ? `<button class="btn ghost" type="button" id="p-ruta">${ICON.route}Cómo llegar aquí</button>` : '';
-    box.innerHTML = f ? `<div class="fav-tools"><span class="pill" style="background:var(--accent-soft);color:var(--accent)">★ En favoritas${f.alias ? ': ' + esc(f.alias) : ''}</span><button class="btn ghost" type="button" data-edit-fav="${esc(codigo)}">${ICON.edit}Personalizar</button>${ruta}</div>` : (ruta ? `<div class="fav-tools">${ruta}</div>` : '');
-    const br = $('#p-ruta', box);
-    if (br) br.onclick = () => irARuta({ tipo: 'parada', nombre: info.nombre, pos: [info.latitud, info.longitud], codigo });
+    const bts = [
+      f ? `<button class="p-bt" type="button" data-edit-fav="${esc(codigo)}">${ICON.edit}<span>Personalizar</span></button>`
+        : `<button class="p-bt" type="button" id="p-guardar">${ICON.star}<span>Guardar</span></button>`,
+      !settings.modoSencillo && info?.latitud ? `<button class="p-bt" type="button" id="p-ruta">${ICON.route}<span>Cómo llegar</span></button>` : '',
+      `<button class="p-bt" type="button" id="p-avisar"><span class="p-bt-ico" aria-hidden="true">🔔</span><span>Avisar</span></button>`,
+    ].filter(Boolean);
+    box.innerHTML = `<div class="p-bts" style="--n:${bts.length}">${bts.join('')}</div>`;
+    $('#p-ruta', box)?.addEventListener('click', () => irARuta({ tipo: 'parada', nombre: info.nombre, pos: [info.latitud, info.longitud], codigo }));
+    $('#p-guardar', box)?.addEventListener('click', () => $('[data-fav]', el)?.click());
+    $('#p-avisar', box).onclick = () => elegirBusAviso();
+  }
+  /* «Avisar»: eliges uno de los autobuses que vienen (aviso de llegada o «me subo: avísame al bajar») */
+  function elegirBusAviso() {
+    const elegidas = lineasParada.get(codigo);
+    const ts = elegidas.length ? filtrarLineas(ultimo?.tiempos, { lineas: elegidas }) : (ultimo?.tiempos || []);
+    const grupos = groupArrivals(ts);
+    if (!grupos.length) { toast('Ahora mismo no viene ningún autobús a esta parada.'); return; }
+    openModal(`<h2>¿Qué autobús?</h2><p class="help">Elige el autobús y te digo las opciones de aviso.</p>
+      <ul class="board">${grupos.map((g, n) => `<li class="arr tappable" data-n="${n}" role="button" tabindex="0">${badge(g.linea, g.color)}<div class="arr-dest"><b>${esc(g.destino || '')}</b></div><div class="arr-times">${minutesHTML(g.buses[0].tiempo_minutos)}</div></li>`).join('')}</ul>
+      <div class="actions"><button class="btn ghost" type="button" id="ab-x">Cancelar</button></div>`, (m, close) => {
+      $('#ab-x', m).onclick = close;
+      m.querySelectorAll('[data-n]').forEach((li) => { li.onclick = () => {
+        const g = grupos[Number(li.dataset.n)];
+        close();
+        // Mismo aviso que al tocar el autobús en la lista de tiempos
+        const fake = document.createElement('div');
+        fake.dataset.av = JSON.stringify([codigo, g.linea, g.destino, g.buses[0].tiempo_minutos, safeColor(g.color, '#555555')]);
+        document.body.appendChild(fake); fake.click(); fake.remove();
+      }; });
+    });
   }
   async function init() {
     try { await getParadas(); info = cache.paradaByCode.get(codigo) || await api(`/paradas/${encodeURIComponent(codigo)}`); } catch (e) {
@@ -2375,9 +2578,8 @@ views.parada = (el, codigo) => {
     const h = headHTML();
     el.innerHTML = `<div class="stack">${h.html}<div id="p-tools"></div>
       <div id="p-avisos">${settings.avisosParada !== false ? (window.avisosTussam?.paradaBannerHTML?.(codigo) || '') : ''}</div>
-      <section class="card p-info"><h3 class="p-info-tit">Líneas que paran aquí</h3><div class="chips-wrap" id="p-lineas"><span class="muted small">Cargando…</span></div></section>
-      <div id="p-filtro" class="lfiltro" hidden></div>
       <article class="card" id="p-board"><div class="board-empty">Cargando tiempos…</div></article>
+      <section id="p-filtro" class="p-lin" aria-label="Líneas de esta parada"></section>
       <div id="p-horario"></div>
       <div><div class="map-wrap" id="p-mapwrap"><div class="map-box" id="p-map"></div>
           <button class="map-full-btn" type="button" id="p-full" aria-label="Ver el mapa en pantalla completa">${ICON.expand}</button></div>
@@ -2391,7 +2593,9 @@ views.parada = (el, codigo) => {
     $('#p-full', el).onclick = () => pantallaCompleta(!completo);
     // El mapa es lo que más le cuesta al móvil y queda debajo de los tiempos: se monta DESPUÉS de pedirlos y
     // pintarlos (o al cabo de 1,2 s si TUSSAM tarda), para que los minutos salgan cuanto antes.
-    const montarMapa = () => {
+    const montarMapa = async () => {
+      if (dead || bm || !$('#p-map', el)) return;
+      await cargarMapa();
       if (dead || bm || !$('#p-map', el)) return;
       bm = createMap($('#p-map', el), [info.latitud, info.longitud], 16);
       if (!bm) return;
@@ -2407,11 +2611,10 @@ views.parada = (el, codigo) => {
     Promise.all([api(`/paradas/${encodeURIComponent(codigo)}/lineas`), getLineas().catch(() => null)]).then(([nums]) => {
       if (dead) return;
       nums = [...nums].sort(ordenLineas);
-      $('#p-lineas', el).innerHTML = nums.length ? nums.map((n) => badge(etiquetaLinea(lineaFor(n)?.numero || n), lineaFor(n)?.color, { href: `#linea-${encodeURIComponent(n)}` })).join('') : '<span class="muted small">Sin datos de líneas.</span>';
       setHTML($('#p-avisos', el), settings.avisosParada !== false ? (window.avisosTussam?.paradaBannerHTML?.(codigo, nums) || '') : '');
       lineasAqui = nums.map((n) => lineaFor(n)?.numero || String(n));
       pintarFiltro();
-    }).catch(() => { if (!dead) $('#p-lineas', el).innerHTML = '<span class="muted small">No se han podido cargar.</span>'; });
+    }).catch(() => null);
     // Si se acaban de ver los tiempos de esta parada (p. ej. vienes de Favoritas), se enseñan al momento
     // mientras llegan los nuevos, en vez de un «Cargando…».
     const previo = tiemposGuardados(codigo, 120000);
@@ -2432,13 +2635,16 @@ views.parada = (el, codigo) => {
     if (!box) return;
     const enTiempos = (ultimo?.tiempos || []).map((t) => lineaFor(t.linea)?.numero || String(t.linea));
     const todas = [...new Set([...enTiempos, ...lineasAqui])].sort(ordenLineas);
-    if (todas.length < 2) { box.hidden = true; return; }
+    if (!todas.length) { box.hidden = true; return; }
     const sel = new Set(lineasParada.get(codigo).map((n) => lineaFor(n)?.numero || String(n)));
     const et = etiquetaLinea;
-    setHTML(box, `<span class="lf-tit">Ver líneas</span><div class="lf-chips"><button type="button" class="chip" data-lf="" aria-pressed="${!sel.size}">Todas</button>${todas.map((n) => {
+    // Tocar una línea = ver solo esa en los tiempos. Para ver su recorrido, los números de abajo.
+    const chips = todas.length > 1 ? `<div class="lf-chips"><button type="button" class="chip" data-lf="" aria-pressed="${!sel.size}">Todas</button>${todas.map((n) => {
       const c = safeColor(lineaFor(n)?.color, '#555555');
       return `<button type="button" class="chip lchip" data-lf="${esc(n)}" aria-pressed="${sel.has(n)}" style="--lc:${c};--lt:${textOn(c)}"><i></i>${esc(et(n))}</button>`;
-    }).join('')}</div>`);
+    }).join('')}</div>` : '';
+    const recorridos = `<div class="p-rec"><span>Ver recorrido</span>${todas.map((n) => badge(et(n), lineaFor(n)?.color, { sm: true, href: `#linea-${encodeURIComponent(n)}` })).join('')}</div>`;
+    setHTML(box, `<span class="lf-tit">${todas.length > 1 ? 'Líneas · toca para ver solo esa' : 'Línea'}</span>${chips}${recorridos}`);
     box.hidden = false;
     box.querySelectorAll('[data-lf]').forEach((b) => { b.onclick = () => {
       const n = b.dataset.lf;
@@ -2547,10 +2753,32 @@ views.cerca = (el) => {
 };
 
 /* ---------- Ajustes ---------- */
+/* Iconos de la app (deben coincidir con los «activity-alias» del AndroidManifest) */
+const ICONOS_APP = [['Clasico', 'Clásico'], ['Noche', 'Noche'], ['Azulejo', 'Azulejo'], ['Feria', 'Feria'], ['SemanaSanta', 'Semana Santa'], ['Giralda', 'Giralda'], ['Verde', 'Verde']];
+const SONIDOS_AVISO = [['sistema', 'El del móvil'], ['campana', 'Campana'], ['bocina', 'Bocina'], ['suave', 'Suave'], ['pitido', 'Pitido'], ['vibrar', 'Solo vibrar']];
+let iconoActual = 'Clasico';
+function iconoAppSVG(k) {
+  const bus = (c, x = 30, y = 30, s = 2) => `<g transform="translate(${x} ${y}) scale(${s})"><path fill="${c}" d="M7 3h10a3 3 0 0 1 3 3v10a2 2 0 0 1-2 2v2h-3v-2H9v2H6v-2a2 2 0 0 1-2-2V6a3 3 0 0 1 3-3zM6.5 6v5h11V6zM7.5 13.2a1.3 1.3 0 1 0 0 2.6a1.3 1.3 0 1 0 0-2.6zM16.5 13.2a1.3 1.3 0 1 0 0 2.6a1.3 1.3 0 1 0 0-2.6z"/></g>`;
+  const dots = (c, r, step, salta) => { let o = ''; for (let x = 6; x < 110; x += step) for (let y = 6; y < 110; y += step) if (!salta || !(x > 30 && x < 80 && y > 30 && y < 80)) o += `<circle cx="${x}" cy="${y}" r="${r}" fill="${c}"/>`; return o; };
+  const d = {
+    Clasico: `<rect width="108" height="108" fill="#D41C2B"/>${bus('#fff')}`,
+    Noche: `<rect width="108" height="108" fill="#0F172A"/>${[[20, 22], [86, 18], [92, 40], [14, 60], [30, 88], [88, 84]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="1.2" fill="#fff" opacity=".8"/>`).join('')}<circle cx="78" cy="30" r="10" fill="#FDE68A"/><circle cx="83" cy="26" r="9" fill="#0F172A"/>${bus('#FACC15', 28, 34)}`,
+    Azulejo: `<rect width="108" height="108" fill="#F4ECD8"/>${[0, 24, 48, 72, 96].map((x) => [0, 24, 48, 72, 96].map((y) => `<path d="M${x} ${y - 9}l9 9-9 9-9-9z" fill="#1E4FA3"/>`).join('')).join('')}<circle cx="54" cy="54" r="30" fill="#1E4FA3"/>${bus('#fff', 36, 36, 1.5)}`,
+    Feria: `<rect width="108" height="108" fill="#B8132F"/>${dots('#fff', 4.5, 20, true)}${bus('#fff')}`,
+    SemanaSanta: `<rect width="108" height="108" fill="#4C1D6E"/><path d="M82 22L72 56h20z" fill="#fff" opacity=".2"/>${bus('#F3D27A')}`,
+    Giralda: `<rect width="108" height="108" fill="#E8590C"/><path fill="#fff" d="M44 84V44h20v40zM46 44V32h16v12zM49 32V24h10v8zM51 24V18h6v6zM53.2 18V12h1.6v6z"/><path fill="#E8590C" d="M50 52h3v6h-3zM55 52h3v6h-3zM50 64h3v6h-3zM55 64h3v6h-3zM51 36h2v5h-2zM55 36h2v5h-2z"/>`,
+    Verde: `<rect width="108" height="108" fill="#0B6E2F"/>${bus('#fff')}`,
+  };
+  return `<svg viewBox="9 9 90 90" aria-hidden="true">${d[k] || d.Clasico}</svg>`;
+}
 views.ajustes = (el) => {
+  if (isNative() && window.Capacitor?.isPluginAvailable?.('BusSevApariencia')) {
+    window.Capacitor.nativePromise('BusSevApariencia', 'getIcono', {}).then((r) => { if (r?.icono && r.icono !== iconoActual) { iconoActual = r.icono; el.__repintar?.(); } }).catch(() => null);
+  }
   const segBtns = (name, opts, cur) => `<div class="seg" role="group">${opts.map(([v, t]) => `<button type="button" data-set="${name}" data-v="${v}" aria-pressed="${String(cur) === String(v)}">${t}</button>`).join('')}</div>`;
   const sw = (id, on, titulo, texto) => `<div class="switch-row"><div><h3>${titulo}</h3>${texto ? `<p>${texto}</p>` : ''}</div><input class="switch" type="checkbox" data-sw="${id}" ${on ? 'checked' : ''} aria-label="${esc(titulo)}"></div>`;
   const fechaCorta = (d) => d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+  el.__repintar = () => render();
   function render() {
     const tem = tematicaActiva();
     const y = new Date().getFullYear();
@@ -2580,12 +2808,20 @@ views.ajustes = (el) => {
           ${Object.entries(FONDOS).map(([k, f]) => `<button type="button" class="fondo" data-fondo="${k}" aria-pressed="${settings.fondo === k}"><span style="background:${f.bg};border-color:${f.line}"><i style="background:${f.surface}"></i></span><small>${esc(f.label)}</small></button>`).join('')}
         </div>
         <p>Los cuatro primeros son claros y el resto oscuros: al elegir uno, el tema cambia solo a claro u oscuro.</p></div>
+      ${isNative() && window.Capacitor?.isPluginAvailable?.('BusSevApariencia') ? `<div class="set-group"><h3>Icono de la app</h3>
+        <div class="iconos-app">${ICONOS_APP.map(([k, n]) => `<button type="button" class="icono-app" data-icono="${k}" aria-pressed="${iconoActual === k}">${iconoAppSVG(k)}<small>${n}</small></button>`).join('')}</div>
+        <p>Cambia el icono de BusSev en la pantalla de inicio. Algunos móviles tardan unos segundos en cambiarlo, o te piden volver a ponerlo en la pantalla de inicio.</p></div>` : ''}
+      <div class="set-group"><h3>Sonido del aviso de llegada</h3>${segBtns('sonidoAviso', SONIDOS_AVISO, settings.sonidoAviso || 'sistema')}
+        ${isNative() && settings.sonidoAviso && !['sistema', 'vibrar'].includes(settings.sonidoAviso) ? '<button class="btn ghost" type="button" id="s-oir">🔊 Escuchar</button>' : ''}
+        <p>El que suena cuando tu autobús está a punto de llegar. «Solo vibrar» no hace ruido.</p></div>
       <div class="set-group"><h3>Mapa</h3>${segBtns('mapStyle', [['oscuro', 'Oscuro'], ['claro', 'Claro'], ['tema', 'Como el tema'], ['satelite', 'Satélite']], settings.mapStyle)}
         <h3 style="margin-top:14px">Qué ver en el mapa</h3>
         ${sw('mapaParadas', settings.mapaParadas !== false, 'Paradas', 'Los puntos de las paradas.')}
         ${sw('mapaRecorridos', settings.mapaRecorridos !== false, 'Recorridos', 'La línea del autobús cuando eliges una.')}
         ${sw('mapaCalles', settings.mapaCalles !== false, 'Nombres de calles', 'Las etiquetas de calles y sitios del mapa.')}
         ${sw('mapaMetro', settings.mapaMetro !== false, 'Metro de Sevilla', 'La línea 1 y sus estaciones (toca una para ver los próximos trenes).')}
+        ${sw('mapaRenfe', settings.mapaRenfe !== false, 'Cercanías Renfe', 'Las líneas C1 a C5 y sus estaciones, con los próximos trenes.')}
+        ${sw('mapaSevici', settings.mapaSevici !== false, 'Bicis Sevici', 'Las estaciones con las bicis y los huecos libres en este momento.')}
         <p class="help">Los autobuses en directo se encienden con el botón <img class="lg-busimg" src="${busImg()}" alt="autobús" style="height:18px;vertical-align:-4px"> del mapa.</p></div>
 
       <h2 class="section-title">Accesibilidad</h2>
@@ -2647,6 +2883,7 @@ views.ajustes = (el) => {
       if (k === 'theme' && FONDOS[settings.fondo] && (b.dataset.v === 'auto' || FONDOS[settings.fondo].base !== b.dataset.v)) settings.fondo = '';
       if (k === 'escalaTexto') settings.letraGrande = Number(b.dataset.v) > 1;
       saveSettings();
+      if (k === 'sonidoAviso' && isNative()) window.Capacitor?.nativePromise?.('BusSevApariencia', 'probarSonido', { sonido: b.dataset.v }).catch(() => null);
       if (k === 'theme' || k === 'mapStyle' || k === 'escalaTexto') applyTheme();
       if (k === 'escalaTexto') requestAnimationFrame(ajustarPestanas);
       if (k === 'avisosTussam' && b.dataset.v !== 'no' && isNative()) window.avisos?.permisoOk?.();
@@ -2661,6 +2898,11 @@ views.ajustes = (el) => {
     el.querySelectorAll('[data-tem]').forEach((b) => { b.onclick = () => { pruebaDia = null; settings.tematicaAuto = false; settings.tematica = b.dataset.tem; saveSettings(); applyTheme(); render(); }; });
     el.querySelectorAll('[data-dia]').forEach((b) => { b.onclick = () => { pruebaDia = b.dataset.dia || null; applyTheme(); render(); }; });
     el.querySelectorAll('[data-color]').forEach((b) => { b.onclick = () => { settings.color = b.dataset.color; saveSettings(); applyTheme(); render(); }; });
+    el.querySelectorAll('[data-icono]').forEach((b) => { b.onclick = async () => {
+      try { await window.Capacitor.nativePromise('BusSevApariencia', 'setIcono', { icono: b.dataset.icono }); iconoActual = b.dataset.icono; vibrar(15); toast('Icono cambiado. Míralo en la pantalla de inicio.'); render(); }
+      catch (e) { toast(e?.message || 'No se ha podido cambiar el icono'); }
+    }; });
+    $('#s-oir', el)?.addEventListener('click', () => window.Capacitor.nativePromise('BusSevApariencia', 'probarSonido', { sonido: settings.sonidoAviso }).catch(() => null));
     el.querySelectorAll('[data-fondo]').forEach((b) => { b.onclick = () => {
       settings.fondo = b.dataset.fondo;
       if (FONDOS[settings.fondo]) settings.theme = FONDOS[settings.fondo].base;

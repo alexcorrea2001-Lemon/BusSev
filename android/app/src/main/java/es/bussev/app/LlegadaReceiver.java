@@ -187,11 +187,12 @@ public class LlegadaReceiver extends BroadcastReceiver {
         NotificationManager nm = (NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE);
         if (nm == null) return;
         canal(c, nm);
+        String idCanal = AparienciaPlugin.canalPara(c, x.optString("sonido", "sistema"));   // el sonido que elegiste en Ajustes
         int id = x.optInt("id");
         String titulo = min <= 0 ? "Línea " + x.optString("linea") + ": está llegando"
                 : "Línea " + x.optString("linea") + ": llega en " + min + " min";
         String texto = x.optString("parada") + " · hacia " + x.optString("destino");
-        Notification.Builder b = Build.VERSION.SDK_INT >= 26 ? new Notification.Builder(c, CANAL) : new Notification.Builder(c);
+        Notification.Builder b = Build.VERSION.SDK_INT >= 26 ? new Notification.Builder(c, idCanal) : new Notification.Builder(c);
         b.setSmallIcon(icono(c)).setContentTitle(titulo).setContentText(texto).setAutoCancel(true)
                 .setContentIntent(abrirParada(c, x.optString("codigo"), id))
                 .setCategory(Notification.CATEGORY_ALARM);

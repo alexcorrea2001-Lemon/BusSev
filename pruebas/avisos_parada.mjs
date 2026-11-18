@@ -30,8 +30,9 @@ assert.equal(cards[1].querySelector('.fav-aviso'), null, 'la 736 (solo línea 22
 await a.ir('#parada-194', 1500);
 const ban = a.$('#p-avisos .av-banner');
 assert.ok(ban && ban.classList.contains('aqui'), 'banner arriba en rojo');
-const orden = [...a.w.document.querySelectorAll('#p-avisos, .p-info')].map((e) => e.id || e.className);
-assert.deepEqual(orden, ['p-avisos', 'card p-info'], 'el aviso va antes que las líneas');
+const orden = [...a.w.document.querySelectorAll('#p-tools, #p-avisos, #p-board, #p-filtro')].map((e) => e.id);
+assert.deepEqual(orden, ['p-tools', 'p-avisos', 'p-board', 'p-filtro'], 'botones, aviso, tiempos y luego las líneas');
+assert.equal(a.w.document.querySelectorAll('#p-tools .p-bt').length, 3, 'tres botones en una fila');
 assert.equal(ban.querySelectorAll('.av-row').length, 2);
 assert.match(ban.querySelector('.av-row').textContent, /Afecta a esta parada/);
 // Tocar el aviso de la tarjeta (cuando solo hay uno) lo abre
