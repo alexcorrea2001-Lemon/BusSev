@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <!-- Solo se cargan archivos de la propia app; solo se conecta con TUSSAM y con las teselas del mapa. -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tiles.openfreemap.org https://www.ign.es; font-src 'self'; connect-src 'self' https://api.github.com https://photon.komoot.io https://www.cartociudad.es https://www.tussam.es https://reddelineas.tussam.es https://recargas.tussam.es https://tiles.openfreemap.org https://www.ign.es; worker-src 'self' blob:; child-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tiles.openfreemap.org https://www.ign.es; font-src 'self'; connect-src 'self' https://api.github.com https://photon.komoot.io https://www.cartociudad.es https://api.citybik.es https://www.tussam.es https://reddelineas.tussam.es https://recargas.tussam.es https://tiles.openfreemap.org https://www.ign.es; worker-src 'self' blob:; child-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'">
   <meta name="referrer" content="no-referrer">
   <title>BusSev</title>
   <link rel="stylesheet" href="/vendor/maplibre/maplibre-gl.css">
@@ -90,13 +90,12 @@
     <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
   </div>
 
-  <script src="/vendor/maplibre/maplibre-gl-csp.js"></script>
   <script src="/version.js"></script>
   <script src="/data.js"></script>
-  <script src="/recorridos.js"></script>
   <script src="/secrets.js"></script>
   <script src="/backend.js"></script>
   <script src="/app.js"></script>
+  <script src="/disenos.js"></script>
   <script src="/tarjeta.js"></script>
   <script src="/avisos-tussam.js"></script>
   <script src="/tarifas.js"></script>

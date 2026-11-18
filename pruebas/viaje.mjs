@@ -4,13 +4,14 @@ import { arrancar } from './humo.mjs';
 process.on('uncaughtException', (e) => { console.log('EXCEPCIÓN', String(e.stack).split('\n').slice(0, 6).join(' | ')); process.exit(1); });
 
 // TUSSAM simulado: la parada «vacía» no tiene autobuses; Photon devuelve un hospital
-let paradaVacia = null, ghAuth;
+let paradaVacia = null, ghAuth, seviciEst = [];
 const red = async (url, resp, o) => {
   if (/api\.github\.com/.test(url)) { ghAuth = o?.headers?.Authorization ?? null; return resp({ tag_name: 'v1.2.0', body: 'bussev-build:9', assets: [{ name: 'BusSev.apk', url: 'https://api.github.com/repos/yo/BusSev-app/releases/assets/123', browser_download_url: 'https://github.com/yo/BusSev-app/releases/download/v1.2.0/BusSev.apk' }] }); }
   if (/photon\.komoot\.io/.test(url)) return resp({ features: [
     { geometry: { coordinates: [-5.9805, 37.3610] }, properties: { name: 'Hospital Virgen del Rocío', street: 'Avenida Manuel Siurot', district: 'Bellavista', city: 'Sevilla' } },
     { geometry: { coordinates: [-3.70, 40.41] }, properties: { name: 'Hospital de Madrid', city: 'Madrid' } },   // fuera de Sevilla: se descarta
   ] });
+  if (/api\.citybik\.es\/v2\/networks\/sevici/.test(url)) return resp({ network: { stations: seviciEst } });
   if (/cartociudad\.es\/geocoder\/api\/geocoder\/candidates/.test(url)) {
     if (/ciencias/i.test(decodeURIComponent(url))) return resp([
       { id: '410910001234', type: 'callejero', tip_via: 'AVENIDA', address: 'CIENCIAS (DE LAS)', muni: 'Sevilla', postalCode: '41020' },
@@ -64,6 +65,7 @@ ev(`(() => {
   window.BUSSEV_METRO = { linea: { numero: 'M1', nombre: 'Metro de Sevilla', color: '#2e9c3e', metro: true }, estaciones: est,
     recorridos: [['MA', 'M1', 1, 0], ['MB', 'M1', 1, 1], ['MC', 'M1', 1, 2], ['MC', 'M1', 2, 0], ['MB', 'M1', 2, 1], ['MA', 'M1', 2, 2]],
     horarios: { dias: { lun: 0, mar: 0, mie: 0, jue: 0, vie: 0, sab: 0, dom: 0 }, l: { 'M1|1': { m: [0, 2, 4], v: [v] }, 'M1|2': { m: [0, 2, 4], v: [v] } } } };
+  window.BUSSEV_CERCANIAS = { lineas: [], estaciones: [], recorridos: [], horarios: { dias: {}, l: {} } };
 })()`);
 
 // pasosParada: la hora en la parada = salida + minutos desde cabecera
@@ -102,6 +104,9 @@ paradaVacia = null;
 // ---------- Cómo llegar: con horario cuenta la espera y dice a qué hora llegas ----------
 const pos = (c) => JSON.parse(ev(`JSON.stringify((() => { const p = BUSSEV_DATA.paradas.find((x) => x.codigo === '${c}'); return [p.latitud, p.longitud]; })())`));
 const o = pos(seq29[1]), d = pos(seq29[Math.min(seq29.length - 2, 14)]);
+// Sevici: una estación con bicis junto a la salida y otra con huecos junto a la llegada
+seviciEst = [{ id: 's1', name: '001_Salida', latitude: o[0] + 0.0005, longitude: o[1], free_bikes: 5, empty_slots: 3 },
+  { id: 's2', name: '002_Llegada', latitude: d[0] + 0.0005, longitude: d[1], free_bikes: 0, empty_slots: 8 }];
 const ops = JSON.parse(ev(`JSON.stringify(planner.buscar(${JSON.stringify(o)}, ${JSON.stringify(d)}, new Date(2026, 10, 18, 10, 0)))`));
 assert.ok(ops.length, 'hay opciones');
 assert.ok(ops.every((x) => x.llega != null), 'todas con hora de llegada');
@@ -153,6 +158,14 @@ assert.equal(a.w.location.hash, '#ruta');
 assert.equal(a.$('#pl-d').value, 'Prueba', 'destino ya puesto');
 assert.ok(a.$('#pl-res .card.plan'), 'busca solo y encuentra opciones');
 assert.match(a.$('#pl-res').textContent, /Coge el metro/, 'explica el tramo de metro');
+assert.ok(a.$('#pl-res .plan-bici'), 'opción en bici Sevici');
+assert.match(a.$('#pl-res .plan-bici').textContent, /Salida · 5 bicis ahora|Salida.*5 bicis ahora/s);
+// Sin metro: se quita el botón y se recalcula
+a.$('[data-medio="rutaMetro"]').click(); await a.espera(900);
+assert.doesNotMatch(a.$('#pl-res').textContent, /Coge el metro/, 'sin metro si no lo quieres');
+a.$('[data-medio="rutaBici"]').click(); await a.espera(900);
+assert.equal(a.$('#pl-res .plan-bici'), null, 'sin bici si no la quieres');
+a.$('[data-medio="rutaMetro"]').click(); a.$('[data-medio="rutaBici"]').click(); await a.espera(300);
 assert.ok(a.$('#pl-res [data-bajar]'), 'botón Avísame al bajar en cada opción');
 
 // ---------- Aviso de llegada: con la versión nueva de Android lo vigila el móvil (no la notificación fija) ----------

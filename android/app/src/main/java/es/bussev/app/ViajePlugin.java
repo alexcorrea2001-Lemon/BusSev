@@ -33,6 +33,7 @@ public class ViajePlugin extends Plugin {
             x.put("linea", call.getString("linea", ""));
             x.put("destino", call.getString("destino", ""));
             x.put("antes", call.getData().optInt("antes", 5));
+            x.put("sonido", call.getString("sonido", "sistema"));
             long at = call.getData().optLong("at", System.currentTimeMillis());
             x.put("at", at);
             x.put("revisar", Math.min(at, System.currentTimeMillis() + 60_000L));
