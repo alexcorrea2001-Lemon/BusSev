@@ -343,7 +343,7 @@ const planner = (() => {
   function build() {
     const D = window.BUSSEV_DATA;
     // El metro y Cercanías entran como líneas más (M1, RC1…), con sus estaciones como paradas. Solo si los quieres usar.
-    const M = settings.rutaMetro !== false ? window.BUSSEV_METRO : null, C = settings.rutaRenfe !== false ? window.BUSSEV_CERCANIAS : null;
+    const M = settings.rutaMetro === true ? window.BUSSEV_METRO : null, C = settings.rutaRenfe === true ? window.BUSSEV_CERCANIAS : null;
     const todas = [...D.paradas, ...(M?.estaciones || []), ...(C?.estaciones || [])];
     const pos = new Map(todas.map((p) => [p.codigo, [p.latitud, p.longitud]]));
     const seqs = new Map();       // "linea|sentido" -> [codigos]
@@ -376,7 +376,7 @@ const planner = (() => {
     idx = { pos, seqs, porParada, cerca, clave: claveIdx() };
     return idx;
   }
-  const claveIdx = () => `${settings.rutaMetro !== false && !!window.BUSSEV_METRO}|${settings.rutaRenfe !== false && !!window.BUSSEV_CERCANIAS}`;
+  const claveIdx = () => `${settings.rutaMetro === true && !!window.BUSSEV_METRO}|${settings.rutaRenfe === true && !!window.BUSSEV_CERCANIAS}`;
   const indice = () => (idx && idx.clave === claveIdx() ? idx : build());
   const ANDAR = 75;      // metros por minuto
   const PARADA = 1.6;    // minutos por parada, aproximado
@@ -582,6 +582,13 @@ views.ruta = (el) => {
   if (pre?.destino) st.destino = pre.destino;
   let fotonT = 0, fotonN = 0;
   const nombreParada = (p) => favs.get(p.codigo)?.alias ? `${favs.get(p.codigo).alias} (${p.nombre})` : p.nombre;
+  const SV = (d) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
+  const MEDIOS = [
+    ['bus', 'Bus', 'Siempre', SV('<path d="M6.5 3h11A2.5 2.5 0 0 1 20 5.5V17H4V5.5A2.5 2.5 0 0 1 6.5 3z"/><path d="M4 11h16M7.5 21v-4M16.5 21v-4"/>')],
+    ['rutaMetro', 'Metro', 'Línea 1', SV('<path d="M5 19V6l7 8 7-8v13"/>')],
+    ['rutaRenfe', 'Cercanías', 'C1 a C5', SV('<rect x="5" y="3" width="14" height="14" rx="3.5"/><path d="M5 10.5h14M9 21l2-4M15 21l-2-4"/>')],
+    ['rutaBici', 'Sevici', 'Bici', SV('<circle cx="6" cy="16" r="3.5"/><circle cx="18" cy="16" r="3.5"/><path d="M6 16l3.5-7h6L18 16M9.5 9L12 16h-6M14 6h2.5"/>')],
+  ];
   function campo(id, label, val, ph) {
     return `<div class="field plan-field"><label for="${id}">${label}</label>
       <div class="plan-input"><input id="${id}" autocomplete="off" placeholder="${ph}" value="${esc(val?.nombre || '')}">${id === 'pl-o' ? `<button class="btn ghost" type="button" id="pl-yo" title="Usar mi ubicación">${ICON.pin}</button>` : ''}</div>
@@ -593,17 +600,17 @@ views.ruta = (el) => {
       <div class="set-group">${campo('pl-o', 'Desde', st.origen, 'Mi ubicación, parada o calle')}
         <button class="swap" type="button" id="pl-swap" aria-label="Intercambiar origen y destino">⇅</button>
         ${campo('pl-d', 'Hasta', st.destino, 'Parada, calle, sitio o número de parada')}
-        <div class="medios" role="group" aria-label="Qué quieres usar"><span>Usar también:</span>
-          <button type="button" class="chip" data-medio="rutaMetro" aria-pressed="${settings.rutaMetro !== false}">Ⓜ Metro</button>
-          <button type="button" class="chip" data-medio="rutaRenfe" aria-pressed="${settings.rutaRenfe !== false}">🚆 Cercanías</button>
-          <button type="button" class="chip" data-medio="rutaBici" aria-pressed="${settings.rutaBici !== false}">🚲 Sevici</button></div>
+        <div class="medios" role="group" aria-label="Qué quieres usar">
+          <div class="medios-t">Combinar con</div>
+          <div class="medios-g">${MEDIOS.map(([k, nom, sub, svg]) => `<button type="button" class="medio m-${k}" ${k === 'bus' ? 'disabled aria-pressed="true"' : `data-medio="${k}" aria-pressed="${settings[k] === true}"`}>
+            <span class="medio-ic">${svg}</span><span class="medio-n">${nom}</span><span class="medio-s">${sub}</span><span class="medio-ok" aria-hidden="true"></span></button>`).join('')}</div></div>
         <button class="btn" type="button" id="pl-go">Buscar cómo ir</button></div>
       <div id="pl-res"></div></div>`;
     $('.back-btn', el).onclick = goBack;
     $('#pl-go', el).onclick = buscar;
     el.querySelectorAll('[data-medio]').forEach((b) => { b.onclick = () => {
-      const k = b.dataset.medio; settings[k] = settings[k] === false; saveSettings(); vibrar(10);
-      b.setAttribute('aria-pressed', settings[k] !== false);
+      const k = b.dataset.medio; settings[k] = settings[k] !== true; saveSettings(); vibrar(10);
+      b.setAttribute('aria-pressed', settings[k] === true);
       if ($('#pl-res', el)?.children.length) buscar();   // si ya había resultados, se recalculan
     }; });
     $('#pl-swap', el).onclick = () => { [st.origen, st.destino] = [st.destino, st.origen]; render(); };
@@ -685,12 +692,12 @@ views.ruta = (el) => {
     recientes.add(st.origen); recientes.add(st.destino);
     res.innerHTML = '<div class="board-empty">Buscando…</div>';
     await Promise.all([getLineas().catch(() => null), cargarHorarios().catch(() => null),
-      settings.rutaMetro !== false ? cargarMetro().catch(() => null) : null, settings.rutaRenfe !== false ? cargarCercanias().catch(() => null) : null,
-      settings.rutaBici !== false ? window.sevici?.cargar().catch(() => null) : null]);
+      settings.rutaMetro === true ? cargarMetro().catch(() => null) : null, settings.rutaRenfe === true ? cargarCercanias().catch(() => null) : null,
+      settings.rutaBici === true ? window.sevici?.cargar().catch(() => null) : null]);
     const conHorario = !!window.BUSSEV_HORARIOS;
     const ops = planner.buscar(st.origen.pos, st.destino.pos);
     // En bici (Sevici): coges una bici cerca de donde sales y la dejas en una estación con hueco cerca del destino
-    if (settings.rutaBici !== false && window.sevici?.datos) {
+    if (settings.rutaBici === true && window.sevici?.datos) {
       const a = window.sevici.cerca(st.origen.pos, { conBicis: true })[0], b = window.sevici.cerca(st.destino.pos, { conHuecos: true })[0];
       if (a && b && a.id !== b.id) {
         const pedalea = haversine([a.lat, a.lon], [b.lat, b.lon]) * 1.3;   // por calles, algo más que en línea recta

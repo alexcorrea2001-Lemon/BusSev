@@ -210,15 +210,14 @@ function tcardHTML(num, c, res, { mini = false } = {}) {
     : '';
   const foto = tarjeta.foto(num);
   const dis = !foto && c?.diseno && window.DISENOS_TARJETA?.[c.diseno];
-  const marco = c?.marco && (window.MARCOS_TARJETA || []).some(([k]) => k === c.marco) ? ` marco-${c.marco}` : '';
-  const pegas = (c?.pegatinas || []).map((k) => window.PEGATINAS_TARJETA?.[k]).filter(Boolean).slice(0, 2);
+  const marco = c?.marco && (window.MARCOS_TARJETA || []).some(([k]) => k === c.marco) ? c.marco : '';
   // Número tapado (•••• 1234) si lo has pedido, para enseñar el móvil sin que se vea entero
   const numTxt = c?.ocultarNum ? `•••• •••• ${String(num).slice(-4)}` : tarjeta.fmt(num);
-  return `<div class="tcard${mini ? ' mini' : ''}${marco}${c?.brillo ? ' brillo' : ''}${dis ? ' con-diseno' : ''}" style="${cardBackground(c || { num }, tipoId)}">
+  return `<div class="tcard${mini ? ' mini' : ''}${marco ? ' con-marco' : ''}${c?.brillo ? ' brillo' : ''}${dis ? ' con-diseno' : ''}" style="${cardBackground(c || { num }, tipoId)}">
     ${foto ? '' : dis ? (dis.svg || '') : ondas}
-    ${pegas.length ? `<div class="tc-pegas">${pegas.map((p, i) => `<span class="tc-pega p${i}">${p.svg}</span>`).join('')}</div>` : ''}
+    ${marco ? `<i class="tc-marco mk-${marco}" aria-hidden="true"></i>` : ''}
     ${c?.brillo ? '<i class="tc-brillo" aria-hidden="true"></i>' : ''}
-    <div class="tc-top"><span class="tc-brand">${c?.emoji ? `<span class="tc-emoji">${esc(c.emoji)}</span>` : ''}${esc(c?.name || titulo)}</span>${ICON.nfc}</div>
+    <div class="tc-top"><span class="tc-brand">${iconoSitioSVG(c?.emoji, 'tc-emoji ico-sitio')}${esc(c?.name || titulo)}</span>${ICON.nfc}</div>
     <div class="tc-mid">${saldoHTML}
       <div class="tc-tipo">${esc(c?.name ? titulo : (res?.titulo || c?.ultimo?.titulo || titulo))}</div></div>
     <div class="tc-num">${esc(numTxt)}</div></div>`;
@@ -505,73 +504,87 @@ views.tarjeta = (el) => {
       $('#mt-del', m).onclick = () => { close(); window.avisosTarjeta?.cancelarTodo(num); tarjeta.remove(num); toast('Tarjeta borrada'); detalle = null; pintar(); };
     });
   }
+  const ICONOS_TARJETA = ['tarjeta', 'bus', 'persona', 'corazon', 'casa', 'trabajo', 'uni', 'cole', 'compras', 'deporte', 'ocio', 'estrella'];
   function editCard(num, nueva = false) {
     const prev = tarjeta.get(num);
     const c = prev || { num, name: '', color: '', tipo: '' };
-    let color = c.color || '', emoji = c.emoji || '', diseno = c.diseno || '', marco = c.marco || '', pegas = [...(c.pegatinas || [])];
+    const d = { color: c.color || '', emoji: claveIcono(c.emoji), diseno: c.diseno || '', marco: c.marco || '', brillo: !!c.brillo, ocultarNum: !!c.ocultarNum };
     const detect = tipoDetectado(c, detalle?.res?.ok ? detalle.res : null);   // si TUSSAM dice el tipo, no se puede cambiar
     const originalFondo = tarjeta.foto(num);
-    const D = window.DISENOS_TARJETA || {}, MC = window.MARCOS_TARJETA || [], PG = window.PEGATINAS_TARJETA || {};
-    const actual = (m) => ({ ...c, name: $('#c-name', m).value, color, emoji, diseno, marco, pegatinas: pegas, ocultarNum: $('#c-ocu', m)?.checked, brillo: $('#c-bri', m)?.checked, tipo: detect ? '' : (c.tipo || '') });
-    const preview = (m) => {
-      $('#c-prev', m).innerHTML = tcardHTML(num, actual(m), detalle?.res?.ok ? detalle.res : null, { mini: true });
-    };
-    const EMOJIS = ['💳', '🙋', '👩', '👨', '👵', '👴', '👧', '👦', '💼', '🎓', '❤️', '⭐', '🌸', '🍊', '💃', '🐶'];
+    const D = window.DISENOS_TARJETA || {}, MC = window.MARCOS_TARJETA || [];
+    const res = detalle?.res?.ok ? detalle.res : null;
+    const actual = (m) => ({ ...c, name: $('#c-name', m).value, ...d, pegatinas: [], tipo: detect ? '' : (c.tipo || '') });
+    const preview = (m) => { $('#c-prev', m).innerHTML = tcardHTML(num, actual(m), res, { mini: true }); };
     const varias = tarjeta.list().length > 1 && !nueva;
-    openModal(`<h2>${nueva ? 'Guardar tarjeta' : 'Personalizar tarjeta'}</h2>
-      <div id="c-prev"></div>
-      <div class="field"><label for="c-name">Nombre</label><input id="c-name" maxlength="24" placeholder="Por ejemplo: Mía, Mamá, Trabajo" value="${esc(c.name || '')}"></div>
-      <div class="field"><label>Icono</label><div class="emoji-picks"><button type="button" class="emoji-pick ninguno" data-cem="" aria-pressed="${!emoji}">Ninguno</button>${EMOJIS.map((e) => `<button type="button" class="emoji-pick" data-cem="${e}" aria-pressed="${emoji === e}">${e}</button>`).join('')}</div></div>
-      <div class="field"><label>Color</label>${swatchesHTML(color, 'data-cc')}<p class="help">Si no eliges ninguno, se usa el diseño de su tipo.</p></div>
-      <div class="field"><label>Diseño de Sevilla</label><div class="dis-picks"><button type="button" class="dis-pick ninguno" data-dis="" aria-pressed="${!diseno}"><span>Ninguno</span></button>${Object.entries(D).map(([k, d]) => `<button type="button" class="dis-pick" data-dis="${k}" aria-pressed="${diseno === k}" style="background:${d.fondo}">${d.svg}<span>${esc(d.nombre)}</span></button>`).join('')}</div>
-        <p class="help">Si pones una foto de fondo, se ve la foto en lugar del diseño.</p></div>
-      <div class="field"><label>Marco</label><div class="marco-picks">${MC.map(([k, n]) => `<button type="button" class="marco-pick${k ? ` marco-${k}` : ''}" data-mc="${k}" aria-pressed="${marco === k}"><span>${n}</span></button>`).join('')}</div></div>
-      <div class="field"><label>Pegatinas <span class="muted small">(hasta dos)</span></label><div class="pega-picks">${Object.entries(PG).map(([k, p]) => `<button type="button" class="pega-pick" data-pg="${k}" aria-pressed="${pegas.includes(k)}" aria-label="${esc(p.nombre)}" title="${esc(p.nombre)}">${p.svg}</button>`).join('')}</div></div>
-      <div class="switch-row"><div><h3>Efecto brillo</h3><p>La tarjeta brilla un poco al mover el móvil, como una de verdad.</p></div><input class="switch" type="checkbox" id="c-bri" ${c.brillo ? 'checked' : ''} aria-label="Efecto brillo"></div>
-      <div class="switch-row"><div><h3>Ocultar el número</h3><p>Solo se ven los 4 últimos (•••• 1234), por si enseñas el móvil.</p></div><input class="switch" type="checkbox" id="c-ocu" ${c.ocultarNum ? 'checked' : ''} aria-label="Ocultar el número"></div>
-      ${varias ? `<div class="field"><label>Orden</label><div class="btn-row"><button class="btn ghost" type="button" data-cmv="primera">⭐ Ponerla la primera</button><button class="btn ghost" type="button" data-cmv="-1">${ICON.arriba}Subir</button><button class="btn ghost" type="button" data-cmv="1">${ICON.abajo}Bajar</button></div><p class="help" id="c-pos"></p></div>` : ''}
-      <div class="field"><label>Foto de fondo</label>
-        <div class="btn-row"><label class="btn ghost" for="c-foto" style="cursor:pointer">Elegir foto de fondo</label><button class="btn ghost" type="button" id="c-sinfoto">Quitar</button></div>
-        <input id="c-foto" type="file" accept="image/*" hidden></div>
-      <p class="help">Las fotos se guardan solo en este móvil.</p>
-      <div class="actions"><button class="btn ghost" type="button" id="c-cancel">Cancelar</button><button class="btn" type="button" id="c-ok">Guardar</button></div>`,
+    const ok = '<span class="sel-ok" aria-hidden="true"></span>';
+    // Fondo de las miniaturas de marco: la propia tarjeta (su color o su tipo), sin dibujo
+    const fondoMini = () => cardBackground({ ...c, color: d.color, diseno: '' }, tipoDeTarjeta(c, res));
+    const svgIco = (dd) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${dd}</svg>`;
+    openModal(`<div class="pz-top">
+        <div class="pz-tit"><h2>${nueva ? 'Guardar tarjeta' : 'Personalizar tarjeta'}</h2><span class="pz-sub">${esc(tarjeta.fmt(num))}</span></div>
+        <div class="pz-prev tc-prev" id="c-prev" inert></div>
+        <div class="seg pz-tabs" role="tablist"><button type="button" data-tab="tarjeta" aria-pressed="true">Tarjeta</button><button type="button" data-tab="diseno" aria-pressed="false">Diseño</button><button type="button" data-tab="marco" aria-pressed="false">Marco</button></div>
+      </div>
+      <div class="pz-panel" data-panel="tarjeta">
+        <section class="pz-sec"><h3>Nombre</h3><input id="c-name" maxlength="24" placeholder="Por ejemplo: Mía, Mamá, Trabajo" value="${esc(c.name || '')}"></section>
+        <section class="pz-sec"><h3>Icono</h3><div class="ico-picks"><button type="button" class="ico-pick" data-cem="" aria-pressed="${!d.emoji}" aria-label="Sin icono"><span class="ico-sitio">${svgIco('<circle cx="12" cy="12" r="8"/><path d="M6.5 17.5l11-11"/>')}</span></button>${ICONOS_TARJETA.map((k) => `<button type="button" class="ico-pick" data-cem="${k}" aria-pressed="${d.emoji === k}" aria-label="${ICONOS_SITIO[k][0]}" title="${ICONOS_SITIO[k][0]}">${iconoSitioSVG(k)}</button>`).join('')}</div></section>
+        <section class="pz-sec"><h3>Color</h3>${swatchesHTML(d.color, 'data-cc')}<p class="help">Sin color, se usa el de su tipo de tarjeta.</p></section>
+        <section class="pz-sec"><h3>Opciones</h3><div class="opt-tiles dos">
+          <button type="button" class="opt-tile" data-opt="ocultarNum" aria-pressed="${d.ocultarNum}"><span class="opt-ic">${svgIco('<path d="M3 12s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6z"/><circle cx="12" cy="12" r="2.5"/><path d="M4 20L20 4"/>')}</span><b>Ocultar número</b><small>Solo •••• 1234</small>${ok}</button>
+          <button type="button" class="opt-tile" data-opt="brillo" aria-pressed="${d.brillo}"><span class="opt-ic">${svgIco('<path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5L18 18M18 6l-2.5 2.5M8.5 15.5L6 18"/>')}</span><b>Efecto brillo</b><small>Brilla al mover el móvil</small>${ok}</button>
+        </div></section>
+        ${varias ? `<section class="pz-sec"><h3>Orden <span class="orden-pos" id="c-pos"></span></h3><div class="btn-row"><button class="btn ghost" type="button" data-cmv="primera">⭐ La primera</button><button class="btn ghost" type="button" data-cmv="-1">${ICON.arriba}Subir</button><button class="btn ghost" type="button" data-cmv="1">${ICON.abajo}Bajar</button></div></section>` : ''}
+      </div>
+      <div class="pz-panel" data-panel="diseno" hidden>
+        <section class="pz-sec"><h3>Sevilla</h3><div class="dis-tiles">
+          <button type="button" class="dis-tile" data-dis="" aria-pressed="${!d.diseno}"><span class="dis-mini nada"><span>Sin dibujo</span></span><span class="est-n">Liso</span>${ok}</button>
+          ${Object.entries(D).map(([k, x]) => `<button type="button" class="dis-tile" data-dis="${k}" aria-pressed="${d.diseno === k}"><span class="dis-mini" style="background:${x.fondo}">${x.svg}</span><span class="est-n">${esc(x.nombre)}</span>${ok}</button>`).join('')}
+        </div></section>
+        <section class="pz-sec"><h3>Foto de fondo</h3><p class="help">Pon una foto tuya en lugar del dibujo. Se guarda solo en este móvil.</p>
+          <div class="btn-row"><label class="btn ghost" for="c-foto" style="cursor:pointer">Elegir foto</label><button class="btn ghost" type="button" id="c-sinfoto">Quitar foto</button></div>
+          <input id="c-foto" type="file" accept="image/*" hidden></section>
+      </div>
+      <div class="pz-panel" data-panel="marco" hidden>
+        <section class="pz-sec"><h3>Marco</h3><div class="mk-tiles">${MC.map(([k, nn]) => `<button type="button" class="mk-tile" data-mc="${k}" aria-pressed="${d.marco === k}"><span class="mk-mini">${k ? `<i class="tc-marco mk-${k}"></i>` : ''}</span><span class="est-n">${nn}</span>${ok}</button>`).join('')}</div></section>
+      </div>
+      <div class="actions pz-acc"><button class="btn ghost" type="button" id="c-cancel">Cancelar</button><button class="btn" type="button" id="c-ok">Guardar</button></div>`,
     (m, close) => {
-      preview(m);
+      m.classList.add('pz');
+      const minis = () => m.querySelectorAll('.mk-mini').forEach((x) => { x.style.cssText = fondoMini(); });
+      minis(); preview(m);
       $('#c-name', m).oninput = () => preview(m);
       const marcar = (sel, attr, val) => m.querySelectorAll(sel).forEach((x) => x.setAttribute('aria-pressed', x.dataset[attr] === val));
-      m.querySelectorAll('[data-cem]').forEach((b) => { b.onclick = () => { emoji = b.dataset.cem; marcar('[data-cem]', 'cem', emoji); preview(m); }; });
-      m.querySelectorAll('[data-dis]').forEach((b) => { b.onclick = () => { diseno = b.dataset.dis; marcar('[data-dis]', 'dis', diseno); preview(m); }; });
-      m.querySelectorAll('[data-mc]').forEach((b) => { b.onclick = () => { marco = b.dataset.mc; marcar('[data-mc]', 'mc', marco); preview(m); }; });
-      m.querySelectorAll('[data-pg]').forEach((b) => { b.onclick = () => {
-        const k = b.dataset.pg;
-        if (pegas.includes(k)) pegas = pegas.filter((x) => x !== k); else { pegas.push(k); if (pegas.length > 2) pegas.shift(); }
-        m.querySelectorAll('[data-pg]').forEach((x) => x.setAttribute('aria-pressed', pegas.includes(x.dataset.pg)));
-        preview(m);
+      m.querySelectorAll('[data-tab]').forEach((b) => { b.onclick = () => {
+        marcar('[data-tab]', 'tab', b.dataset.tab);
+        m.querySelectorAll('[data-panel]').forEach((p) => { p.hidden = p.dataset.panel !== b.dataset.tab; });
       }; });
-      for (const id of ['#c-bri', '#c-ocu']) $(id, m).onchange = () => preview(m);
-      const posTxt = () => { const l = tarjeta.list(); const i = l.findIndex((x) => x.num === num); const p = $('#c-pos', m); if (p && i >= 0) p.textContent = i === 0 ? 'Es la primera de tus tarjetas.' : `Está la ${i + 1}.ª de ${l.length}.`; };
+      m.querySelectorAll('[data-cem]').forEach((b) => { b.onclick = () => { d.emoji = b.dataset.cem; marcar('[data-cem]', 'cem', d.emoji); vibrar(10); preview(m); }; });
+      m.querySelectorAll('[data-dis]').forEach((b) => { b.onclick = () => { d.diseno = b.dataset.dis; marcar('[data-dis]', 'dis', d.diseno); vibrar(10); preview(m); }; });
+      m.querySelectorAll('[data-mc]').forEach((b) => { b.onclick = () => { d.marco = b.dataset.mc; marcar('[data-mc]', 'mc', d.marco); vibrar(10); preview(m); }; });
+      m.querySelectorAll('[data-opt]').forEach((b) => { b.onclick = () => { const k = b.dataset.opt; d[k] = !d[k]; b.setAttribute('aria-pressed', d[k]); vibrar(10); preview(m); }; });
+      const posTxt = () => { const l = tarjeta.list(); const i = l.findIndex((x) => x.num === num); const p = $('#c-pos', m); if (p && i >= 0) p.textContent = `· ${i + 1} de ${l.length}`; };
       posTxt();
-      m.querySelectorAll('[data-cmv]').forEach((b) => { b.onclick = () => { const d = b.dataset.cmv; tarjeta.move(num, d === 'primera' ? 'primera' : Number(d)); vibrar(12); posTxt(); }; });
+      m.querySelectorAll('[data-cmv]').forEach((b) => { b.onclick = () => { const v = b.dataset.cmv; tarjeta.move(num, v === 'primera' ? 'primera' : Number(v)); vibrar(12); posTxt(); }; });
       m.querySelectorAll('[data-cc]').forEach((b) => { b.onclick = () => {
-        color = color === b.dataset.cc ? '' : b.dataset.cc;
-        m.querySelectorAll('[data-cc]').forEach((x) => { const on = x.dataset.cc === color; x.setAttribute('aria-pressed', on); x.innerHTML = on ? ICON.check : ''; });
-        preview(m);
+        d.color = d.color === b.dataset.cc ? '' : b.dataset.cc;
+        m.querySelectorAll('[data-cc]').forEach((x) => { const on = x.dataset.cc === d.color; x.setAttribute('aria-pressed', on); x.innerHTML = on ? ICON.check : ''; });
+        minis(); preview(m);
       }; });
-      const fotoInput = (sel, cual) => { $(sel, m).onchange = async (e) => { try { tarjeta.setFoto(num, await leerFoto(e.target.files?.[0]), cual); preview(m); } catch (err) { toast(err.message); } }; };
-      fotoInput('#c-foto', 'fondo');
+      $('#c-foto', m).onchange = async (e) => { try { tarjeta.setFoto(num, await leerFoto(e.target.files?.[0]), 'fondo'); preview(m); } catch (err) { toast(err.message); } };
       $('#c-sinfoto', m).onclick = () => { tarjeta.setFoto(num, ''); preview(m); };
       const deshacer = () => { tarjeta.setFoto(num, originalFondo); };
       $('#c-cancel', m).onclick = () => { deshacer(); close(); };
       m.closest('.modal-bg').addEventListener('click', (e) => { if (e.target === e.currentTarget) deshacer(); });
       $('#c-ok', m).onclick = () => {
         const base = tarjeta.get(num) || {};
-        const r = detalle?.res?.ok ? detalle.res : null;
-        const { precio: _sinPrecio, ...resto } = base;   // el precio ya no se escribe a mano: sale de las tarifas de TUSSAM
-        tarjeta.save({ ...resto, num, name: $('#c-name', m).value.trim().slice(0, 24), color, tipo: detect ? '' : (c.tipo || ''),
-          emoji, diseno, marco, pegatinas: pegas, ocultarNum: $('#c-ocu', m).checked, brillo: $('#c-bri', m).checked,
-          ultimo: base.ultimo || (r ? { saldo: r.saldo, tipo: r.tipo, titulo: r.titulo, caducidad: r.caducidad, caducaEl: r.caducaEl, sinCaducidad: r.sinCaducidad, sinSaldoWeb: r.sinSaldoWeb, fecha: r.fecha } : undefined) });
+        const { precio: _sinPrecio, pegatinas: _sinPegatinas, ...resto } = base;   // el precio sale de las tarifas de TUSSAM; las pegatinas ya no existen
+        tarjeta.save({ ...resto, num, name: $('#c-name', m).value.trim().slice(0, 24), color: d.color, tipo: detect ? '' : (c.tipo || ''),
+          emoji: d.emoji, diseno: d.diseno, marco: d.marco, ocultarNum: d.ocultarNum, brillo: d.brillo,
+          ultimo: base.ultimo || (res ? { saldo: res.saldo, tipo: res.tipo, titulo: res.titulo, caducidad: res.caducidad, caducaEl: res.caducaEl, sinCaducidad: res.sinCaducidad, sinSaldoWeb: res.sinSaldoWeb, fecha: res.fecha } : undefined) });
         close(); toast(nueva ? 'Tarjeta guardada' : 'Cambios guardados'); pintar();
+        if (d.brillo) window.addEventListener('deviceorientation', onIncl, { passive: true });
       };
+      m.scrollTop = 0;
     });
   }
 

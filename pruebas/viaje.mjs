@@ -35,7 +35,7 @@ const capacitor = {
     return {};
   },
 };
-const a = await arrancar({ red, capacitor, ls: { 'bussev.settings': { avisarVersion: false } } });
+const a = await arrancar({ red, capacitor, ls: { 'bussev.settings': { avisarVersion: false, rutaMetro: true, rutaRenfe: true, rutaBici: true } } });
 const ev = (c) => new vm.Script(c).runInContext(a.dom.getInternalVMContext());
 a.w.navigator.geolocation = { getCurrentPosition: (ok) => ok({ coords: { latitude: 37.38, longitude: -5.98 } }), watchPosition: () => 1, clearWatch: () => {} };
 await a.espera(800);
