@@ -236,13 +236,9 @@ const haceCuanto = (t) => {
   if (m < 1440) return `hace ${Math.round(m / 60)} h`;
   return `el ${new Date(t).toLocaleDateString('es-ES')}`;
 };
-/* De dónde salió el saldo, en texto corto para enseñarlo en la tarjeta */
+/* De dónde salió el saldo: solo se dice si lo apuntaste tú a mano (de dónde lo saca la app no hace falta verlo) */
 const viaLegible = (v) => {
-  if (v === 'API de TUSSAM') return 'vía API de TUSSAM';
-  if (v === 'tu servidor') return 'vía tu servidor';
-  if (v === 'directa' || v === 'DIRECTO') return 'vía web de TUSSAM';
   if (v === 'manual') return 'apuntado a mano';
-  if (v) return 'vía web de TUSSAM';
   return '';
 };
 
