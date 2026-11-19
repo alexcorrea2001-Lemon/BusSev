@@ -213,7 +213,7 @@ function tcardHTML(num, c, res, { mini = false } = {}) {
   const marco = c?.marco && (window.MARCOS_TARJETA || []).some(([k]) => k === c.marco) ? c.marco : '';
   // Número tapado (•••• 1234) si lo has pedido, para enseñar el móvil sin que se vea entero
   const numTxt = c?.ocultarNum ? `•••• •••• ${String(num).slice(-4)}` : tarjeta.fmt(num);
-  return `<div class="tcard${mini ? ' mini' : ''}${marco ? ' con-marco' : ''}${c?.brillo ? ' brillo' : ''}${dis ? ' con-diseno' : ''}" style="${cardBackground(c || { num }, tipoId)}">
+  return `<div class="tcard${mini ? ' mini' : ''}${marco ? ' con-marco' : ''}${c?.brillo ? ' brillo' : ''}${dis ? ` con-diseno${dis.claro ? ' dis-claro' : ''}` : ''}" style="${cardBackground(c || { num }, tipoId)}">
     ${foto ? '' : dis ? (dis.svg || '') : ondas}
     ${marco ? `<i class="tc-marco mk-${marco}" aria-hidden="true"></i>` : ''}
     ${c?.brillo ? '<i class="tc-brillo" aria-hidden="true"></i>' : ''}

@@ -2616,7 +2616,7 @@ views.parada = (el, codigo) => {
     const mio = f?.alias || claveIcono(f?.emoji) ? `<span class="p-mio">${iconoSitioSVG(f.emoji)}${esc(f.alias || '')}</span>` : '';
     const sub = [mio, `<span class="p-num">${esc(codigo)}</span>`].filter(Boolean).join('<span class="p-sep">·</span>');
     const dir = info.direccion_completa ? `<p class="p-dir">${esc(info.direccion_completa)}</p>` : '';
-    return { fb, html: backHead(`<div class="grow"><h2>${esc(info.nombre)}</h2><p class="p-sub">${sub}</p>${dir}${acc}</div>${fb.html}`) };
+    return { fb, html: backHead(`<div class="grow"><h2>${esc(info.nombre)}</h2><p class="p-sub">${sub}<span class="p-rec" id="p-rec"></span></p>${dir}${acc}</div>${fb.html}`) };
   }
   /* Una fila de botones iguales: Personalizar (o Guardar) · Cómo llegar · Avisar */
   function paintTools() {
@@ -2662,9 +2662,9 @@ views.parada = (el, codigo) => {
     if (dead) return;
     const h = headHTML();
     el.innerHTML = `<div class="stack">${h.html}<div id="p-tools"></div>
+      <section id="p-filtro" class="p-lin" aria-label="Líneas de esta parada"></section>
       <div id="p-avisos">${settings.avisosParada !== false ? (window.avisosTussam?.paradaBannerHTML?.(codigo) || '') : ''}</div>
       <article class="card" id="p-board"><div class="board-empty">Cargando tiempos…</div></article>
-      <section id="p-filtro" class="p-lin" aria-label="Líneas de esta parada"></section>
       <div id="p-horario"></div>
       <div><div class="map-wrap" id="p-mapwrap"><div class="map-box" id="p-map"></div>
           <button class="map-full-btn" type="button" id="p-full" aria-label="Ver el mapa en pantalla completa">${ICON.expand}</button></div>
@@ -2728,8 +2728,11 @@ views.parada = (el, codigo) => {
       const c = safeColor(lineaFor(n)?.color, '#555555');
       return `<button type="button" class="chip lchip" data-lf="${esc(n)}" aria-pressed="${sel.has(n)}" style="--lc:${c};--lt:${textOn(c)}"><i></i>${esc(et(n))}</button>`;
     }).join('')}</div>` : '';
-    const recorridos = `<div class="p-rec"><span>Ver recorrido</span>${todas.map((n) => badge(et(n), lineaFor(n)?.color, { sm: true, href: `#linea-${encodeURIComponent(n)}` })).join('')}</div>`;
-    setHTML(box, `<span class="lf-tit">${todas.length > 1 ? 'Líneas · toca para ver solo esa' : 'Línea'}</span>${chips}${recorridos}`);
+    // Los números para ver el recorrido van arriba, junto al número de la parada
+    const rec = $('#p-rec', el);
+    if (rec) setHTML(rec, `<span class="p-sep">·</span>${todas.map((n) => badge(et(n), lineaFor(n)?.color, { sm: true, href: `#linea-${encodeURIComponent(n)}` })).join('')}`);
+    if (!chips) { box.hidden = true; return; }
+    setHTML(box, `<span class="lf-tit">Líneas · toca para ver solo esa</span>${chips}`);
     box.hidden = false;
     box.querySelectorAll('[data-lf]').forEach((b) => { b.onclick = () => {
       const n = b.dataset.lf;

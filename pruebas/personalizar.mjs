@@ -51,7 +51,8 @@ await a.ir('#parada-736', 1500);
 assert.equal(a.w.document.querySelectorAll('#p-tools .p-bt').length, 3);
 assert.match(a.$('.p-sub').textContent, /Enfrente/); assert.ok(a.$('.p-sub .ico-sitio'));
 const orden = [...a.w.document.querySelectorAll('#p-board, #p-filtro')].map((e) => e.id);
-assert.deepEqual(orden, ['p-board', 'p-filtro']);
+assert.deepEqual(orden, ['p-filtro', 'p-board'], 'las líneas, debajo de los botones');
+assert.ok(a.$('.p-sub #p-rec a.badge, .p-sub #p-rec a'), 'los números para ver el recorrido, junto al número de parada');
 assert.equal(a.$('.p-info'), null, 'ya no sale «Líneas que paran aquí» aparte');
 
 // Tarjetas
