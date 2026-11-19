@@ -1,7 +1,8 @@
 # Compila el APK de BusSev.
 # - Cada vez que subes cambios, o a mano: pestaña Actions → "Compilar APK" → Run workflow.
 # - Además, el día 1 de cada mes revisa si TUSSAM ha publicado horarios nuevos y,
-#   si los hay, compila una versión nueva sola.
+#   si los hay, compila una versión nueva sola. Esa revisión también mantiene encendidas las
+#   tareas programadas (GitHub las apaga tras 60 días sin actividad en el repositorio).
 # El APK aparece en la pestaña Releases del repositorio.
 # Para cambiar el nombre de la versión (v1.1.2, v1.1.3…) edita el archivo VERSION.
 name: Compilar APK
@@ -15,6 +16,7 @@ on:
 
 permissions:
   contents: write
+  actions: write
 
 jobs:
   apk:
@@ -85,6 +87,18 @@ jobs:
             git commit -m "Datos y trazado oficial de TUSSAM actualizados"
             git push || echo "No se han podido guardar en el repositorio (no pasa nada: van igual en el APK)."
           fi
+
+      # Segunda protección contra la inactividad: vuelve a encender las dos tareas programadas
+      # (Compilar APK y Calles OSM). Encenderlas cuenta para GitHub y reinicia sus 60 días.
+      - name: Mantener encendidas las revisiones mensuales
+        if: always() && github.event_name != 'push'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for w in apk.yml calles.yml; do
+            gh api -X PUT "repos/${{ github.repository }}/actions/workflows/$w/enable" && echo "Encendida: $w" || echo "No se ha podido encender $w (no pasa nada)"
+          done
 
       # En la revisión mensual, si no hay nada nuevo, no se compila (no se llena Releases de copias)
       - name: ¿Hace falta compilar?
