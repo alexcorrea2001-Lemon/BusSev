@@ -43,9 +43,10 @@ for (const [t, n] of [['normal', 1], ['halloween', 5], ['navidad', 11], ['feria'
   ev(`settings.tematica = ${JSON.stringify(t)}; applyTheme()`);
   const vistos = new Set();
   for (let k = 0; k < 300; k++) { const src = ev(`busImg('bus${k}')`); vistos.add(src); assert.ok(fs.existsSync(R + 'www' + src), 'falta ' + src);
-    const num = Number(src.match(/-(\d+)\.webp$/)[1]); assert.equal(ev(`busMiraIzq('bus${k}')`), t === 'halloween' && num >= 3, `${src} orientación`); }
+    const num = Number(src.match(/-(\d+)\.webp$/)[1]); assert.equal(ev(`busMiraIzq('bus${k}')`), (t === 'halloween' && num >= 3) || t === 'feria', `${src} orientación`); }   // los coches de caballos miran a la izquierda
   assert.equal(vistos.size, n, `${t}: ${vistos.size} dibujos distintos`);
 }
+ev(`settings.tematica = 'feria'; applyTheme()`); assert.match(ev(`cargandoHTML('x')`), /cg-bus[^>]*data-izq/, 'la animación de carga da la vuelta al coche de caballos');
 ev(`settings.tematica = 'normal'; applyTheme()`); assert.equal(ev(`busImg('x')`), '/img/fiesta/normal-1.webp');
 ev(`settings.vehiculosFiesta = false; applyTheme()`); assert.equal(ev(`busImg('x')`), '/img/buses/normal.webp');
 await a.ir('#ajustes', 400); assert.match(a.w.document.body.textContent, /coches de miedo en Halloween/); assert.match(a.w.document.body.textContent, /Butano/);
