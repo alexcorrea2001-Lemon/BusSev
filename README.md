@@ -123,6 +123,8 @@ el horario oficial y la información de paradas y líneas, que va guardada dentr
 - **Icono de la app** a elegir: Clásico, Noche, Azulejo, Feria, Semana Santa, Giralda y Verde.
   (Al cambiarlo, Android quita el acceso de la pantalla de inicio y hay que volver a ponerlo: te avisa antes.)
 - **Sonido del aviso de llegada**: campanas, ding-dong, marimba o estación (se repite 3 veces), con botón para probarlo.
+- **Cielo de Sevilla** (se puede quitar): la barra de arriba se pinta con el cielo real de Sevilla — amanecer, día,
+  atardecer o noche con estrellas y la luna en su fase — y nubes o lluvia si las hay (previsión de Open-Meteo).
 - **Temáticas** que cambian solas: Navidad, Semana Santa, Feria y Halloween, con adornos y, si quieres,
   **pasos, coches de caballos o carrozas** en el mapa en vez de autobuses.
 - Cada cuánto **se actualizan los tiempos** y si ver los **autobuses en directo** en el mapa.
@@ -164,7 +166,7 @@ Para leer la tarjeta, el **NFC del móvil tiene que estar encendido**. Si está 
 
 **¿Es segura?**
 Sí. BusSev solo se conecta con las webs de TUSSAM, el mapa (OpenStreetMap), el buscador de direcciones
-(CartoCiudad y Photon) y, si lo activas, los datos de Sevici (CityBikes). No tiene anuncios ni rastreadores,
+(CartoCiudad y Photon), el tiempo de Sevilla para el cielo (Open-Meteo) y, si lo activas, los datos de Sevici (CityBikes). No tiene anuncios ni rastreadores,
 no guarda tus datos en ningún servidor y todo se queda en tu móvil. No pide tu cuenta de TUSSAM.
 
 **¿Gasta mucha batería o datos?**

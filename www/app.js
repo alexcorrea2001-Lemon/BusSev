@@ -12,7 +12,7 @@ const store = {
 };
 const DEFAULTS = {
   theme: 'dark', color: 'rojo', refresh: 30, liveLines: true, mapStyle: 'oscuro',
-  tematicaAuto: true, tematica: 'normal',
+  tematicaAuto: true, tematica: 'normal', cieloSevilla: true,
   voz: false, vozAuto: false, letraGrande: false, escalaTexto: 1.22, altoContraste: false, menosAnimaciones: false, vibrar: true, botonesGrandes: false,
   modoSencillo: false,
   revisarCada: 3, avisosTussam: 'mias', avisosResumen: true, avisosTarjetas: true, avisosParada: true, avisosLinea: true, saldoURL: '', tiemposServidor: false, fondo: '', vehiculosFiesta: false, avisarVersion: true,
@@ -421,6 +421,7 @@ function applyTheme() {
   });
   document.querySelectorAll('img.lg-busimg').forEach((i) => { i.src = busImg(); });
   pintarLogo();
+  cielo.pintar();
   updateMapStyles();
   fiesta(tem, dia);
   // El saludo de Favoritas se cambia al momento (antes se quedaba el de la temática anterior hasta reabrir la app)
@@ -442,6 +443,105 @@ setTimeout(ajustarPestanas, 300);
 let firmaFiesta = '';
 setInterval(() => { if (document.visibilityState === 'visible') revisarFiesta(); }, 60_000);
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') revisarFiesta(); });
+/* ================================================================== */
+/* El cielo de Sevilla en la barra de arriba (opción en Ajustes)       */
+/* Amanecer, día, atardecer y noche según la posición real del sol en  */
+/* Sevilla (calculada aquí, sin internet), con la luna en su fase, y   */
+/* nubes o lluvia según Open-Meteo (gratis, sin cuenta; cada 30 min).  */
+/* ================================================================== */
+const cielo = {
+  LAT: 37.389, LON: -5.984,
+  tiempo: null, pedido: 0, timer: null,
+  activo() { return settings.cieloSevilla !== false && tematicaActiva() === 'normal' && !settings.altoContraste; },
+  // Altura del sol (grados) en Sevilla en un momento dado
+  alturaSol(t) {
+    const rad = Math.PI / 180, d = t / 86400000 - 10957.5;      // días desde J2000
+    const g = (357.529 + 0.98560028 * d) * rad, q = 280.459 + 0.98564736 * d;
+    const L = (q + 1.915 * Math.sin(g) + 0.020 * Math.sin(2 * g)) * rad, e = (23.439 - 0.00000036 * d) * rad;
+    const ra = Math.atan2(Math.cos(e) * Math.sin(L), Math.cos(L)), dec = Math.asin(Math.sin(e) * Math.sin(L));
+    const gmst = (18.697374558 + 24.06570982441908 * d) % 24;
+    const ha = ((gmst + this.LON / 15) * 15) * rad - ra;
+    return Math.asin(Math.sin(this.LAT * rad) * Math.sin(dec) + Math.cos(this.LAT * rad) * Math.cos(dec) * Math.cos(ha)) / rad;
+  },
+  // Salida y puesta del sol de hoy (se buscan cada 5 min)
+  diaSol(ahora) {
+    const ini = new Date(ahora); ini.setHours(0, 0, 0, 0);
+    const k = ini.getTime();
+    if (this._dia?.k === k) return this._dia;
+    let sale = null, pone = null, antes = this.alturaSol(k);
+    for (let t = k + 300000; t <= k + 86400000; t += 300000) {
+      const h = this.alturaSol(t);
+      if (antes < -0.83 && h >= -0.83 && sale == null) sale = t;
+      if (antes >= -0.83 && h < -0.83 && sale != null) pone = t;
+      antes = h;
+    }
+    this._dia = { k, sale: sale ?? k + 8 * 3600000, pone: pone ?? k + 19 * 3600000 };
+    return this._dia;
+  },
+  faseLuna(t) { const s = 29.530588853; return (((t / 86400000 - 10962.2625) % s) + s) % s / s; },   // 0 nueva · 0,5 llena
+  async pedirTiempo() {
+    if (!navigator.onLine || Date.now() - this.pedido < 30 * 60000) return;
+    this.pedido = Date.now();
+    try {
+      const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${this.LAT}&longitude=${this.LON}&current=cloud_cover,precipitation,weather_code&timezone=Europe%2FMadrid`, { signal: AbortSignal.timeout?.(8000) });
+      const j = await r.json();
+      if (j?.current) { this.tiempo = { nubes: j.current.cloud_cover ?? 0, lluvia: j.current.precipitation ?? 0, codigo: j.current.weather_code ?? 0 }; store.set('cielo', { ...this.tiempo, t: Date.now() }); this.pintar(); }
+    } catch { /* sin conexión: se queda el último */ }
+  },
+  pintar() {
+    const box = document.getElementById('cielo');
+    const root = document.documentElement;
+    if (!box) return;
+    if (!this.activo()) { delete root.dataset.cielo; box.innerHTML = ''; clearInterval(this.timer); this.timer = null; return; }
+    if (!this.tiempo) { const c = store.get('cielo', null); if (c && Date.now() - c.t < 3 * 3600000) this.tiempo = c; }
+    this.pedirTiempo();
+    if (!this.timer) this.timer = setInterval(() => { if (document.visibilityState === 'visible') this.pintar(); }, 5 * 60000);
+    const ahora = Date.now(), alt = this.alturaSol(ahora), { sale, pone } = this.diaSol(ahora);
+    const tarde = new Date(ahora).getHours() >= 12;
+    const fase = alt < -7 ? 'noche' : alt < 1 ? (tarde ? 'ocaso' : 'alba') : alt < 12 ? (tarde ? 'tarde' : 'manana') : 'dia';
+    const t = this.tiempo || { nubes: 10, lluvia: 0, codigo: 0 };
+    const llueve = t.lluvia > 0.05 || [51, 53, 55, 61, 63, 65, 80, 81, 82, 95, 96, 99].includes(t.codigo);
+    const cubierto = t.nubes >= 80 || llueve;
+    const COL = { noche: ['#08112b', '#1b2c5c'], alba: ['#2c3e74', '#e98a7f'], manana: ['#3e7fc9', '#f3c38f'], dia: ['#2f78c8', '#86bdea'], tarde: ['#3a69b4', '#f0a660'], ocaso: ['#2a2b66', '#e2637a'] };
+    let [c1, c2] = COL[fase];
+    if (cubierto) { c1 = fase === 'noche' ? '#121a2c' : '#55657d'; c2 = fase === 'noche' ? '#27324a' : '#8b9ab0'; }
+    root.dataset.cielo = fase;
+    const W = 400, H = 120;
+    let sol = '', luna = '', estrellas = '';
+    if (alt > -3 && !cubierto) {
+      const f = Math.min(1, Math.max(0, (ahora - sale) / (pone - sale)));
+      const x = 30 + 340 * f, y = H - 8 - 92 * Math.sin(Math.PI * f);
+      const col = fase === 'dia' ? '#fff3c4' : '#ffd08a';
+      sol = `<circle cx="${x.toFixed(0)}" cy="${y.toFixed(0)}" r="34" fill="${col}" opacity=".25"/><circle cx="${x.toFixed(0)}" cy="${y.toFixed(0)}" r="13" fill="${col}"/>`;
+    }
+    if (fase === 'noche' || fase === 'ocaso' || fase === 'alba') {
+      const fl = this.faseLuna(ahora), ilum = 1 - Math.abs(fl - 0.5) * 2;    // 0 nueva, 1 llena
+      if (ilum > 0.05 && !cubierto) {
+        const x = 236, y = 30, r = 11, dx = (fl < 0.5 ? -1 : 1) * r * 2 * (1 - ilum);
+        luna = `<defs><mask id="cl-m"><circle cx="${x}" cy="${y}" r="${r}" fill="#fff"/><circle cx="${(x + dx).toFixed(1)}" cy="${y}" r="${r}" fill="#000"/></mask></defs>
+          <circle cx="${x}" cy="${y}" r="${r + 10}" fill="#fff6d8" opacity=".12"/><circle cx="${x}" cy="${y}" r="${r}" fill="#fff6d8" mask="url(#cl-m)"/>`;
+      }
+      if (!cubierto) {
+        let sem = 7;
+        const rnd = () => (sem = (sem * 9301 + 49297) % 233280) / 233280;
+        for (let i = 0; i < 34; i++) estrellas += `<circle class="cl-est" style="animation-delay:${(rnd() * 4).toFixed(1)}s" cx="${(rnd() * W).toFixed(0)}" cy="${(rnd() * H * 0.8).toFixed(0)}" r="${(0.5 + rnd() * 0.9).toFixed(1)}" fill="#fff" opacity="${fase === 'noche' ? 0.85 : 0.35}"/>`;
+      }
+    }
+    // Nubes: más cuantas más haya en el cielo de verdad
+    const n = Math.min(6, Math.round(t.nubes / 18));
+    const colNube = fase === 'noche' ? '#3a4766' : cubierto ? '#c7cfdb' : '#ffffff';
+    const nube = (x, y, s) => `<g transform="translate(${x} ${y}) scale(${s})"><path d="M0 14c0-6 5-10 11-9 2-6 9-9 15-6 3-4 11-4 14 2 6 0 10 4 9 10z" fill="${colNube}"/></g>`;
+    let nubes = '';
+    for (let i = 0; i < n; i++) nubes += `<g class="cl-nube" style="animation-duration:${150 + i * 37}s;animation-delay:-${i * 41}s">${nube(-60, 8 + (i * 23) % 70, 0.9 + (i % 3) * 0.35)}</g>`;
+    let gotas = '';
+    if (llueve) for (let i = 0; i < 46; i++) gotas += `<line class="cl-gota" style="animation-delay:-${((i * 0.37) % 1.1).toFixed(2)}s" x1="${(i * 8.9) % W}" y1="-10" x2="${((i * 8.9) % W) - 3}" y2="2" stroke="#d6e6ff" stroke-opacity=".55" stroke-width="1.1"/>`;
+    const html = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid slice"><defs><linearGradient id="cl-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${c1}"/><stop offset="1" stop-color="${c2}"/></linearGradient></defs>
+      <rect width="${W}" height="${H}" fill="url(#cl-g)"/>${estrellas}${sol}${luna}${nubes}${gotas}<rect width="${W}" height="${H}" fill="#000" opacity="${fase === 'dia' || fase === 'manana' ? 0.12 : 0.05}"/></svg>`;
+    if (box.dataset.h !== html) { box.innerHTML = html; box.dataset.h = html; }
+  },
+};
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') cielo.pintar(); });
+
 /* El logo de arriba a la izquierda es el mismo icono que tiene la app en el móvil (el clásico sigue el color de la app) */
 let logoClasico = null;
 function pintarLogo() {
@@ -2932,6 +3032,7 @@ views.ajustes = (el) => {
       <div class="set-group"><h3>Color de la app</h3>
         <div class="swatches">${Object.entries(PALETTES).map(([k, p]) => `<button class="swatch" type="button" data-color="${k}" aria-pressed="${settings.color === k}" aria-label="${p.label}" style="background:${p[resolvedTheme][0]};color:${p[resolvedTheme][2]}">${settings.color === k ? ICON.check : ''}</button>`).join('')}</div>
         ${tem !== 'normal' ? '<p>Mientras haya una temática puesta, la app usa sus colores. Con la temática Normal vuelve tu color.</p>' : '<p>Los pasteles llevan el texto oscuro encima para que se lea bien.</p>'}</div>
+      <div class="set-group"><h3>Cielo de Sevilla</h3>${sw('cieloSevilla', settings.cieloSevilla !== false, 'El cielo de Sevilla arriba', 'La barra de arriba se pinta con el cielo real de Sevilla: amanecer, día, atardecer o noche con la luna, y nubes o lluvia si las hay. Con una temática (Feria, Navidad…) manda la temática.')}</div>
       <div class="set-group"><h3>Color de fondo</h3>
         <div class="fondos">
           <button type="button" class="fondo" data-fondo="" aria-pressed="${!settings.fondo}"><span style="background:${resolvedTheme === 'dark' ? '#111214' : '#f4f4f6'}"></span><small>Normal</small></button>
