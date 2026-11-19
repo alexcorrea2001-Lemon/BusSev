@@ -88,4 +88,38 @@ public class ViajePlugin extends Plugin {
         }
         call.resolve(r);
     }
+
+    /* Modo sensor (SensorService) */
+    @PluginMethod
+    public void empezarSensor(PluginCall call) {
+        Context c = getContext();
+        try {
+            JSObject v = new JSObject();
+            v.put("codigo", call.getString("codigo", ""));
+            v.put("linea", call.getString("linea", ""));
+            v.put("destino", call.getString("destino", ""));
+            v.put("parada", call.getString("parada", ""));
+            v.put("inicio", System.currentTimeMillis());
+            Intent i = new Intent(c, SensorService.class).putExtra("sensor", v.toString());
+            if (Build.VERSION.SDK_INT >= 26) c.startForegroundService(i); else c.startService(i);
+            call.resolve();
+        } catch (Exception e) { call.reject("No se ha podido empezar: " + e.getMessage()); }
+    }
+
+    @PluginMethod
+    public void pararSensor(PluginCall call) {
+        Context c = getContext();
+        try { c.startService(new Intent(c, SensorService.class).setAction(SensorService.ACCION_PARAR)); }
+        catch (Exception e) { c.getSharedPreferences(LlegadaReceiver.PREFS, Context.MODE_PRIVATE).edit().remove("sensor").apply(); }
+        call.resolve();
+    }
+
+    @PluginMethod
+    public void estadoSensor(PluginCall call) {
+        JSObject r = new JSObject();
+        String s = SensorService.estado(getContext());
+        r.put("activo", s != null);
+        if (s != null) { try { r.put("sensor", new JSObject(s)); } catch (Exception ignored) { } }
+        call.resolve(r);
+    }
 }

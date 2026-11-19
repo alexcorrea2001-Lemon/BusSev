@@ -184,6 +184,15 @@ const idAviso = v.id;
 await ev(`avisos.cancelar(${idAviso})`);
 assert.ok(llamadas.some(([p, m, x]) => p === 'BusSevViaje' && m === 'quitarLlegada' && x.id === idAviso), 'quitar también en Android');
 
+// ---------- Modo sensor: desde el aviso de llegada, lo lleva Android ----------
+llamadas.length = 0;
+ev(`avisoModal({ codigo: '${p3}', parada: 'Prueba', linea: '29', destino: 'TORREBLANCA', minutos: 9, color: '#c00' })`);
+assert.ok(a.$('#av-sensor'), 'botón de modo sensor');
+a.$('#av-sensor').click(); await a.espera(150);
+const sen = llamadas.find(([p, m]) => p === 'BusSevViaje' && m === 'empezarSensor');
+assert.ok(sen, 'arranca el modo sensor en Android');
+assert.equal(sen[2].linea, '29'); assert.equal(sen[2].codigo, String(p3)); assert.equal(sen[2].destino, 'TORREBLANCA');
+
 // ---------- Avísame al bajar ----------
 const tramo = JSON.parse(ev(`JSON.stringify(bajada.tramo('29|1', '${seq29[2]}', '${seq29[6]}'))`));
 assert.equal(tramo.length, 5); assert.equal(tramo[0].codigo, seq29[2]); assert.equal(tramo.at(-1).codigo, seq29[6]);

@@ -90,11 +90,20 @@ function avisoModal({ codigo, parada, linea, destino, minutos, color }) {
       <div class="btn-row">${opciones.map((n) => `<button class="btn ghost" type="button" data-antes="${n}">${n} min</button>`).join('')}</div>
       <p class="help">${plugin('BusSevViaje') ? 'Aunque cierres la app, en los últimos minutos el móvil vuelve a mirar a TUSSAM y corrige el aviso si el autobús se adelanta o se retrasa.' : 'El aviso se calcula con el tiempo de ahora y se corrige cada vez que abres la app. Si el autobús se retrasa mucho con la app cerrada, puede llegar un poco antes o después.'}</p>`
     : '<p class="help">Este autobús está a punto de llegar; no hace falta aviso.</p>'}
+    ${plugin('BusSevViaje') && minutos > 0 ? `<button class="btn ghost bj-btn sensor-btn" type="button" id="av-sensor"><span>📳 Modo sensor</span><small>Guárdate el móvil: vibra cada minuto desde que falten 5 (más fuerte cuanto más cerca)</small></button>` : ''}
     <button class="btn ghost bj-btn" type="button" id="av-bajar">🚌 Me subo a este: avísame al bajar</button>
     <div class="actions">${ya ? '<button class="btn danger" type="button" id="av-del">Quitar aviso</button>' : ''}<button class="btn ghost" type="button" id="av-x">Cerrar</button></div>`,
   (m, close) => {
     $('#av-x', m).onclick = close;
     $('#av-bajar', m).onclick = () => { close(); bajada.elegir(codigo, linea, destino); };
+    $('#av-sensor', m)?.addEventListener('click', async () => {
+      try {
+        await avisos.permiso().catch(() => null);
+        await native('BusSevViaje', 'empezarSensor', { codigo, linea, destino, parada });
+        close(); vibrar(20);
+        toast(minutos > 5 ? `Modo sensor activado: empezará a vibrar cuando al ${linea} le falten 5 minutos` : 'Modo sensor activado: ya puedes guardarte el móvil');
+      } catch (e) { toast(e?.message || 'No se ha podido activar el modo sensor'); }
+    });
     $('#av-del', m)?.addEventListener('click', async () => { await avisos.cancelar(ya.id); close(); toast('Aviso quitado'); active.rerender?.(); });
     m.querySelectorAll('[data-antes]').forEach((b) => { b.onclick = async () => {
       try {
