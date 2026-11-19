@@ -1,6 +1,6 @@
 # Descarga las calles de OpenStreetMap de la zona por donde pasan las líneas y las guarda en la rama
 # «calles-osm» del repositorio. Sirve para ajustar el trazado de las líneas a la calzada (rotondas incluidas).
-# Se lanza solo el día 1 de cada mes (un rato antes de la revisión mensual de "Compilar APK"), al subir este
+# Se lanza solo el día 1 de cada mes (las calles cambian poco; los horarios se revisan cada semana en "Compilar APK"), al subir este
 # archivo, o a mano: Actions → "Calles OSM" → Run workflow.
 # Además deja apuntada la fecha en geojson/calles_osm.txt: ese pequeño cambio mensual cuenta como actividad
 # del repositorio, y así GitHub no desactiva las tareas programadas (lo hace tras 60 días sin actividad).
@@ -137,7 +137,7 @@ jobs:
 
       # Segunda protección contra la inactividad: vuelve a encender las dos tareas programadas
       # (Compilar APK y Calles OSM). Encenderlas cuenta para GitHub y reinicia sus 60 días.
-      - name: Mantener encendidas las revisiones mensuales
+      - name: Mantener encendidas las revisiones programadas
         if: always() && github.event_name != 'push'
         continue-on-error: true
         env:
