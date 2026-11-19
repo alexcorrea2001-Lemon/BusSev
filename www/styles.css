@@ -856,9 +856,13 @@ html.con-mapa-completo .tabbar, html.con-mapa-completo .topbar { visibility: hid
 .cg-bus { position: absolute; bottom: 9px; left: 0; height: 26px; width: auto; animation: cg-avanza 2.2s ease-in-out infinite; }
 @keyframes cg-carretera { to { background-position: -26px 0; } }
 @keyframes cg-avanza { 0% { transform: translateX(-80px); } 45%, 55% { transform: translateX(48px) translateY(-1px); } 100% { transform: translateX(190px); } }
+/* Dibujos que miran a la izquierda (los coches de caballos): se dan la vuelta para que vayan hacia delante */
+.cg-bus[data-izq] { animation-name: cg-avanza-izq; }
+@keyframes cg-avanza-izq { 0% { transform: translateX(-80px) scaleX(-1); } 45%, 55% { transform: translateX(48px) translateY(-1px) scaleX(-1); } 100% { transform: translateX(190px) scaleX(-1); } }
 .cg-mini { display: inline-block; width: 12px; height: 12px; margin-right: 4px; vertical-align: -1px; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; animation: cg-gira .8s linear infinite; }
 @keyframes cg-gira { to { transform: rotate(360deg); } }
 .a-quieto .cg-bus { animation: none; transform: translateX(48px); }
+.a-quieto .cg-bus[data-izq] { transform: translateX(48px) scaleX(-1); }
 .a-quieto .cg-raya, .a-quieto .cg-mini { animation: none; }
 html.oculta .cg-bus, html.oculta .cg-raya, html.oculta .cg-mini { animation-play-state: paused; }
 /* Línea: el tiempo de llegada a la derecha, junto al número de la parada */
