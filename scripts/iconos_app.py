@@ -108,8 +108,11 @@ ICONOS = {
         'fg': bus('#FFFFFF', '#1D4F9C', '#E8A317', dy=1, s=.66),
     },
     'Feria': {
-        'bg': [(TODO, '#C8102E', 1), lunares('#FFFFFF', 15, 3.4, 1, True, 29), (anillo(54, 54, 28, 2.2), '#FFFFFF', 1)],
-        'fg': [(circ(54, 54, 24.4), '#FFFFFF', 1)] + bus('#C8102E', '#FFFFFF', '#FFD54A', dy=1, s=.65),
+        # Rojo de traje de flamenca con unos pocos lunares grandes alrededor del autobús (sin tocar los bordes,
+        # que el móvil recorta), y el autobús blanco como el clásico
+        'bg': [(TODO, '#D0142F', 1), (circ(40, 34, 40), '#E2263F', 1),
+               (''.join(circ(x, y, r) for x, y, r in [(30, 31, 5.2), (79, 37, 4.2), (27, 60, 3.6), (83, 66, 5.2), (39, 83, 4), (70, 84, 3.2), (57, 23.5, 2.6), (24, 44, 2.2), (88, 50, 2.2), (55, 88, 2.2)]), '#FFFFFF', 1)],
+        'fg': bus('#FFFFFF', '#D0142F', '#FFC93C', dy=1, s=.72),
     },
     'SemanaSanta': {
         'bg': [(TODO, '#3A1557', 1), (circ(54, 30, 70), '#5B2A86', .5), (circ(54, 20, 44), '#7A3BA8', .35),
