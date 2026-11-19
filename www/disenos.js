@@ -143,44 +143,45 @@ const torreoro = arte((u) => {
     ${veloCartel(u)}`;
 });
 
-/* Puente de Triana: cartel con el puente de hierro, sus anillos, la capillita del Carmen y palmeras */
+/* Puente de Triana: cartel con el puente de hierro (arcos amarillos y sus anillos) y la capillita del Carmen */
 const triana = arte((u) => {
-  const C = CP;
-  const arcoP = (x0, x1, yb) => {
-    const m = (x0 + x1) / 2, w = x1 - x0, top = 136;
-    let o = `<path d="M${x0} ${yb} Q${m} ${top - 22} ${x1} ${yb} L${x1} ${yb + 6} Q${m} ${top - 14} ${x0} ${yb + 6}z" fill="${C.ama}"/>`;
-    // nervios oscuros por debajo
-    for (let k = 1; k < 4; k++) o += `<path d="M${x0 + w * 0.1 * k} ${yb + 4} Q${m} ${top - 10 + k * 8} ${x1 - w * 0.1 * k} ${yb + 4}" fill="none" stroke="${C.mor}" stroke-width="4"/>`;
-    // anillos entre el arco y el tablero
-    for (const t of [0.12, 0.24, 0.36, 0.5, 0.64, 0.76, 0.88]) {
-      const x = x0 + w * t, ya = yb - (yb - (top - 22) ) * 2 * t * (1 - t) * 1, mid = (130 + ya) / 2, r = Math.max(2.4, Math.min(8, (ya - 130) / 2 - 1));
-      o += `<circle cx="${x.toFixed(1)}" cy="${mid.toFixed(1)}" r="${r.toFixed(1)}" fill="none" stroke="${C.ama}" stroke-width="2.2"/>`;
+  const C = CP, D0 = 134;                       // parte de abajo del tablero
+  const arcoP = (x0, x1) => {
+    const m = (x0 + x1) / 2, w = x1 - x0, top = 141, y0 = 182;
+    const yA = (x) => y0 - (y0 - top) * (1 - ((x - m) / (w / 2)) ** 2);
+    const curva = (dy) => Array.from({ length: 31 }, (_, k) => { const x = x0 + w * k / 30; return `${x.toFixed(1)} ${(yA(x) + dy).toFixed(1)}`; }).join(' L');
+    let o = `<path d="M${curva(12)}" fill="none" stroke="${C.mor}" stroke-width="2.6"/><path d="M${curva(6)}" fill="none" stroke="${C.mor}" stroke-width="2.6"/>`
+      + `<path d="M${curva(0)}" fill="none" stroke="${C.ama}" stroke-width="4.5"/>`;
+    // anillos en el hueco entre el arco y el tablero (más grandes junto a los pilares)
+    for (const t of [0.09, 0.2, 0.31, 0.69, 0.8, 0.91]) {
+      const x = x0 + w * t, gap = yA(x) - D0 - 2.5, r = Math.min(gap / 2 - 1.2, 4.6);
+      if (r >= 2) o += `<circle cx="${x.toFixed(1)}" cy="${(D0 + 1 + gap / 2).toFixed(1)}" r="${r.toFixed(1)}" fill="none" stroke="${C.ama}" stroke-width="1.8"/>`;
     }
     return o;
   };
+  const pilar = (x) => `<rect x="${x - 7}" y="${D0}" width="14" height="62" fill="${C.crema}"/><rect x="${x - 7}" y="${D0}" width="3.5" height="62" fill="${C.sombra}"/>
+    <rect x="${x - 9}" y="${D0 + 40}" width="18" height="4" fill="${C.ama}"/><path d="M${x - 10} 196 h20 v-4 a10 6 0 0 0 -20 0z" fill="${C.sombra}"/>`;
+  const farola = (x) => `<path d="M${x} 116 V84" stroke="${C.mor}" stroke-width="2"/><path d="M${x - 8} 88 q8 -5 16 0" stroke="${C.mor}" stroke-width="1.6" fill="none"/>
+    ${[x - 8, x, x + 8].map((fx, i) => `<path d="M${fx - 2.6} ${i === 1 ? 74 : 84} h5.2 l-1 -6 h-3.2z" fill="${C.mor}"/><rect x="${fx - 1.6}" y="${(i === 1 ? 74 : 84) - 5}" width="3.2" height="4" fill="${C.ama}"/>`).join('')}`;
   return `${cielo(u)}
-    ${nube(300, 24, 56)}${nube(224, 54, 40)}${nube(360, 64, 34)}
-    <!-- casas de la orilla -->
-    <rect x="300" y="150" width="100" height="44" fill="${C.crema}"/><rect x="352" y="140" width="48" height="54" fill="${C.ama}"/>
-    <g fill="${C.mor}">${[308, 322, 336, 360, 374, 388].map((x) => `<path d="M${x} 170 v-8 a3 3 0 0 1 6 0 v8z"/>`).join('')}</g>
-    <!-- capillita del Carmen -->
-    <rect x="240" y="96" width="26" height="40" fill="${C.crema}"/><rect x="240" y="96" width="5" height="40" fill="${C.sombra}"/><rect x="238" y="94" width="30" height="4" fill="${C.ama}"/>
-    <circle cx="253" cy="116" r="4" fill="${C.ama}"/><circle cx="253" cy="116" r="2.2" fill="${C.mor}"/>
-    <rect x="246" y="80" width="14" height="14" fill="${C.crema}"/><path d="M243 82 a10 10 0 0 1 20 0z" fill="${C.rojo}"/><rect x="250.5" y="66" width="5" height="7" fill="${C.crema}"/><path d="M253 66 v-6 M251 62 h4" stroke="${C.mor}" stroke-width="1.2"/><path d="M249 74 a4 4 0 0 1 8 0z" fill="${C.rojo}"/>
-    <!-- tablero, barandilla y farolas -->
-    <path d="M232 132 H400 V122 H232z" fill="${C.ama}"/><path d="M232 132 H400 V142 H232z" fill="${C.crema}"/>
-    <path d="M232 122 H400" stroke="${C.mor}" stroke-width="1.6"/><path d="M232 112 H400" stroke="${C.mor}" stroke-width="1.4"/>
-    <g stroke="${C.mor}" stroke-width="1">${Array.from({ length: 34 }, (_, k) => `<path d="M${234 + k * 5} 112 v10"/>`).join('')}</g>
-    ${[300, 372].map((x) => `<path d="M${x} 112 V78" stroke="${C.mor}" stroke-width="2"/><path d="M${x - 7} 82 h14" stroke="${C.mor}" stroke-width="1.6"/><path d="M${x - 9} 78 h4 v6 h-4z M${x + 5} 78 h4 v6 h-4z M${x - 2} 70 h4 v7 h-4z" fill="${C.mor}"/>`).join('')}
-    <g fill="${C.mor}"><path d="M318 112 v-12 a2.4 2.4 0 0 1 4.8 0 v12z"/><circle cx="320.4" cy="96" r="2.6"/><path d="M342 112 v-11 a2.2 2.2 0 0 1 4.4 0 v11z"/><circle cx="344.2" cy="97" r="2.4"/></g>
-    <!-- arcos -->
-    ${arcoP(244, 320, 186)}${arcoP(330, 406, 186)}
-    <!-- pilares -->
-    <path d="M318 140 h14 v52 h4 v12 h-22 v-12 h4z" fill="${C.crema}"/><rect x="314" y="186" width="22" height="4" fill="${C.ama}"/>
-    <path d="M236 140 h12 v52 h4 v12 h-20 v-12 h4z" fill="${C.crema}"/><rect x="232" y="186" width="20" height="4" fill="${C.ama}"/>
+    ${nube(300, 30, 56)}${nube(230, 56, 38)}${nube(362, 70, 32)}
+    ${arcoP(250, 324)}${arcoP(326, 400)}
+    <!-- tablero y barandilla -->
+    <rect x="236" y="120" width="170" height="${D0 - 120}" fill="${C.crema}"/><rect x="236" y="116" width="170" height="5" fill="${C.ama}"/>
+    <path d="M236 104 H406" stroke="${C.mor}" stroke-width="1.6"/>
+    <g stroke="${C.mor}" stroke-width=".9" opacity=".9">${Array.from({ length: 42 }, (_, k) => `<path d="M${262 + k * 3.4} 104 v12"/>`).join('')}</g>
+    ${farola(300)}${farola(372)}
+    ${pilar(250)}${pilar(325)}${pilar(400)}
+    <!-- capillita del Carmen, a la entrada del puente -->
+    <rect x="236" y="92" width="28" height="42" fill="${C.crema}"/><rect x="236" y="92" width="6" height="42" fill="${C.sombra}"/>
+    <rect x="233" y="88" width="34" height="5" fill="${C.ama}"/><rect x="233" y="114" width="34" height="3" fill="${C.ama}"/>
+    <path d="M245 134 v-12 a5 5 0 0 1 10 0 v12z" fill="${C.mor}"/><circle cx="250" cy="102" r="4.2" fill="${C.crema}" stroke="${C.ama}" stroke-width="1.6"/>
+    <rect x="241" y="74" width="18" height="15" fill="${C.crema}"/><path d="M237.5 76 a12.5 11 0 0 1 25 0z" fill="${C.rojo}"/><path d="M243 70 a8 7 0 0 1 4 -4" stroke="#fff" stroke-opacity=".35" stroke-width="2" fill="none"/>
+    <rect x="247" y="58" width="6" height="8" fill="${C.crema}"/><path d="M245.5 59 a4.5 4 0 0 1 9 0z" fill="${C.rojo}"/><path d="M250 55 v-7 M247.6 51 h4.8" stroke="${C.mor}" stroke-width="1.3"/>
     <!-- río -->
-    <rect x="200" y="200" width="200" height="50" fill="${C.agua}"/><rect x="200" y="200" width="200" height="4" fill="${C.azul}"/>
-    <g fill="${C.celeste}" opacity=".7"><rect x="250" y="212" width="40" height="3" rx="1.5"/><rect x="310" y="222" width="56" height="3" rx="1.5"/><rect x="262" y="234" width="30" height="3" rx="1.5"/><rect x="350" y="240" width="40" height="3" rx="1.5"/></g>
+    <rect x="236" y="196" width="170" height="54" fill="${C.agua}"/><rect x="236" y="196" width="170" height="3" fill="${C.azul}"/>
+    <g fill="${C.celeste}" opacity=".7"><rect x="262" y="210" width="36" height="2.5" rx="1.2"/><rect x="320" y="220" width="52" height="2.5" rx="1.2"/><rect x="276" y="232" width="28" height="2.5" rx="1.2"/><rect x="350" y="240" width="40" height="2.5" rx="1.2"/></g>
+    <g fill="${C.crema}" opacity=".35"><rect x="244" y="202" width="12" height="2"/><rect x="319" y="202" width="12" height="2"/></g>
     ${veloCartel(u)}`;
 });
 
@@ -250,9 +251,8 @@ const plazaespana = arte((u) => {
     ${nube(236, 26, 50)}${nube(330, 40, 46)}
     ${ala}${arcos}${cornisa}<g transform="translate(${cx - 300} 0)">${centro}</g>
     ${canal}<g transform="translate(${cx - 300} 0)">${puente}</g>
-    <!-- plaza: el suelo y los bancos de azulejo de las provincias -->
-    <path d="M240 250 L240 ${base(cx - R) + 20} Q${cx} 196 404 ${base(cx + R) + 24} L404 250z" fill="${C.sombra}"/>
-    <g>${[266, 290, 330, 360].map((x, k) => `<rect x="${x - 9}" y="${226 - Math.abs(x - 308) * 0.05}" width="18" height="9" rx="2" fill="${[C.azul, C.ama, C.ama, C.azul][k]}"/><rect x="${x - 7}" y="${228 - Math.abs(x - 300) * 0.05}" width="14" height="5" fill="#fff" opacity=".6"/>`).join('')}</g>
+    <path d="M${pts((x) => base(x) + 18 + 6 * prof(x)).join(' L')} L404 250 L${cx - R} 250z" fill="${C.agua}"/>
+    <g fill="${C.celeste}" opacity=".6"><rect x="276" y="222" width="34" height="2.5" rx="1.2"/><rect x="330" y="232" width="44" height="2.5" rx="1.2"/><rect x="290" y="242" width="26" height="2.5" rx="1.2"/></g>
     ${torre(cx - R + 2, 0.92)}${torre(cx + R - 4, 0.92)}
     ${veloCartel(u)}`;
 });
