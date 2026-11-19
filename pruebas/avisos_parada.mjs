@@ -31,7 +31,7 @@ await a.ir('#parada-194', 1500);
 const ban = a.$('#p-avisos .av-banner');
 assert.ok(ban && ban.classList.contains('aqui'), 'banner arriba en rojo');
 const orden = [...a.w.document.querySelectorAll('#p-tools, #p-avisos, #p-board, #p-filtro')].map((e) => e.id);
-assert.deepEqual(orden, ['p-tools', 'p-avisos', 'p-board', 'p-filtro'], 'botones, aviso, tiempos y luego las líneas');
+assert.deepEqual(orden, ['p-tools', 'p-filtro', 'p-avisos', 'p-board'], 'botones, líneas, aviso y tiempos');
 assert.equal(a.w.document.querySelectorAll('#p-tools .p-bt').length, 3, 'tres botones en una fila');
 assert.equal(ban.querySelectorAll('.av-row').length, 2);
 assert.match(ban.querySelector('.av-row').textContent, /Afecta a esta parada/);

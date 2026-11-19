@@ -123,34 +123,73 @@ const azulejo = arte((u) => {
     ${veloRect(u)}`;
 });
 
-/* Plaza de España: en crema y oro sobre azul cobalto (los colores del azulejo) */
+/* Plaza de España: ladrillo, piedra y azulejo azul, con sus torres, el cuerpo central y el puente sobre el canal */
 const plazaespana = arte((u) => {
-  const torre = (x) => `<path d="M${x - 12} 200 V92 H${x + 12} V200"/><path d="M${x - 15} 92 H${x + 15}"/><path d="M${x - 9} 92 V70 H${x + 9} V92"/><path d="M${x - 11} 70 H${x + 11}"/>
-    <path d="M${x - 6} 70 V56 H${x + 6} V70"/><path d="M${x - 6} 56 Q${x} 40 ${x + 6} 56"/><path d="M${x} 44 V32"/>${arco(x - 7, 104, 5, 14)}${arco(x + 2, 104, 5, 14)}${arco(x - 3, 140, 6, 18)}${arco(x - 3.5, 76, 7, 12)}`;
-  return `${base(u, '#1f55a8', '#0b2459', pat(u('p'), 22, 22, `<path d="M11 4c2 3 2 5 0 7-2-2-2-4 0-7zM11 18c2-3 2-5 0-7-2 2-2 4 0 7zM4 11c3-2 5-2 7 0-2 2-4 2-7 0zM18 11c-3-2-5-2-7 0 2 2 4 2 7 0z" fill="${CREMA}" fill-opacity=".07"/>`) + velo(u, '#061633', 0.5))}
-    ${halo(u, 300, 130, 150, CREMA, 0.14)}
-    ${trazo(CREMA, 2, `${torre(226)}${torre(374)}<path d="M238 122 H362"/><path d="M290 122 L300 110 L310 122"/>
-      ${Array.from({ length: 8 }, (_, i) => arco(244 + i * 14.5, 132, 9, 18)).join('')}<path d="M238 156 H362"/>
-      ${Array.from({ length: 7 }, (_, i) => arco(243 + i * 17, 166, 12, 34)).join('')}<path d="M206 200 H394"/>`)}
-    ${trazo(ORO, 2, `<path d="M214 214 H400"/><path d="M262 214 Q300 196 338 214"/><path d="M258 207 Q300 187 342 207"/>
-      ${Array.from({ length: 9 }, (_, i) => { const t = (i + 1) / 10, x = 258 + 84 * t, y = 207 - 80 * t * (1 - t); return `<path d="M${x.toFixed(1)} ${y.toFixed(1)} v5"/>`; }).join('')}`)}
-    ${trazo(CREMA, 1.4, lineas(224, 3, 230, 370, 8, 0.4))}
+  const L = '#D9875A', Ls = '#B8673F', P = '#F3E2C2', A = '#2E6DB4', Az = '#7FB2E5', Y = '#F2C14E', O = '#5B2A18';
+  const torre = (x) => `<g>
+    <rect x="${x - 15}" y="96" width="30" height="110" fill="${L}"/><rect x="${x - 15}" y="96" width="6" height="110" fill="${Ls}" opacity=".6"/>
+    <rect x="${x - 18}" y="92" width="36" height="6" fill="${P}"/><rect x="${x - 18}" y="150" width="36" height="4" fill="${P}"/>
+    <rect x="${x - 6}" y="104" width="12" height="18" rx="6" fill="${O}"/><rect x="${x - 6}" y="160" width="12" height="18" rx="6" fill="${O}"/>
+    <rect x="${x - 10}" y="128" width="20" height="14" fill="${A}"/><circle cx="${x}" cy="135" r="4" fill="${Y}"/>
+    <rect x="${x - 11}" y="66" width="22" height="27" fill="${L}"/><rect x="${x - 13}" y="62" width="26" height="5" fill="${P}"/>
+    <path d="M${x - 7} 90 v-14 a3.5 3.5 0 0 1 7 0 v14z M${x} 90 v-14 a3.5 3.5 0 0 1 7 0 v14z" fill="${O}"/>
+    <rect x="${x - 8}" y="46" width="16" height="17" fill="${L}"/><rect x="${x - 4}" y="50" width="8" height="10" rx="4" fill="${O}"/>
+    <path d="M${x - 10} 47 Q${x} 22 ${x + 10} 47z" fill="${A}"/><path d="M${x - 5} 44 Q${x} 30 ${x + 5} 44" fill="none" stroke="${Az}" stroke-width="2"/>
+    <circle cx="${x - 4}" cy="40" r="1.3" fill="${Y}"/><circle cx="${x + 3}" cy="36" r="1.3" fill="${Y}"/><circle cx="${x + 5}" cy="43" r="1.3" fill="${Y}"/>
+    <path d="M${x} 27 V14 M${x - 3} 18 H${x + 3}" stroke="${O}" stroke-width="1.6"/><circle cx="${x}" cy="27" r="2.2" fill="${Y}"/></g>`;
+  const arcos = (x0, n, paso, y, w, h, c) => Array.from({ length: n }, (_, k) => `<path d="M${x0 + k * paso} ${y + h} v${-h + w / 2} a${w / 2} ${w / 2} 0 0 1 ${w} 0 v${h - w / 2}z" fill="${c}"/>`).join('');
+  return `<defs>${lg(u('c'), 0, 1, [[0, '#1f5a9e'], [0.6, '#5d9fd8'], [1, '#bfe0f5']])}${lg(u('w'), 0, 1, [[0, '#3b84c4'], [1, '#1d5b93']])}${velo(u, '#0b2747', 0.55)}</defs>
+    <rect width="400" height="250" fill="url(#${u('c')})"/>
+    <g fill="#fff" opacity=".45"><ellipse cx="300" cy="30" rx="26" ry="6"/><ellipse cx="322" cy="25" rx="16" ry="6"/></g>
+    <!-- alas con su galería de arcos -->
+    <rect x="186" y="150" width="214" height="56" fill="${L}"/><rect x="186" y="146" width="214" height="5" fill="${P}"/>
+    ${arcos(190, 14, 15.5, 168, 10, 36, P)}${arcos(192, 14, 15.5, 172, 6, 32, O)}
+    <rect x="186" y="160" width="214" height="3" fill="${A}"/>
+    ${torre(204)}${torre(376)}
+    <!-- cuerpo central -->
+    <rect x="252" y="96" width="76" height="110" fill="${L}"/><rect x="252" y="96" width="76" height="5" fill="${P}"/>
+    <path d="M262 96 L290 74 L318 96z" fill="${P}"/><path d="M270 94 L290 79 L310 94z" fill="${A}"/><circle cx="290" cy="89" r="3" fill="${Y}"/>
+    <path d="M290 74 V62" stroke="${O}" stroke-width="1.6"/><circle cx="262" cy="94" r="2.5" fill="${A}"/><circle cx="318" cy="94" r="2.5" fill="${A}"/>
+    <rect x="256" y="104" width="7" height="102" fill="${P}"/><rect x="317" y="104" width="7" height="102" fill="${P}"/>
+    <rect x="258" y="114" width="3" height="80" fill="${A}"/><rect x="319" y="114" width="3" height="80" fill="${A}"/>
+    ${[276, 304].map((x) => `<path d="M${x - 7} 113 h14 v8 c0 6 -7 9 -7 9 s-7 -3 -7 -9z" fill="${Y}"/><path d="M${x - 5} 115 h10 v6 c0 4.5 -5 7 -5 7 s-5 -2.5 -5 -7z" fill="#C23B2E"/><path d="M${x} 115 v13" stroke="${Y}" stroke-width="1.2"/>`).join('')}
+    <path d="M272 206 V160 a18 18 0 0 1 36 0 V206z" fill="${P}"/><path d="M277 206 V161 a13 13 0 0 1 26 0 V206z" fill="${O}"/>
+    <path d="M281 206 V175 h18 V206" fill="#7a3f22"/><path d="M286 206 v-26 M294 206 v-26" stroke="${P}" stroke-width="2"/>
+    <!-- canal y puente de azulejo -->
+    <rect x="186" y="206" width="214" height="20" fill="url(#${u('w')})"/>
+    <path d="M186 206 H400" stroke="${P}" stroke-width="2.5"/>
+    <path d="M244 226 Q290 186 336 226z" fill="${P}"/><path d="M262 226 Q290 202 318 226z" fill="#16466f"/>
+    <path d="M240 210 Q290 168 340 210" fill="none" stroke="${A}" stroke-width="8"/><path d="M240 210 Q290 168 340 210" fill="none" stroke="#fff" stroke-width="2" stroke-dasharray="3 5"/>
+    <path d="M238 214 Q290 172 342 214" fill="none" stroke="${P}" stroke-width="2"/>
+    <circle cx="240" cy="210" r="4" fill="${P}"/><circle cx="340" cy="210" r="4" fill="${P}"/>
+    <!-- suelo -->
+    <rect x="244" y="226" width="156" height="24" fill="#E8D3AE"/><rect x="186" y="226" width="58" height="24" fill="#1d5b93"/><g stroke="#cdb48a" stroke-width="1">${Array.from({ length: 5 }, (_, k) => `<path d="M${262 + k * 32} 226 l-8 24"/>`).join('')}<path d="M244 236 H400"/></g>
     ${veloRect(u)}`;
 });
 
-/* Las Setas: la retícula de madera en trazo cálido sobre gris carbón */
+/* Las Setas: boceto a tinta azul marino con aguada azul, sobre papel claro (la tarjeta lleva letras oscuras) */
 const setas = arte((u) => {
-  const forma = 'M186 120 C 186 60, 260 46, 300 62 C 330 36, 400 40, 404 92 C 404 124, 380 130, 360 128 C 352 150, 344 160, 344 210 h-26 C 318 170, 314 140, 300 128 C 290 132, 274 134, 262 132 C 252 150, 248 170, 248 210 h-24 C 224 170, 222 146, 214 134 C 196 132, 186 128, 186 120z';
+  const T = '#1D3557', W = '#8FB4CF';
+  const forma = 'M214 72 C 212 38, 296 18, 332 46 C 352 64, 388 72, 406 94 L 406 150 C 384 146, 362 140, 346 150 C 334 166, 306 170, 294 158 C 288 146, 282 122, 270 114 C 262 109, 252 111, 246 120 C 232 112, 214 102, 214 72 Z';
   const ret = [];
-  for (let x = 190; x <= 404; x += 10) ret.push(`<path d="M${x} 30 V214"/>`);
-  for (let y = 40; y <= 214; y += 10) ret.push(`<path d="M180 ${y} H404"/>`);
-  return `${base(u, '#2b2836', '#0f0e15', pat(u('p'), 12, 12, `<path d="M0 0H12V12" fill="none" stroke="${CREMA}" stroke-opacity=".035"/>`) + velo(u, '#08070c', 0.5)
-    + `<clipPath id="${u('k')}"><path d="${forma}"/></clipPath>`)}
-    ${halo(u, 300, 120, 150, '#f2b56b', 0.2)}
-    <g clip-path="url(#${u('k')})">${trazo('#F2C38B', 1.1, ret.join(''), 0.75)}</g>
-    ${trazo('#F2C38B', 2.4, `<path d="${forma}"/><path d="M214 214 H400"/>`)}
-    ${trazo(CREMA, 1.2, `<path d="M260 234 h60 M340 226 h50"/>`, 0.2)}
-    ${veloRect(u)}`;
+  for (let k = 0; k < 16; k++) { const y = 26 + k * 9; ret.push(`<path d="M200 ${y} Q300 ${y - 18 + k} 410 ${y + 6}"/>`); }
+  for (let k = 0; k < 24; k++) { const x = 206 + k * 9; ret.push(`<path d="M${x} 10 Q${x + 10} 90 ${x - 4 + (k - 12) * 1.5} 175"/>`); }
+  return `<defs>${lg(u('c'), 1, 1, [[0, '#FBF8F1'], [1, '#EDE6D6']])}${lg(u('v'), 1, 0, [[0, '#FBF8F1', 0.85], [0.5, '#FBF8F1', 0.4], [1, '#FBF8F1', 0]])}
+    <clipPath id="${u('k')}"><path d="${forma}"/></clipPath></defs>
+    <rect width="400" height="250" fill="url(#${u('c')})"/>
+    <path d="M196 226 C 240 214, 300 236, 360 222 S 410 230 410 230 V250 H196z" fill="${W}" opacity=".25"/>
+    <path d="M${'250 150 C 300 170, 360 160, 406 140 L406 150 C 384 146, 362 140, 346 150 C 334 166, 306 170, 294 158 C 288 146, 282 122, 270 114z'}" fill="${W}" opacity=".45"/>
+    <g clip-path="url(#${u('k')})"><path d="${forma}" fill="${W}" opacity=".18"/>${trazo(T, 0.9, ret.join(''), 0.75)}</g>
+    <!-- pilares -->
+    <path d="M252 116 C 258 150, 256 180, 248 208 H284 C 278 180, 278 150, 282 128" fill="#FBF8F1"/>
+    <path d="M340 152 C 344 170, 342 190, 336 208 H362 C 358 190, 358 168, 362 146" fill="#FBF8F1"/>
+    ${trazo(T, 1, `<path d="M260 124 C 264 160, 262 186, 258 208 M268 120 C 270 160, 270 186, 268 208 M276 124 C 276 160, 276 186, 276 208 M348 154 V208 M354 150 V208"/>`, 0.7)}
+    ${trazo(T, 1.8, `<path d="${forma}"/><path d="M252 116 C 258 150, 256 180, 248 208 M282 128 C 278 150, 278 180, 284 208 M340 152 C 344 170, 342 190, 336 208 M362 146 C 358 168, 358 190, 362 208"/><path d="M196 208 H406"/><path d="M290 208 v-14 h40 v14 M296 194 l14 -8 l14 8"/>`)}
+    <!-- árboles -->
+    <g fill="#6F9BBA" stroke="${T}" stroke-width="1.4"><path d="M200 188 c-10 0 -12 -12 -4 -15 c-2 -10 12 -14 16 -7 c6 -6 18 -2 16 7 c8 2 6 15 -4 15z"/><path d="M226 196 c-8 0 -9 -10 -3 -12 c-1 -8 10 -11 13 -5 c5 -5 15 -1 13 6 c6 2 5 11 -3 11z"/></g>
+    ${trazo(T, 1.4, `<path d="M212 188 V208 M238 196 V208"/>`)}
+    <ellipse cx="226" cy="210" rx="30" ry="3" fill="${W}" opacity=".6"/>
+    <rect width="400" height="250" fill="url(#${u('v')})"/>`;
 });
 
 /* Farolillo de papel de feria (relleno, con sus lunares y sus aros) */
@@ -191,48 +230,86 @@ const feriacaseta = arte((u) => {
     ${veloRect(u)}`;
 });
 
-/* Semana Santa: el palio en oro sobre terciopelo morado, con la candelería encendida */
+/* Semana Santa: el paso de palio de frente — bambalina de terciopelo morado bordada en oro, varales de plata,
+   candelabros y jarras de plata sobre la canastilla, y el faldón morado */
 const damasco = (u) => pat(u('p'), 30, 30, `<g fill="${ORO}" fill-opacity=".08"><path d="M15 5c2.4 3.4 2.4 5.6 0 8-2.4-2.4-2.4-4.6 0-8zM15 25c2.4-3.4 2.4-5.6 0-8-2.4 2.4-2.4 4.6 0 8zM5 15c3.4-2.4 5.6-2.4 8 0-2.4 2.4-4.6 2.4-8 0zM25 15c-3.4-2.4-5.6-2.4-8 0 2.4 2.4 4.6 2.4 8 0z"/><circle cx="15" cy="15" r="1.6"/></g>`);
-const llama = (u, x, y, s = 1) => `<circle cx="${x}" cy="${y}" r="${7 * s}" fill="url(#${u('l')})"/><path d="M${x} ${y - 5 * s}c${2.6 * s} ${3 * s} ${2.4 * s} ${5 * s} 0 ${6.4 * s}c${-2.4 * s} ${-1.4 * s} ${-2.6 * s} ${-3.4 * s} 0 ${-6.4 * s}z" fill="#FFD36B"/>`;
+const voluta = (x, y, s, c) => `<g transform="translate(${x} ${y}) scale(${s})" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round">
+  <path d="M0 0 c-6 -8 -16 -4 -14 4 c1 5 8 6 9 1 c1 -3 -3 -4 -4 -2"/><path d="M0 0 c6 -8 16 -4 14 4 c-1 5 -8 6 -9 1 c-1 -3 3 -4 4 -2"/>
+  <path d="M0 0 v-10 M-3 -7 c1 -3 5 -3 6 0"/><circle cx="0" cy="-12" r="2.2" fill="${c}"/><path d="M-14 4 c-4 4 -10 3 -12 0 M14 4 c4 4 10 3 12 0"/></g>`;
 const semanasantapalio = arte((u) => {
-  let velas = '';
-  for (let f = 0; f < 3; f++) for (let i = 0; i < 8 - f; i++) {
-    const x = 236 + f * 9 + i * 18, y = 166 - f * 13, h = 26 + f * 4;
-    velas += `<rect x="${x - 1.4}" y="${y}" width="2.8" height="${h}" rx="1" fill="${CREMA}"/>${llama(u, x, y - 4, 0.9)}`;
-  }
-  return `${base(u, '#4f1d72', '#1b062b', damasco(u) + rg(u('l'), 0.5, 0.5, 0.5, [[0, '#ffd36b', 0.6], [1, '#ffd36b', 0]]) + velo(u, '#0d0316', 0.5))}
-    ${halo(u, 305, 150, 150, '#ffc768', 0.22)}
-    ${trazo(ORO, 2.2, `<rect x="212" y="62" width="180" height="22" rx="2"/><path d="M220 73 H384" stroke-dasharray="2 6"/>
-      <path d="M212 84 ${Array.from({ length: 12 }, () => 'q7.5 11 15 0').join(' ')}"/>
-      <path d="M218 90 V196 M242 90 V196 M362 90 V196 M386 90 V196"/>
-      <path d="M212 196 H400 V224 H212 Z"/>${Array.from({ length: 6 }, (_, i) => arco(219 + i * 30, 202, 19, 16)).join('')}`)}
-    <g fill="${ORO}">${Array.from({ length: 12 }, (_, i) => `<circle cx="${219.5 + i * 15}" cy="94" r="1.8"/>`).join('')}</g>
-    ${velas}
-    ${trazo(ORO, 1.6, `<path d="M214 232 H400"/>`, 0.5)}
+  const PU = '#4A1B6B', OR = '#E3B655', PL = '#D9DDE4', PLs = '#9AA1AD';
+  const xs = [204, 254, 302, 350, 398];
+  const festones = Array.from({ length: 6 }, (_, k) => `<path d="M${200 + k * 34} 92 q17 18 34 0" fill="${PU}"/>`).join('');
+  const flecos = Array.from({ length: 6 }, (_, k) => `<path d="M${200 + k * 34} 92 q17 18 34 0" fill="none" stroke="${OR}" stroke-width="2"/>${[6, 17, 28].map((d) => { const t = d / 34, y = 92 + 4 * 9 * t * (1 - t); return `<path d="M${200 + k * 34 + d} ${y.toFixed(1)} v7" stroke="${OR}" stroke-width="2.2"/><rect x="${200 + k * 34 + d - 2}" y="${(y + 6).toFixed(1)}" width="4" height="5" rx="1" fill="${OR}"/>`; }).join('')}`).join('');
+  const candelabro = (x) => `<g><path d="M${x} 188 v-34" stroke="${PL}" stroke-width="3"/><path d="M${x - 14} 160 q14 10 28 0" fill="none" stroke="${PL}" stroke-width="2.4"/>
+    <path d="M${x - 5} 188 h10 l-2 -5 h-6z" fill="${PL}"/><circle cx="${x}" cy="170" r="2.6" fill="${PL}"/>
+    ${[-14, 0, 14].map((d) => `<circle cx="${x + d}" cy="${d ? 146 : 136}" r="9" fill="url(#${u('l')})"/><path d="M${x + d - 4} ${d ? 158 : 150} q0 -10 4 -12 q4 2 4 12z" fill="#fff" opacity=".55"/><path d="M${x + d} ${d ? 146 : 136}c2 2.4 1.8 4 0 5-1.8-1-2-2.6 0-5z" fill="#FFD36B"/>`).join('')}</g>`;
+  const jarra = (x) => `<g><path d="M${x - 9} 188 h18 l-3 -4 c5 -4 6 -12 2 -16 h-16 c-4 4 -3 12 2 16z" fill="${PL}"/><path d="M${x - 10} 168 h20" stroke="${PLs}" stroke-width="2"/>
+    ${[-8, -3, 3, 8, 0].map((d, k) => `<circle cx="${x + d}" cy="${160 - (k === 4 ? 8 : Math.abs(d) < 5 ? 4 : 0)}" r="4.2" fill="#fff"/><circle cx="${x + d}" cy="${160 - (k === 4 ? 8 : Math.abs(d) < 5 ? 4 : 0)}" r="1.4" fill="#f3d36b"/>`).join('')}</g>`;
+  return `<defs>${lg(u('c'), 0, 1, [[0, '#14061f'], [1, '#2a0d3b']])}${damasco(u)}${rg(u('l'), 0.5, 0.5, 0.5, [[0, '#ffd36b', 0.6], [1, '#ffd36b', 0]])}
+    ${lg(u('t'), 0, 1, [[0, '#5a2280'], [1, '#3d1258']])}${velo(u, '#0a0312', 0.55)}</defs>
+    <rect width="400" height="250" fill="url(#${u('c')})"/><rect width="400" height="250" fill="url(#${u('p')})"/>
+    ${halo(u, 320, 160, 130, '#ffc768', 0.18)}
+    <g transform="translate(88 55) scale(.78)">
+    <!-- varales de plata -->
+    ${xs.map((x) => `<rect x="${x - 1.6}" y="40" width="3.2" height="150" fill="${PL}"/>${[118, 150].map((y) => `<ellipse cx="${x}" cy="${y}" rx="3.2" ry="4" fill="${PL}"/>`).join('')}<path d="M${x} 40 v-8" stroke="${PL}" stroke-width="2"/><circle cx="${x}" cy="30" r="2.6" fill="${PL}"/>`).join('')}
+    <!-- crestería dorada -->
+    ${voluta(246, 44, 0.8, OR)}${voluta(300, 42, 1.1, OR)}${voluta(354, 44, 0.8, OR)}
+    <!-- bambalina -->
+    <rect x="198" y="46" width="204" height="46" fill="url(#${u('t')})"/>${festones}
+    <path d="M198 47 H402" stroke="${OR}" stroke-width="3"/><path d="M198 52 H402" stroke="${OR}" stroke-width="1" stroke-dasharray="2 3"/>
+    ${[218, 252, 286, 320, 354, 388].map((x, k) => voluta(x, k % 2 ? 80 : 76, 0.62, OR)).join('')}
+    <g fill="${OR}">${[235, 269, 303, 337, 371].map((x) => `<circle cx="${x}" cy="66" r="2.6"/><circle cx="${x}" cy="66" r="5.5" fill="none" stroke="${OR}" stroke-width="1.2"/>`).join('')}</g>
+    ${flecos}
+    ${xs.map((x) => `<path d="M${x} 92 v10" stroke="${OR}" stroke-width="2"/><path d="M${x - 3} 102 h6 l1 9 h-8z" fill="${OR}"/>`).join('')}
+    <!-- jarras y candelabros -->
+    ${jarra(228)}${candelabro(278)}${jarra(326)}${candelabro(372)}
+    <!-- canastilla de plata calada -->
+    <rect x="198" y="188" width="204" height="22" fill="${PL}"/><rect x="198" y="188" width="204" height="3" fill="#f1f3f6"/>
+    <g fill="#3a3f4a">${Array.from({ length: 16 }, (_, k) => `<ellipse cx="${206 + k * 12.6}" cy="${199.5}" rx="3.6" ry="5"/>`).join('')}</g>
+    <g fill="${PL}">${Array.from({ length: 16 }, (_, k) => `<circle cx="${206 + k * 12.6}" cy="199.5" r="1.5"/>`).join('')}</g>
+    <path d="M198 210 ${Array.from({ length: 12 }, () => 'q8.5 6 17 0').join(' ')}" fill="${PL}"/>
+    <!-- faldón -->
+    <rect x="200" y="212" width="200" height="38" fill="${PU}"/>
+    <rect x="204" y="212" width="12" height="38" fill="none" stroke="${OR}" stroke-width="1.6"/><rect x="384" y="212" width="12" height="38" fill="none" stroke="${OR}" stroke-width="1.6"/>
+    <g fill="${OR}"><path d="M210 222 l3 4 l-3 4 l-3 -4z M210 236 l3 4 l-3 4 l-3 -4z M390 222 l3 4 l-3 4 l-3 -4z M390 236 l3 4 l-3 4 l-3 -4z"/></g>
+    ${[240, 300, 360].map((x) => `<path d="M${x} 212 v6" stroke="${OR}" stroke-width="1.6"/><rect x="${x - 2.5}" y="217" width="5" height="6" rx="1" fill="${OR}"/>`).join('')}
+    </g>
     ${veloRect(u)}`;
 });
 
-/* Semana Santa: nazarenos con sus cirios, en trazo dorado */
+/* Semana Santa: una cofradía de nazarenos de túnica morada con sus cirios, por una calle estrecha de noche */
 const semanasantanazarenos = arte((u) => {
-  const naz = (x, s, o) => `<g transform="translate(${x} 222) scale(${s})" opacity="${o}">
-    ${trazo(ORO, 2 / s, `<path d="M0 -118 L-14 -66 H14 Z"/><path d="M-16 -66 H16 L22 0 H-22 Z"/><path d="M-14 -66 H14 L11 -38 H-11 Z"/><path d="M0 -60 V-44 M-5 -54 H5"/><path d="M17 -78 V-6"/>`)}
-    <ellipse cx="-4.5" cy="-80" rx="2" ry="1.4" fill="${ORO}"/><ellipse cx="4.5" cy="-80" rx="2" ry="1.4" fill="${ORO}"/>${llama(u, 17, -84, 1.1)}</g>`;
-  return `${base(u, '#2a0f3e', '#0a0412', damasco(u) + rg(u('l'), 0.5, 0.5, 0.5, [[0, '#ffd36b', 0.65], [1, '#ffd36b', 0]]) + velo(u, '#050208', 0.5))}
-    ${halo(u, 300, 140, 150, '#ffc768', 0.16)}
-    ${trazo(ORO, 1.4, `<path d="M214 222 L300 150 L400 222"/><path d="M200 70 V222 M392 60 V222"/><path d="M200 70 h-8 M392 60 h8"/>`, 0.3)}
-    ${naz(352, 0.7, 0.55)}${naz(322, 0.85, 0.72)}${naz(286, 1.02, 0.88)}${naz(242, 1.22, 1)}
-    ${trazo(ORO, 1.8, `<path d="M214 224 H400"/>`, 0.6)}
+  const naz = (x, y, s, o) => `<g transform="translate(${x} ${y}) scale(${s})" opacity="${o}">
+    <path d="M0 -122 L-15 -66 H15 Z" fill="#5B2585"/><path d="M0 -122 L-15 -66 H-4 Z" fill="#4A1B6B"/>
+    <path d="M-17 -66 H17 L13 -34 H-13 Z" fill="#5B2585"/><path d="M-13 -34 H13 L24 0 H-24 Z" fill="#4A1B6B"/><path d="M-13 -34 H0 L-6 0 H-24 Z" fill="#3B1258"/>
+    <ellipse cx="-5" cy="-80" rx="2.4" ry="1.7" fill="#0b0412"/><ellipse cx="5" cy="-80" rx="2.4" ry="1.7" fill="#0b0412"/>
+    <path d="M-5 -58 H5 M0 -63 V-46" stroke="#E3B655" stroke-width="2.2"/><circle cx="0" cy="-58" r="6.5" fill="none" stroke="#E3B655" stroke-width="1.4"/>
+    <path d="M-14 -34 Q0 -30 14 -34" stroke="#E3B655" stroke-width="2.4" fill="none"/><path d="M10 -33 v16" stroke="#E3B655" stroke-width="1.8"/><circle cx="10" cy="-15" r="2" fill="#E3B655"/>
+    <path d="M18 -40 h-6 v-8 h6z" fill="#e8d2b0"/>
+    <rect x="18" y="-92" width="4" height="86" rx="1.5" fill="#FFF4D8"/><circle cx="20" cy="-98" r="13" fill="url(#${u('l')})"/><path d="M20 -105c3.2 3.8 2.8 6.6 0 8.2-2.8-1.6-3.2-4.4 0-8.2z" fill="#FFD36B"/></g>`;
+  return `<defs>${lg(u('c'), 0, 1, [[0, '#0c0716'], [1, '#22142e']])}${rg(u('l'), 0.5, 0.5, 0.5, [[0, '#ffd36b', 0.7], [1, '#ffd36b', 0]])}
+    ${lg(u('s'), 0, 1, [[0, '#3a2b26'], [1, '#1c1412']])}${velo(u, '#06030b', 0.55)}</defs>
+    <rect width="400" height="250" fill="url(#${u('c')})"/>
+    <!-- fachadas encaladas a los lados, con cierros de hierro -->
+    <path d="M188 0 H236 L262 160 H188z" fill="#e9e1d4" opacity=".16"/><path d="M400 0 H362 L338 160 H400z" fill="#e9e1d4" opacity=".16"/>
+    <g fill="none" stroke="#c9b8a0" stroke-opacity=".35" stroke-width="1.4"><rect x="196" y="40" width="22" height="34"/><path d="M196 56 h22 M203 40 v34 M211 40 v34"/><rect x="372" y="30" width="20" height="34"/><path d="M372 46 h20 M378 30 v34 M386 30 v34"/></g>
+    <path d="M226 92 h12 v4 h-12z" fill="#2a2030"/><path d="M228 96 l-4 12 h18 l-4 -12z" fill="#ffcf7a" opacity=".9"/><circle cx="232" cy="106" r="26" fill="url(#${u('l')})"/>
+    <!-- suelo empedrado -->
+    <path d="M188 250 L262 160 H338 L400 250z" fill="url(#${u('s')})"/>
+    <g stroke="#5a4740" stroke-opacity=".5" stroke-width="1">${[175, 190, 208, 230].map((y) => `<path d="M${262 - (y - 160) * 0.8} ${y} H${338 + (y - 160) * 0.7}"/>`).join('')}</g>
+    ${naz(334, 168, 0.42, 0.55)}${naz(312, 176, 0.52, 0.7)}${naz(354, 190, 0.66, 0.82)}${naz(278, 202, 0.78, 0.9)}${naz(338, 238, 1, 1)}${naz(268, 248, 1.12, 1)}
     ${veloRect(u)}`;
 });
 
 const DISENOS = {};
-const def = (k, nombre, fondo, fn) => { DISENOS[k] = { nombre, fondo, get svg() { return fn(); } }; };
+const def = (k, nombre, fondo, fn, claro = false) => { DISENOS[k] = { nombre, fondo, claro, get svg() { return fn(); } }; };
 def('giralda', 'La Giralda', '#5a1426', giralda);
 def('torreoro', 'Torre del Oro', '#0c2748', torreoro);
 def('triana', 'Puente de Triana', '#0d3d4a', triana);
 def('azulejo', 'Azulejo', '#123f8c', azulejo);
-def('plazaespana', 'Plaza de España', '#15397f', plazaespana);
-def('setas', 'Las Setas', '#1d1b26', setas);
+def('plazaespana', 'Plaza de España', '#3b7fc4', plazaespana);
+def('setas', 'Las Setas', '#F4EFE4', setas, true);
 def('feriaportada', 'Farolillos', '#13204a', feriaportada);
 def('feriacaseta', 'Caseta de Feria', '#14603a', feriacaseta);
 def('semanasantapalio', 'Paso de palio', '#35114f', semanasantapalio);

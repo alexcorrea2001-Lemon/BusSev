@@ -1081,8 +1081,10 @@ html.oculta #fiesta-cielo .f-cruza, html.oculta #fiesta-cielo .f-cruza svg, html
 .p-bt .p-bt-ico { font-size: 20px; line-height: 22px; }
 .p-bt:active { transform: scale(.97); }
 .p-lin { display: grid; gap: 8px; }
-.p-rec { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); }
-.p-rec > span { margin-right: 2px; }
+.p-rec { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 5px; }
+.p-rec:empty { display: none; }
+.p-rec .p-sep { margin-right: 1px; }
+.p-rec a { text-decoration: none; }
 /* ---------- Favoritas: estilos de tarjeta (Personalizar → Estilo) ---------- */
 .card.fav { position: relative; }
 .card.fav.est-tenido { border-left: 0; background: color-mix(in srgb, var(--fc, var(--accent)) 16%, var(--surface)); }
@@ -1151,9 +1153,12 @@ html.oculta #fiesta-cielo .f-cruza, html.oculta #fiesta-cielo .f-cruza svg, html
 .ico-sitio { display: inline-grid; place-items: center; width: 1.15em; height: 1.15em; vertical-align: -.2em; margin-right: 6px; }
 .ico-sitio svg { width: 100%; height: 100%; }
 /* Compacta: una línea */
-.card.compacta .card-head { align-items: center; padding: 10px 46px 10px 12px; }
+.card.compacta .card-head { align-items: center; padding: 10px 56px 10px 12px; }
 .card.compacta .card-title h3, .card.compacta .fav-alias { margin: 0; font-size: 16px; text-transform: none; letter-spacing: 0; }
-.card.compacta .cmp-prox { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; }
+.card.compacta .cmp-prox { display: flex; align-items: center; gap: 12px; flex: 0 0 auto; }
+.card.compacta .cmp-prox .t-now { font-size: 12.5px; padding: 3px 7px; letter-spacing: .03em; }
+.card.compacta.animar-llegando .t-now { animation-name: llegando-late-suave; transform-origin: center; }
+@keyframes llegando-late-suave { 0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgb(227 162 26 / .55); } 50% { opacity: .82; box-shadow: 0 0 0 3px rgb(227 162 26 / 0); } }
 .card.compacta .cmp-prox .t-main { font-size: 22px; }
 .card.fav.compacta > .fav-edit { top: 50%; right: 8px; transform: translateY(-50%); }
 /* «Llegando» que late */
@@ -1247,6 +1252,7 @@ html.oculta #fiesta-cielo .f-cruza, html.oculta #fiesta-cielo .f-cruza svg, html
 /* ---------- Tarjeta: diseños, marcos, pegatinas y brillo ---------- */
 .tcard .tc-arte { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; }
 .tcard.con-diseno { text-shadow: 0 1px 3px rgb(0 0 0 / .5); }
+.tcard.con-diseno.dis-claro { color: #16304f; text-shadow: 0 1px 0 rgb(255 255 255 / .6); }
 .tcard .tc-brand .tc-emoji { margin-right: 8px; width: 1.05em; height: 1.05em; vertical-align: -.15em; }
 .tcard .tc-top .tc-emoji svg { width: 100%; height: 100%; opacity: 1; }
 /* Brillo: una franja de luz que pasa despacio (y que sigue al móvil si se inclina) */
