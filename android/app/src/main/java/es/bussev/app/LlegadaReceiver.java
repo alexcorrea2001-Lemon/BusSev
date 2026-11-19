@@ -65,17 +65,26 @@ public class LlegadaReceiver extends BroadcastReceiver {
         AlarmManager am = (AlarmManager) c.getSystemService(Context.ALARM_SERVICE);
         if (am == null) return;
         JSONArray a = leer(c);
-        long prox = Long.MAX_VALUE;
+        long prox = Long.MAX_VALUE, ahora = System.currentTimeMillis();
+        boolean cerca = false;   // algún aviso a punto de saltar (menos de 5 min)
         for (int i = 0; i < a.length(); i++) {
             JSONObject x = a.optJSONObject(i);
-            if (x != null) prox = Math.min(prox, x.optLong("revisar", x.optLong("at")));
+            if (x == null) continue;
+            prox = Math.min(prox, x.optLong("revisar", x.optLong("at")));
+            if (x.optLong("at") - ahora < 5 * MIN) cerca = true;
         }
         PendingIntent p = pi(c);
         if (prox == Long.MAX_VALUE) { am.cancel(p); return; }
-        long cuando = Math.max(System.currentTimeMillis() + 5_000L, prox);
+        long cuando = Math.max(ahora + 5_000L, prox);
         try {
             if (Build.VERSION.SDK_INT >= 31 && !am.canScheduleExactAlarms()) {
                 am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, cuando, p);
+            } else if (cerca && Build.VERSION.SDK_INT >= 21) {
+                // En los últimos minutos, como un despertador: el móvil no lo retrasa aunque esté en reposo
+                // (con el modo normal, Android puede juntar las alarmas y avisar tarde).
+                Intent abrir = new Intent(c, MainActivity.class).setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+                PendingIntent ver = PendingIntent.getActivity(c, 7302, abrir, PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= 23 ? PendingIntent.FLAG_IMMUTABLE : 0));
+                am.setAlarmClock(new AlarmManager.AlarmClockInfo(cuando, ver), p);
             } else if (Build.VERSION.SDK_INT >= 23) {
                 am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, cuando, p);
             } else {
@@ -124,7 +133,7 @@ public class LlegadaReceiver extends BroadcastReceiver {
                 int antes = x.optInt("antes", 5);
                 // Caducado (el autobús hace rato que pasó): se olvida
                 if (ahora > at + 30 * MIN) continue;
-                if (revisar > ahora + 20_000L) { quedan.put(x); continue; }
+                if (revisar > ahora + 8_000L) { quedan.put(x); continue; }
                 // Lejos todavía: se mira de nuevo cuando falten 15 minutos para avisar
                 if (at - ahora > 16 * MIN) { x.put("revisar", at - 15 * MIN); quedan.put(x); continue; }
                 Integer min = null;
@@ -136,8 +145,11 @@ public class LlegadaReceiver extends BroadcastReceiver {
                     if (min <= antes) { avisar(c, x, min); continue; }
                     long nuevo = ahora + (long) (min - antes) * MIN;
                     x.put("at", nuevo);
-                    // Cuanto más cerca, más a menudo (y nunca más tarde de la hora de avisar)
-                    long paso = (min - antes) <= 5 ? MIN : 2 * MIN;
+                    // Cuanto más cerca, más a menudo (y nunca más tarde de la hora de avisar).
+                    // TUSSAM da minutos enteros: «3 min» puede ser 3:59 o 3:00, así que cuando le falta
+                    // 1 minuto para tu aviso se pregunta cada 20 s, para avisar justo al pasar a tus minutos.
+                    int falta = min - antes;
+                    long paso = falta <= 1 ? 20_000L : falta <= 3 ? 40_000L : falta <= 6 ? MIN : 2 * MIN;
                     x.put("revisar", Math.min(nuevo, ahora + paso));
                     quedan.put(x);
                 } else if (ahora >= at - 20_000L) {

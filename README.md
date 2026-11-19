@@ -119,7 +119,7 @@ el horario oficial y la información de paradas y líneas, que va guardada dentr
 - Tema claro u oscuro, **color de la app** (incluidos pasteles) y **color de fondo**.
 - **Icono de la app** a elegir: Clásico, Noche, Azulejo, Feria, Semana Santa, Giralda y Verde.
   (Al cambiarlo, Android quita el acceso de la pantalla de inicio y hay que volver a ponerlo: te avisa antes.)
-- **Sonido del aviso de llegada**: campana, bocina, suave o pitido, con botón para probarlo.
+- **Sonido del aviso de llegada**: campanas, ding-dong, marimba o estación (se repite 3 veces), con botón para probarlo.
 - **Temáticas** que cambian solas: Navidad, Semana Santa, Feria y Halloween, con adornos y, si quieres,
   **pasos, coches de caballos o carrozas** en el mapa en vez de autobuses.
 - Cada cuánto **se actualizan los tiempos** y si ver los **autobuses en directo** en el mapa.

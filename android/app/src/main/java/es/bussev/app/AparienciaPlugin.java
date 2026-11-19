@@ -67,15 +67,27 @@ public class AparienciaPlugin extends Plugin {
     }
 
     /** Canal de notificación para el sonido elegido (lo crea si no existe). Devuelve su id. */
+    static String nombreSonido(String s) {
+        switch (s) {
+            case "campana": return "campanas";
+            case "bocina": return "ding-dong";
+            case "suave": return "marimba";
+            case "pitido": return "estación";
+            default: return s;
+        }
+    }
     static String canalPara(Context c, String sonido) {
         boolean valido = false;
         for (String s : SONIDOS) if (s.equals(sonido)) valido = true;
         if (!valido || "sistema".equals(sonido)) sonido = "sistema";
-        String id = "sistema".equals(sonido) ? LlegadaReceiver.CANAL : LlegadaReceiver.CANAL + "_" + sonido;
+        // «_2»: los sonidos nuevos (repetidos 3 veces). Android no deja cambiar el sonido de un canal ya creado,
+        // así que se crea uno nuevo y se borra el antiguo.
+        String id = "sistema".equals(sonido) ? LlegadaReceiver.CANAL : LlegadaReceiver.CANAL + "_" + sonido + "_2";
         if (Build.VERSION.SDK_INT < 26) return id;
         NotificationManager nm = (NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE);
         if (nm == null || nm.getNotificationChannel(id) != null) return id;
-        NotificationChannel ch = new NotificationChannel(id, "Avisos de llegada" + ("sistema".equals(sonido) ? "" : " (" + sonido + ")"), NotificationManager.IMPORTANCE_HIGH);
+        if (!"sistema".equals(sonido)) try { nm.deleteNotificationChannel(LlegadaReceiver.CANAL + "_" + sonido); } catch (Exception ignored) { }
+        NotificationChannel ch = new NotificationChannel(id, "Avisos de llegada" + ("sistema".equals(sonido) ? "" : " (" + nombreSonido(sonido) + ")"), NotificationManager.IMPORTANCE_HIGH);
         ch.setDescription("Te avisa cuando tu autobús está a punto de llegar.");
         ch.enableVibration(true);
         ch.setVibrationPattern(new long[]{0, 400, 200, 400});

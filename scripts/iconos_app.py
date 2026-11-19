@@ -94,31 +94,30 @@ ICONOS = {
     },
     'Noche': {
         'bg': [(TODO, '#0B1533', 1), (circ(54, 120, 70), '#1E3A8A', .55), (circ(54, 120, 48), '#2B4CB0', .35)]
-              + [(estrella(x, y, r), '#FFFFFF', .9) for x, y, r in [(26, 26, 2.6), (40, 18, 1.6), (82, 46, 1.8), (22, 50, 1.4), (90, 74, 1.5), (16, 78, 2)]]
-              + [(circ(78, 26, 9), '#FDE68A', 1), (circ(83, 22.5, 8), '#0B1533', 1)],
-        'fg': bus('#FACC15', '#1E2A55', '#FFF7D6', '#FFFFFF', dy=4, s=.92) + [
-            (circ(46, 49.5, 1.4) + circ(52, 49.5, 1.4) + circ(58, 49.5, 1.4) + circ(64, 49.5, 1.4), '#FDE68A', .9)],
+              + [(estrella(x, y, r), '#FFFFFF', .9) for x, y, r in [(30, 32, 2.4), (42, 26, 1.5), (80, 50, 1.6), (27, 52, 1.3), (80, 72, 1.4), (30, 74, 1.7)]]
+              + [(circ(74, 33, 7.5), '#FDE68A', 1), (circ(78, 30, 6.6), '#0B1533', 1)],
+        'fg': bus('#FACC15', '#1E2A55', '#FFF7D6', '#FFFFFF', dy=4, s=.78) + [
+            (circ(47.5, 51, 1.2) + circ(52.5, 51, 1.2) + circ(57.5, 51, 1.2) + circ(62.5, 51, 1.2), '#FDE68A', .9)],
     },
     'Azulejo': {
         'bg': [(TODO, '#F6EFDC', 1)]
               + [(''.join(flor(x, y, 9) for x in range(0, 109, 27) for y in range(0, 109, 27)), '#1D4F9C', 1),
                  (''.join(circ(x, y, 2.4) for x in range(0, 109, 27) for y in range(0, 109, 27)), '#E8A317', 1),
                  (''.join(circ(x + 13.5, y + 13.5, 1.6) for x in range(0, 109, 27) for y in range(0, 109, 27)), '#2F8F5B', 1),
-                 (anillo(54, 54, 33, 3), '#E8A317', 1), (circ(54, 54, 30), '#1D4F9C', 1)],
-        'fg': bus('#FFFFFF', '#1D4F9C', '#E8A317', dy=1, s=.8),
+                 (anillo(54, 54, 28, 2.6), '#E8A317', 1), (circ(54, 54, 25.4), '#1D4F9C', 1)],
+        'fg': bus('#FFFFFF', '#1D4F9C', '#E8A317', dy=1, s=.66),
     },
     'Feria': {
-        'bg': [(TODO, '#C8102E', 1), lunares('#FFFFFF', 18, 4.2, 1, True, 33), (anillo(54, 54, 33, 2.5), '#FFFFFF', 1)],
-        'fg': [(circ(54, 54, 29), '#FFFFFF', 1)] + bus('#C8102E', '#FFFFFF', '#FFD54A', dy=1, s=.78),
+        'bg': [(TODO, '#C8102E', 1), lunares('#FFFFFF', 15, 3.4, 1, True, 29), (anillo(54, 54, 28, 2.2), '#FFFFFF', 1)],
+        'fg': [(circ(54, 54, 24.4), '#FFFFFF', 1)] + bus('#C8102E', '#FFFFFF', '#FFD54A', dy=1, s=.65),
     },
     'SemanaSanta': {
         'bg': [(TODO, '#3A1557', 1), (circ(54, 30, 70), '#5B2A86', .5), (circ(54, 20, 44), '#7A3BA8', .35),
-               (anillo(54, 54, 34, 1.4), '#E8C46A', .9), (anillo(54, 54, 30.5, .8), '#E8C46A', .5)]
-              + [(rect(20 + i * 17, 84, 2.6, 14), '#FFF4D8', .55) for i in range(5)]
-              + [(circ(21.3 + i * 17, 81, 1.8), '#FFD36B', .9) for i in range(5)],
-        'fg': bus('#E8C46A', '#2E1145', '#FFF4D8', dy=-2, s=.86),
+               (anillo(54, 54, 29, 1.3), '#E8C46A', .9), (anillo(54, 54, 26, .7), '#E8C46A', .5)],
+        'fg': bus('#E8C46A', '#2E1145', '#FFF4D8', dy=0, s=.7),
     },
     'Giralda': {
+        'escala': (.76, 5),
         'bg': [(TODO, '#F28F3B', 1), (rect(0, 0, 108, 40), '#C2496A', 1), (rect(0, 36, 108, 14), '#D86A52', 1),
                (circ(54, 74, 24), '#FFD17A', 1), (circ(54, 74, 17), '#FFE7A8', 1), (rect(0, 86, 108, 22), '#5A2346', 1)],
         'fg': [(rect(46, 46, 16, 44) + rect(47.5, 34, 13, 13) + rect(49.5, 25, 9, 10) + rect(51, 19, 6, 7)
@@ -128,8 +127,8 @@ ICONOS = {
                (rect(50.5, 56, 2.4, 6) + rect(55.1, 56, 2.4, 6) + rect(50.5, 70, 2.4, 6) + rect(55.1, 70, 2.4, 6), '#FFCF7A', .5)],
     },
     'Verde': {
-        'bg': [(TODO, '#0B6E2F', 1)] + [(f'M{x},0h9l-40,108h-9z', '#FFFFFF', .07) for x in range(-10, 160, 26)] + [(circ(54, 54, 31), '#0E8A3B', 1)],
-        'fg': bus('#FFFFFF', '#0B6E2F', '#FFD54A', dy=1, s=.82),
+        'bg': [(TODO, '#0B6E2F', 1)] + [(f'M{x},0h9l-40,108h-9z', '#FFFFFF', .07) for x in range(-10, 160, 26)] + [(circ(54, 54, 26.5), '#0E8A3B', 1)],
+        'fg': bus('#FFFFFF', '#0B6E2F', '#FFD54A', dy=1, s=.7),
     },
 }
 
@@ -139,17 +138,28 @@ def color_android(c, op):
     return f'#{a:02X}{c[1:].upper()}'
 
 
-def vector(capas):
+def vector(capas, escala=None):
     out = ['<?xml version="1.0" encoding="utf-8"?>',
            '<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">']
+    pre = '    '
+    if escala:
+        k, dy = escala
+        out.append(f'    <group android:pivotX="54" android:pivotY="54" android:scaleX="{k}" android:scaleY="{k}" android:translateY="{dy}">')
+        pre = '        '
     for p, c, op in capas:
-        out.append(f'    <path android:fillColor="{color_android(c, op)}" android:pathData="{p}"/>')
+        out.append(f'{pre}<path android:fillColor="{color_android(c, op)}" android:pathData="{p}"/>')
+    if escala:
+        out.append('    </group>')
     out.append('</vector>\n')
     return '\n'.join(out)
 
 
-def svg(capas):
-    return ''.join(f'<path d="{p}" fill="{c}"{"" if op == 1 else f" fill-opacity={chr(34)}{op}{chr(34)}"}/>' for p, c, op in capas)
+def svg(capas, escala=None):
+    s = ''.join(f'<path d="{p}" fill="{c}"{"" if op == 1 else f" fill-opacity={chr(34)}{op}{chr(34)}"}/>' for p, c, op in capas)
+    if escala:
+        k, dy = escala
+        s = f'<g transform="translate(54 {54 + dy}) scale({k}) translate(-54 -54)">{s}</g>'
+    return s
 
 
 def main():
@@ -158,8 +168,8 @@ def main():
             continue
         n = re.sub(r'(?<!^)(?=[A-Z])', '', k).lower()
         (RES / f'drawable/ic_alt_{n}_bg.xml').write_text(vector(d['bg']))
-        (RES / f'drawable/ic_alt_{n}_fg.xml').write_text(vector(d['fg']))
-    js = 'const ICONOS_APP_ARTE = {\n' + ''.join(f"  {k}: '{svg(d['bg'] + d['fg'])}',\n" for k, d in ICONOS.items()) + '};'
+        (RES / f'drawable/ic_alt_{n}_fg.xml').write_text(vector(d['fg'], d.get('escala')))
+    js = 'const ICONOS_APP_ARTE = {\n' + ''.join(f"  {k}: '{svg(d['bg']) + svg(d['fg'], d.get('escala'))}',\n" for k, d in ICONOS.items()) + '};'
     app = RAIZ / 'www/app.js'
     s = app.read_text()
     s = re.sub(r'/\* ICONOS_APP_ARTE:INICIO \*/.*?/\* ICONOS_APP_ARTE:FIN \*/',
