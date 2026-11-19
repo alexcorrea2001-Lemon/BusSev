@@ -8,6 +8,7 @@ import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ServiceInfo;
+import android.media.AudioAttributes;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -76,7 +77,7 @@ public class SensorService extends Service {
             if (wl != null) wl.acquire(MAX_MS + 60_000L);
         } catch (Exception ignored) { }
         terminado = false; ultimoNivel = 99; minAnterior = -1;
-        vibrar(new long[]{0, 60}, new int[]{0, 90});     // confirmación: un toquecito muy suave
+        vibrar(new long[]{0, 90, 120, 90}, new int[]{0, 140, 0, 140});     // confirmación: dos toquecitos («ya está activo»)
         h.removeCallbacksAndMessages(null);
         h.post(revisar);
         h.postDelayed(new Runnable() { public void run() { parar(); } }, Math.max(60_000L, MAX_MS - (System.currentTimeMillis() - inicio)));
@@ -154,8 +155,10 @@ public class SensorService extends Service {
         try {
             Vibrator v = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
             if (v == null) return;
-            if (Build.VERSION.SDK_INT >= 26) v.vibrate(v.hasAmplitudeControl() ? VibrationEffect.createWaveform(t, a, -1) : VibrationEffect.createWaveform(t, -1));
-            else v.vibrate(t, -1);
+            // Como alarma: así vibra aunque el móvil esté en silencio o en «no molestar» (que es justo cuando hace falta)
+            AudioAttributes aa = new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM).setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build();
+            if (Build.VERSION.SDK_INT >= 26) v.vibrate(v.hasAmplitudeControl() ? VibrationEffect.createWaveform(t, a, -1) : VibrationEffect.createWaveform(t, -1), aa);
+            else v.vibrate(t, -1, aa);
         } catch (Exception ignored) { }
     }
 

@@ -192,6 +192,14 @@ a.$('#av-sensor').click(); await a.espera(150);
 const sen = llamadas.find(([p, m]) => p === 'BusSevViaje' && m === 'empezarSensor');
 assert.ok(sen, 'arranca el modo sensor en Android');
 assert.equal(sen[2].linea, '29'); assert.equal(sen[2].codigo, String(p3)); assert.equal(sen[2].destino, 'TORREBLANCA');
+assert.ok(ev(`sensorBus.es('${p3}', '29', 'TORREBLANCA')`), 'queda apuntado como activo');
+assert.match(ev(`sensorBus.bannerHTML('${p3}')`), /Modo sensor activo/, 'aviso de que está activo en la parada');
+ev(`avisoModal({ codigo: '${p3}', parada: 'Prueba', linea: '29', destino: 'TORREBLANCA', minutos: 8, color: '#c00' })`);
+assert.equal(a.$('#av-sensor'), null, 'ya activo: no se ofrece otra vez');
+assert.ok(a.$('#av-sensor-parar'), 'botón para pararlo');
+a.$('#av-sensor-parar').click(); await a.espera(150);
+assert.ok(llamadas.some(([p, m]) => p === 'BusSevViaje' && m === 'pararSensor'), 'se para en Android');
+assert.equal(ev(`sensorBus.es('${p3}', '29', 'TORREBLANCA')`), false);
 
 // ---------- Avísame al bajar ----------
 const tramo = JSON.parse(ev(`JSON.stringify(bajada.tramo('29|1', '${seq29[2]}', '${seq29[6]}'))`));

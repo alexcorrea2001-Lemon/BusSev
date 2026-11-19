@@ -13,6 +13,7 @@ import android.content.pm.ServiceInfo;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
+import android.media.AudioAttributes;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -201,8 +202,9 @@ public class BajadaService extends Service implements LocationListener {
             Vibrator v = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
             if (v != null) {
                 long[] patron = {0, 600, 250, 600, 250, 900};
-                if (Build.VERSION.SDK_INT >= 26) v.vibrate(VibrationEffect.createWaveform(patron, -1));
-                else v.vibrate(patron, -1);
+                AudioAttributes aa = new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM).setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build();
+                if (Build.VERSION.SDK_INT >= 26) v.vibrate(VibrationEffect.createWaveform(patron, -1), aa);
+                else v.vibrate(patron, -1, aa);
             }
         } catch (Exception ignored) { }
     }

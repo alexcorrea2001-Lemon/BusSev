@@ -1375,3 +1375,12 @@ html.oculta #fiesta-cielo .f-cruza, html.oculta #fiesta-cielo .f-cruza svg, html
 .cl-gota { animation: cl-gota 1.1s linear infinite; }
 @keyframes cl-gota { from { transform: translate(0, 0); } to { transform: translate(-14px, 130px); } }
 :root.a-quieto .cl-nube, :root.a-quieto .cl-est, :root.a-quieto .cl-gota, html.oculta .cl-nube, html.oculta .cl-est, html.oculta .cl-gota { animation: none; }
+/* Modo sensor activo: aviso en la parada y en la ventana del autobús */
+.sensor-on { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 16px; background: color-mix(in srgb, var(--accent) 14%, var(--surface)); border: 1.5px solid color-mix(in srgb, var(--accent) 45%, transparent); }
+.sensor-on > div { flex: 1; min-width: 0; }
+.sensor-on b { display: block; font-size: 15px; }
+.sensor-on p { margin: 2px 0 0; font-size: 13px; color: var(--muted); }
+.sensor-ico { font-size: 22px; animation: sensor-vib 2.4s ease-in-out infinite; }
+@keyframes sensor-vib { 0%, 86%, 100% { transform: none; } 88%, 92%, 96% { transform: translateX(-2px) rotate(-6deg); } 90%, 94%, 98% { transform: translateX(2px) rotate(6deg); } }
+:root.a-quieto .sensor-ico { animation: none; }
+#p-sensor:empty { display: none; }

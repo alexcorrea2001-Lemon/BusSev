@@ -12,7 +12,7 @@ const store = {
 };
 const DEFAULTS = {
   theme: 'dark', color: 'rojo', refresh: 30, liveLines: true, mapStyle: 'oscuro',
-  tematicaAuto: true, tematica: 'normal', cieloSevilla: true,
+  tematicaAuto: true, tematica: 'normal', cieloSevilla: false,
   voz: false, vozAuto: false, letraGrande: false, escalaTexto: 1.22, altoContraste: false, menosAnimaciones: false, vibrar: true, botonesGrandes: false,
   modoSencillo: false,
   revisarCada: 3, avisosTussam: 'mias', avisosResumen: true, avisosTarjetas: true, avisosParada: true, avisosLinea: true, saldoURL: '', tiemposServidor: false, fondo: '', vehiculosFiesta: false, avisarVersion: true,
@@ -452,7 +452,7 @@ document.addEventListener('visibilitychange', () => { if (document.visibilitySta
 const cielo = {
   LAT: 37.389, LON: -5.984,
   tiempo: null, pedido: 0, timer: null,
-  activo() { return settings.cieloSevilla !== false && tematicaActiva() === 'normal' && !settings.altoContraste; },
+  activo() { return settings.cieloSevilla === true && tematicaActiva() === 'normal' && !settings.altoContraste; },
   // Altura del sol (grados) en Sevilla en un momento dado
   alturaSol(t) {
     const rad = Math.PI / 180, d = t / 86400000 - 10957.5;      // días desde J2000
@@ -492,7 +492,7 @@ const cielo = {
     const box = document.getElementById('cielo');
     const root = document.documentElement;
     if (!box) return;
-    if (!this.activo()) { delete root.dataset.cielo; box.innerHTML = ''; clearInterval(this.timer); this.timer = null; return; }
+    if (!this.activo()) { delete root.dataset.cielo; box.innerHTML = ''; delete box.dataset.h; clearInterval(this.timer); this.timer = null; return; }
     if (!this.tiempo) { const c = store.get('cielo', null); if (c && Date.now() - c.t < 3 * 3600000) this.tiempo = c; }
     this.pedirTiempo();
     if (!this.timer) this.timer = setInterval(() => { if (document.visibilityState === 'visible') this.pintar(); }, 5 * 60000);
@@ -506,18 +506,20 @@ const cielo = {
     let [c1, c2] = COL[fase];
     if (cubierto) { c1 = fase === 'noche' ? '#121a2c' : '#55657d'; c2 = fase === 'noche' ? '#27324a' : '#8b9ab0'; }
     root.dataset.cielo = fase;
-    const W = 400, H = 120;
+    const caja = box.getBoundingClientRect();
+    const W = 400, H = Math.max(40, Math.min(220, Math.round(W * ((caja.height || 120) / (caja.width || 400)))));
+    if (!this.ro && window.ResizeObserver) { let alto = caja.height; this.ro = new ResizeObserver(() => { const h = box.getBoundingClientRect().height; if (Math.abs(h - alto) > 2) { alto = h; this.pintar(); } }); this.ro.observe(box); }
     let sol = '', luna = '', estrellas = '';
     if (alt > -3 && !cubierto) {
       const f = Math.min(1, Math.max(0, (ahora - sale) / (pone - sale)));
-      const x = 30 + 340 * f, y = H - 8 - 92 * Math.sin(Math.PI * f);
+      const x = 30 + 340 * f, y = H - 8 - (H - 28) * Math.sin(Math.PI * f);
       const col = fase === 'dia' ? '#fff3c4' : '#ffd08a';
       sol = `<circle cx="${x.toFixed(0)}" cy="${y.toFixed(0)}" r="34" fill="${col}" opacity=".25"/><circle cx="${x.toFixed(0)}" cy="${y.toFixed(0)}" r="13" fill="${col}"/>`;
     }
     if (fase === 'noche' || fase === 'ocaso' || fase === 'alba') {
       const fl = this.faseLuna(ahora), ilum = 1 - Math.abs(fl - 0.5) * 2;    // 0 nueva, 1 llena
       if (ilum > 0.05 && !cubierto) {
-        const x = 236, y = 30, r = 11, dx = (fl < 0.5 ? -1 : 1) * r * 2 * (1 - ilum);
+        const x = 236, y = Math.min(30, H * 0.42), r = Math.min(11, H * 0.2), dx = (fl < 0.5 ? -1 : 1) * r * 2 * (1 - ilum);
         luna = `<defs><mask id="cl-m"><circle cx="${x}" cy="${y}" r="${r}" fill="#fff"/><circle cx="${(x + dx).toFixed(1)}" cy="${y}" r="${r}" fill="#000"/></mask></defs>
           <circle cx="${x}" cy="${y}" r="${r + 10}" fill="#fff6d8" opacity=".12"/><circle cx="${x}" cy="${y}" r="${r}" fill="#fff6d8" mask="url(#cl-m)"/>`;
       }
@@ -532,10 +534,10 @@ const cielo = {
     const colNube = fase === 'noche' ? '#3a4766' : cubierto ? '#c7cfdb' : '#ffffff';
     const nube = (x, y, s) => `<g transform="translate(${x} ${y}) scale(${s})"><path d="M0 14c0-6 5-10 11-9 2-6 9-9 15-6 3-4 11-4 14 2 6 0 10 4 9 10z" fill="${colNube}"/></g>`;
     let nubes = '';
-    for (let i = 0; i < n; i++) nubes += `<g class="cl-nube" style="animation-duration:${150 + i * 37}s;animation-delay:-${i * 41}s">${nube(-60, 8 + (i * 23) % 70, 0.9 + (i % 3) * 0.35)}</g>`;
+    for (let i = 0; i < n; i++) nubes += `<g class="cl-nube" style="animation-duration:${150 + i * 37}s;animation-delay:-${i * 41}s">${nube(-60, 4 + (i * 23) % Math.max(10, H - 30), Math.min(1, H / 120) * (0.9 + (i % 3) * 0.35))}</g>`;
     let gotas = '';
     if (llueve) for (let i = 0; i < 46; i++) gotas += `<line class="cl-gota" style="animation-delay:-${((i * 0.37) % 1.1).toFixed(2)}s" x1="${(i * 8.9) % W}" y1="-10" x2="${((i * 8.9) % W) - 3}" y2="2" stroke="#d6e6ff" stroke-opacity=".55" stroke-width="1.1"/>`;
-    const html = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid slice"><defs><linearGradient id="cl-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${c1}"/><stop offset="1" stop-color="${c2}"/></linearGradient></defs>
+    const html = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMin slice"><defs><linearGradient id="cl-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${c1}"/><stop offset="1" stop-color="${c2}"/></linearGradient></defs>
       <rect width="${W}" height="${H}" fill="url(#cl-g)"/>${estrellas}${sol}${luna}${nubes}${gotas}<rect width="${W}" height="${H}" fill="#000" opacity="${fase === 'dia' || fase === 'manana' ? 0.12 : 0.05}"/></svg>`;
     if (box.dataset.h !== html) { box.innerHTML = html; box.dataset.h = html; }
   },
@@ -1056,10 +1058,11 @@ function boardHTML(tiempos, status, { limit = 99, filtrado = false, codigo = nul
     const label = `Línea ${g.linea} hacia ${g.destino}: ${first.tiempo_minutos <= 0 ? 'llegando' : first.tiempo_minutos + ' minutos'}${next ? `, el siguiente en ${next.tiempo_minutos} minutos` : ''}`;
     const av = codigo ? ` data-av="${esc(JSON.stringify([codigo, g.linea, g.destino, first.tiempo_minutos, safeColor(g.color, '#555555')]))}" role="button" tabindex="0"` : '';
     const bell = codigo && window.avisos?.find?.(codigo, g.linea, g.destino) ? '<span class="bell" title="Aviso activo">🔔</span>' : '';
+    const vib = codigo && window.sensorBus?.es?.(codigo, g.linea, g.destino) ? '<span class="bell sensor-mk" title="Modo sensor activo">📳</span>' : '';
     return `<li class="arr${codigo ? ' tappable' : ''}" aria-label="${esc(label)}${codigo ? '. Toca para crear un aviso de llegada' : ''}"${av}>
       ${badge(g.linea, g.color)}
       <div class="arr-dest"><b>${esc(g.destino || 'Sin destino')}</b>${sub ? `<span>${sub}</span>` : ''}</div>
-      <div class="arr-times" aria-hidden="true">${bell}${minutesHTML(first.tiempo_minutos)}${next ? `<span class="t-next">${next.tiempo_minutos}′</span>` : ''}</div>
+      <div class="arr-times" aria-hidden="true">${vib}${bell}${minutesHTML(first.tiempo_minutos)}${next ? `<span class="t-next">${next.tiempo_minutos}′</span>` : ''}</div>
     </li>`;
   }).join('');
   const more = groups.length > limit ? `<div class="board-empty">y ${groups.length - limit} más…</div>` : '';
@@ -2805,6 +2808,7 @@ views.parada = (el, codigo) => {
     const h = headHTML();
     el.innerHTML = `<div class="stack">${h.html}<div id="p-tools"></div>
       <section id="p-filtro" class="p-lin" aria-label="Líneas de esta parada"></section>
+      <div id="p-sensor">${window.sensorBus?.bannerHTML?.(codigo) || ''}</div>
       <div id="p-avisos">${settings.avisosParada !== false ? (window.avisosTussam?.paradaBannerHTML?.(codigo) || '') : ''}</div>
       <article class="card" id="p-board"><div class="board-empty">Cargando tiempos…</div></article>
       <div id="p-horario"></div>
@@ -2839,6 +2843,7 @@ views.parada = (el, codigo) => {
       if (dead) return;
       nums = [...nums].sort(ordenLineas);
       setHTML($('#p-avisos', el), settings.avisosParada !== false ? (window.avisosTussam?.paradaBannerHTML?.(codigo, nums) || '') : '');
+      setHTML($('#p-sensor', el), window.sensorBus?.bannerHTML?.(codigo) || '');
       lineasAqui = nums.map((n) => lineaFor(n)?.numero || String(n));
       pintarFiltro();
     }).catch(() => null);
@@ -3032,7 +3037,7 @@ views.ajustes = (el) => {
       <div class="set-group"><h3>Color de la app</h3>
         <div class="swatches">${Object.entries(PALETTES).map(([k, p]) => `<button class="swatch" type="button" data-color="${k}" aria-pressed="${settings.color === k}" aria-label="${p.label}" style="background:${p[resolvedTheme][0]};color:${p[resolvedTheme][2]}">${settings.color === k ? ICON.check : ''}</button>`).join('')}</div>
         ${tem !== 'normal' ? '<p>Mientras haya una temática puesta, la app usa sus colores. Con la temática Normal vuelve tu color.</p>' : '<p>Los pasteles llevan el texto oscuro encima para que se lea bien.</p>'}</div>
-      <div class="set-group"><h3>Cielo de Sevilla</h3>${sw('cieloSevilla', settings.cieloSevilla !== false, 'El cielo de Sevilla arriba', 'La barra de arriba se pinta con el cielo real de Sevilla: amanecer, día, atardecer o noche con la luna, y nubes o lluvia si las hay. Con una temática (Feria, Navidad…) manda la temática.')}</div>
+      <div class="set-group"><h3>Cielo de Sevilla</h3>${sw('cieloSevilla', settings.cieloSevilla === true, 'El cielo de Sevilla arriba', 'La barra de arriba se pinta con el cielo real de Sevilla: amanecer, día, atardecer o noche con la luna, y nubes o lluvia si las hay. Con una temática (Feria, Navidad…) manda la temática.')}</div>
       <div class="set-group"><h3>Color de fondo</h3>
         <div class="fondos">
           <button type="button" class="fondo" data-fondo="" aria-pressed="${!settings.fondo}"><span style="background:${resolvedTheme === 'dark' ? '#111214' : '#f4f4f6'}"></span><small>Normal</small></button>
