@@ -2360,6 +2360,34 @@ function mantenerPulsado(bm, cb) {
   for (const ev of ['touchend', 'touchcancel', 'dragstart', 'zoomstart', 'movestart']) bm.m.on(ev, parar);
   bm.m.on('contextmenu', (e) => { parar(); cb([e.lngLat.lat, e.lngLat.lng]); });
 }
+/* Ajustes del mapa a mano desde el propio mapa (lo mismo que en Ajustes → Mapa) */
+function ajustesMapa(bm) {
+  const ESTILOS = [['oscuro', 'Oscuro'], ['claro', 'Claro'], ['tema', 'Como el tema'], ['satelite', 'Satélite']];
+  const CAPAS = [
+    ['mapaParadas', 'Paradas', 'Los puntos de las paradas.', true],
+    ['mapaRecorridos', 'Recorridos', 'La línea del autobús cuando eliges una.', true],
+    ['mapaCalles', 'Nombres de calles', 'Las etiquetas de calles y sitios del mapa.', true],
+    ['mapaMetro', 'Metro de Sevilla', 'La línea 1 y sus estaciones, con los próximos trenes.', false],
+    ['mapaRenfe', 'Cercanías Renfe', 'Las líneas C1 a C5 y sus estaciones, con los próximos trenes.', false],
+    ['mapaSevici', 'Bicis Sevici', 'Las estaciones con bicis y huecos libres ahora mismo.', false],
+  ];
+  const on = (k, def) => (def ? settings[k] !== false : settings[k] === true);
+  openModal(`<h2>Ajustes del mapa</h2>
+    <div class="set-group"><h3>Estilo</h3><div class="seg" role="group">${ESTILOS.map(([v, t]) => `<button type="button" data-mest="${v}" aria-pressed="${settings.mapStyle === v}">${t}</button>`).join('')}</div>
+      <h3 style="margin-top:14px">Qué ver en el mapa</h3>
+      ${CAPAS.map(([k, t, d, def]) => `<div class="switch-row"><div><h3>${t}</h3><p>${d}</p></div><input class="switch" type="checkbox" data-mcapa="${k}" ${on(k, def) ? 'checked' : ''} aria-label="${esc(t)}"></div>`).join('')}
+      <p class="help">Es lo mismo que en Ajustes → Mapa: lo que cambies aquí se cambia también allí.</p></div>
+    <div class="actions"><button class="btn" type="button" id="ma-ok">Listo</button></div>`, (m, close) => {
+    m.querySelectorAll('[data-mest]').forEach((b) => { b.onclick = () => {
+      settings.mapStyle = b.dataset.mest; saveSettings(); applyTheme(); vibrar(10);
+      m.querySelectorAll('[data-mest]').forEach((x) => x.setAttribute('aria-pressed', x === b));
+    }; });
+    m.querySelectorAll('[data-mcapa]').forEach((b) => { b.onchange = () => {
+      settings[b.dataset.mcapa] = b.checked; saveSettings(); vibrar(10); aplicarCapasMapa(bm);
+    }; });
+    $('#ma-ok', m).onclick = close;
+  });
+}
 views.mapa = (el) => {
   // La primera vez que se abre el Mapa se carga su librería (antes se cargaba siempre al abrir la app)
   if (!mapState.bm && !window.maplibregl) {
@@ -2377,6 +2405,7 @@ views.mapa = (el) => {
     addCercaniasLayer(bm);
     addSeviciLayer(bm);
     mapState.line = lineController(bm, mapState.lineMarkers, { onStatus: (t, html) => { const n = $('#ml-live'); if (n) { if (html) n.innerHTML = t; else n.textContent = t; } } });
+    $('#btn-mapajustes', el).onclick = () => ajustesMapa(bm);
     $('#btn-locate', el).onclick = async () => {
       try {
         const pos = await getPosition(true);
