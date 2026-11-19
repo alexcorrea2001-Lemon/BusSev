@@ -31,6 +31,7 @@ const PALETTES = {
   grafito: { label: 'Grafito', light: ['#2b3445', '#e6e9ef', '#ffffff'], dark: ['#d0d6e2', '#2a2f3a', '#111318'] },
   rosa:    { label: 'Rosa',    light: ['#c2185b', '#fbe4ee', '#ffffff'], dark: ['#ff79b0', '#3b1a2a', '#2a0716'] },
   turquesa:{ label: 'Turquesa',light: ['#00838f', '#dcf3f5', '#ffffff'], dark: ['#4dd0e1', '#123236', '#002a2f'] },
+  azulejo: { label: 'Azulejo', patron: true, light: ['#1d4f9c', '#e8eef8', '#ffffff'], dark: ['#7aa2e8', '#1c2a45', '#0b1430'] },
   // Pasteles (texto oscuro encima para que se lea bien)
   rosaP:   { label: 'Rosa pastel',     pastel: true, light: ['#f2a7c3', '#fdeef4', '#3d0f22'], dark: ['#f5b5cd', '#3a2430', '#2a0b18'] },
   menta:   { label: 'Menta',           pastel: true, light: ['#8fd8bf', '#e6f8f1', '#0d3a2c'], dark: ['#9de3ca', '#1d3a31', '#0b2a20'] },
@@ -418,6 +419,8 @@ function applyTheme() {
     if (mk) { mk.classList.remove('veh-paso', 'veh-coche', 'veh-carroza', 'veh-butano'); if (v) mk.classList.add(v.clase); }
   });
   document.querySelectorAll('img.lg-busimg').forEach((i) => { i.src = busImg(); });
+  root.dataset.color = settings.color || 'rojo';
+  pintarLogo();
   updateMapStyles();
   fiesta(tem, dia);
   // El saludo de Favoritas se cambia al momento (antes se quedaba el de la temática anterior hasta reabrir la app)
@@ -439,6 +442,16 @@ setTimeout(ajustarPestanas, 300);
 let firmaFiesta = '';
 setInterval(() => { if (document.visibilityState === 'visible') revisarFiesta(); }, 60_000);
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') revisarFiesta(); });
+/* El logo de arriba a la izquierda es el mismo icono que tiene la app en el móvil (el clásico sigue el color de la app) */
+let logoClasico = null;
+function pintarLogo() {
+  const svg = document.querySelector('.brand svg');
+  if (!svg) return;
+  if (logoClasico == null) logoClasico = svg.outerHTML;
+  const k = settings.iconoApp && settings.iconoApp !== 'Clasico' ? settings.iconoApp : '';
+  if ((svg.dataset.icono || '') === k) return;
+  svg.outerHTML = k && typeof ICONOS_APP_ARTE !== 'undefined' && ICONOS_APP_ARTE[k] ? iconoAppSVG(k).replace('<svg ', `<svg class="logo-alt" data-icono="${k}" `) : logoClasico;
+}
 function revisarFiesta() { const f = `${tematicaActiva()}|${diaEspecial() || ''}`; if (firmaFiesta && f !== firmaFiesta) applyTheme(); firmaFiesta = f; }
 /* Decoración festiva: unos pocos elementos que caen o flotan (solo CSS, se paran en segundo plano
    y con «Reducir animaciones»). Nada de imágenes externas ni bucles en JavaScript. */
@@ -2873,7 +2886,7 @@ views.cerca = (el) => {
 /* Iconos de la app (deben coincidir con los «activity-alias» del AndroidManifest) */
 const ICONOS_APP = [['Clasico', 'Clásico'], ['Noche', 'Noche'], ['Azulejo', 'Azulejo'], ['Feria', 'Feria'], ['SemanaSanta', 'Semana Santa'], ['Giralda', 'Giralda'], ['Verde', 'Verde']];
 const SONIDOS_AVISO = [['sistema', 'El del móvil'], ['campana', 'Campana'], ['bocina', 'Bocina'], ['suave', 'Suave'], ['pitido', 'Pitido'], ['vibrar', 'Solo vibrar']];
-let iconoActual = 'Clasico';
+let iconoActual = settings.iconoApp || 'Clasico';
 /* ICONOS_APP_ARTE:INICIO */
 const ICONOS_APP_ARTE = {
   Clasico: '<path d="M0,0h108v108h-108z" fill="#D41C2B"/><path d="M-26,24a56,56 0 1 0 112,0a56,56 0 1 0 -112,0z" fill="#FFFFFF" fill-opacity="0.07"/><path d="M39,75h3a2,2 0 0 1 2,2v4a2,2 0 0 1 -2,2h-3a2,2 0 0 1 -2,-2v-4a2,2 0 0 1 2,-2zM66,75h3a2,2 0 0 1 2,2v4a2,2 0 0 1 -2,2h-3a2,2 0 0 1 -2,-2v-4a2,2 0 0 1 2,-2z" fill="#FFFFFF"/><path d="M41,27h26a8,8 0 0 1 8,8v34a8,8 0 0 1 -8,8h-26a8,8 0 0 1 -8,-8v-34a8,8 0 0 1 8,-8z" fill="#FFFFFF"/><path d="M41,37h26a3.5,3.5 0 0 1 3.5,3.5v11a3.5,3.5 0 0 1 -3.5,3.5h-26a3.5,3.5 0 0 1 -3.5,-3.5v-11a3.5,3.5 0 0 1 3.5,-3.5z" fill="#D41C2B"/><path d="M38.9,66a3.6,3.6 0 1 0 7.2,0a3.6,3.6 0 1 0 -7.2,0zM61.9,66a3.6,3.6 0 1 0 7.2,0a3.6,3.6 0 1 0 -7.2,0z" fill="#F2A20C"/>',
@@ -2889,7 +2902,7 @@ const ICONOS_APP_ARTE = {
 const iconoAppSVG = (k) => `<svg viewBox="9 9 90 90" aria-hidden="true">${ICONOS_APP_ARTE[k] || ICONOS_APP_ARTE.Clasico}</svg>`;
 views.ajustes = (el) => {
   if (isNative() && window.Capacitor?.isPluginAvailable?.('BusSevApariencia')) {
-    window.Capacitor.nativePromise('BusSevApariencia', 'getIcono', {}).then((r) => { if (r?.icono && r.icono !== iconoActual) { iconoActual = r.icono; el.__repintar?.(); } }).catch(() => null);
+    window.Capacitor.nativePromise('BusSevApariencia', 'getIcono', {}).then((r) => { if (r?.icono && r.icono !== iconoActual) { iconoActual = r.icono; el.__repintar?.(); } if (r?.icono && r.icono !== settings.iconoApp) { settings.iconoApp = r.icono; saveSettings(); applyTheme(); } }).catch(() => null);
   }
   const segBtns = (name, opts, cur) => `<div class="seg" role="group">${opts.map(([v, t]) => `<button type="button" data-set="${name}" data-v="${v}" aria-pressed="${String(cur) === String(v)}">${t}</button>`).join('')}</div>`;
   const sw = (id, on, titulo, texto) => `<div class="switch-row"><div><h3>${titulo}</h3>${texto ? `<p>${texto}</p>` : ''}</div><input class="switch" type="checkbox" data-sw="${id}" ${on ? 'checked' : ''} aria-label="${esc(titulo)}"></div>`;
@@ -2916,7 +2929,7 @@ views.ajustes = (el) => {
           <div class="chips">${[['papanoel', '🎅 Navidad'], ['nochevieja', '🍇 Nochevieja'], ['anonuevo', '🎆 Año Nuevo'], ['reyes', '👑 Reyes']].map(([k, t]) => `<button type="button" class="chip${pruebaDia === k ? ' on' : ''}" data-dia="${k}" aria-pressed="${pruebaDia === k}">${t}</button>`).join('')}${pruebaDia ? '<button type="button" class="chip" data-dia="">Quitar</button>' : ''}</div></div>
         ${sw('vehiculosFiesta', settings.vehiculosFiesta, 'Vehículos de fiesta en el mapa', `Cambia los autobuses del mapa según la temática: pasos en Semana Santa, coches de caballos en la Feria, coches de miedo en Halloween, carrozas en Navidad y, el resto del año, el «Butano», el autobús naranja de TUSSAM de toda la vida. Cada autobús lleva uno al azar.${VEHICULOS_FIESTA[tem] ? ` Ahora: <b>${esc(VEHICULOS_FIESTA[tem].nombre)}</b>.` : ''}`)}</div>
       <div class="set-group"><h3>Color de la app</h3>
-        <div class="swatches">${Object.entries(PALETTES).map(([k, p]) => `<button class="swatch" type="button" data-color="${k}" aria-pressed="${settings.color === k}" aria-label="${p.label}" style="background:${p[resolvedTheme][0]};color:${p[resolvedTheme][2]}">${settings.color === k ? ICON.check : ''}</button>`).join('')}</div>
+        <div class="swatches">${Object.entries(PALETTES).map(([k, p]) => `<button class="swatch" type="button" data-color="${k}" aria-pressed="${settings.color === k}" aria-label="${p.label}" style="background:${p.patron ? `var(--azulejo-mini) center / 22px 22px, ${p[resolvedTheme][0]}` : p[resolvedTheme][0]};color:${p[resolvedTheme][2]}">${settings.color === k ? ICON.check : ''}</button>`).join('')}</div>
         ${tem !== 'normal' ? '<p>Mientras haya una temática puesta, la app usa sus colores. Con la temática Normal vuelve tu color.</p>' : '<p>Los pasteles llevan el texto oscuro encima para que se lea bien.</p>'}</div>
       <div class="set-group"><h3>Color de fondo</h3>
         <div class="fondos">
@@ -3024,7 +3037,7 @@ views.ajustes = (el) => {
         $('#ic-no', m).onclick = close;
         $('#ic-si', m).onclick = async () => {
           close();
-          try { await window.Capacitor.nativePromise('BusSevApariencia', 'setIcono', { icono: k }); iconoActual = k; vibrar(15); toast('Icono cambiado. Vuelve a ponerlo en la pantalla de inicio.'); render(); }
+          try { await window.Capacitor.nativePromise('BusSevApariencia', 'setIcono', { icono: k }); iconoActual = k; settings.iconoApp = k; saveSettings(); applyTheme(); vibrar(15); toast('Icono cambiado. Vuelve a ponerlo en la pantalla de inicio.'); render(); }
           catch (e) { toast(e?.message || 'No se ha podido cambiar el icono'); }
         };
       });

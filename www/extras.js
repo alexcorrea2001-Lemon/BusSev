@@ -919,6 +919,8 @@ window.addEventListener('bussevTarjeta', (e) => { if (e?.uid && active.name !== 
 /* Arranque                                                            */
 /* ================================================================== */
 applyTheme();
+// Al arrancar, se pregunta a Android qué icono tiene puesto la app (por si se cambió en otra versión)
+if (isNative()) window.Capacitor?.nativePromise?.('BusSevApariencia', 'getIcono', {}).then((r) => { if (r?.icono && r.icono !== settings.iconoApp) { settings.iconoApp = r.icono; saveSettings(); applyTheme(); } }).catch(() => null);
 route();
 // Lo que no corre prisa se hace después de enseñar la app
 setTimeout(async () => {
