@@ -16,6 +16,7 @@ on:
 
 permissions:
   contents: write
+  actions: write
 
 jobs:
   calles:
@@ -133,3 +134,15 @@ jobs:
           git commit -q -m "Calles OSM: revisión del $(date -u +%Y-%m-%d)"
           git pull -q --rebase || true
           git push || echo "No se ha podido apuntar la fecha (no pasa nada)."
+
+      # Segunda protección contra la inactividad: vuelve a encender las dos tareas programadas
+      # (Compilar APK y Calles OSM). Encenderlas cuenta para GitHub y reinicia sus 60 días.
+      - name: Mantener encendidas las revisiones mensuales
+        if: always() && github.event_name != 'push'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for w in apk.yml calles.yml; do
+            gh api -X PUT "repos/${{ github.repository }}/actions/workflows/$w/enable" && echo "Encendida: $w" || echo "No se ha podido encender $w (no pasa nada)"
+          done
