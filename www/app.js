@@ -362,7 +362,7 @@ function tarjetasCaducanHTML() {
 const VEHICULOS_FIESTA = {
   normal: { n: 1, nombre: 'el «Butano», el autobús naranja de TUSSAM de toda la vida', clase: 'veh-butano' },
   semanasanta: { n: 8, nombre: 'pasos de Semana Santa', clase: 'veh-paso' },
-  feria: { n: 8, nombre: 'coches de caballos', clase: 'veh-coche' },
+  feria: { n: 8, nombre: 'coches de caballos', clase: 'veh-coche', izq: [1, 2, 3, 4, 5, 6, 7, 8] },   // los caballos van a la izquierda
   halloween: { n: 5, nombre: 'coches de miedo', clase: 'veh-carroza', izq: [3, 4, 5] },
   navidad: { n: 11, nombre: 'carrozas', clase: 'veh-carroza' },
 };
@@ -908,7 +908,7 @@ document.addEventListener('visibilitychange', () => { if (document.visibilitySta
 
 /* Animación de carga: un autobús (o el vehículo de la fiesta) que avanza por una carretera */
 function cargandoHTML(texto = 'Cargando…', sub = '') {
-  return `<div class="cargando" role="status" aria-live="polite"><div class="cg-pista"><span class="cg-raya"></span><img class="cg-bus" src="${busImg()}" alt=""></div><p>${esc(texto)}</p>${sub ? `<small>${esc(sub)}</small>` : ''}</div>`;
+  return `<div class="cargando" role="status" aria-live="polite"><div class="cg-pista"><span class="cg-raya"></span><img class="cg-bus" src="${busImg()}"${busMiraIzq() ? ' data-izq' : ''} alt=""></div><p>${esc(texto)}</p>${sub ? `<small>${esc(sub)}</small>` : ''}</div>`;
 }
 const cargandoMini = () => '<span class="cg-mini" aria-hidden="true"></span>';
 /* «3» → «03» (solo números de una cifra); el resto igual: «34», «A6», «C1» */
