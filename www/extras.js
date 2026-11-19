@@ -80,6 +80,30 @@ const avisos = {
   },
 };
 window.avisos = avisos; // lo usa app.js para marcar los avisos activos
+/* Modo sensor: lo lleva Android (SensorService). Aquí se recuerda cuál está activo para enseñarlo
+   (📳 en el autobús, aviso en la parada y botón «Parar»), y se comprueba con Android por si ya terminó. */
+const sensorBus = {
+  get() { const s = store.get('sensorActivo', null); return s && Date.now() - s.inicio < 41 * 60000 ? s : null; },
+  es(codigo, linea, destino) { const s = this.get(); return !!s && s.codigo === String(codigo) && s.linea === String(linea) && (!s.destino || !destino || s.destino === destino); },
+  async empezar(d) { await native('BusSevViaje', 'empezarSensor', d); store.set('sensorActivo', { ...d, codigo: String(d.codigo), linea: String(d.linea), inicio: Date.now() }); },
+  async parar() { store.set('sensorActivo', null); try { await native('BusSevViaje', 'pararSensor', {}); } catch { /* ya estaba parado */ } },
+  async revisar() {
+    if (!plugin('BusSevViaje') || !store.get('sensorActivo', null)) return;
+    try { const r = await native('BusSevViaje', 'estadoSensor', {}); if (!r?.activo) { store.set('sensorActivo', null); active.rerender?.(); } } catch { /* sin Android */ }
+  },
+  bannerHTML(codigo) {
+    const s = this.get();
+    if (!s || s.codigo !== String(codigo)) return '';
+    return `<div class="sensor-on"><span class="sensor-ico" aria-hidden="true">📳</span><div><b>Modo sensor activo</b><p>${esc(s.linea)}${s.destino ? ` → ${esc(s.destino)}` : ''} · vibrará cada minuto desde que falten 5</p></div><button class="btn ghost" type="button" data-sensor-parar>Parar</button></div>`;
+  },
+};
+window.sensorBus = sensorBus;
+document.addEventListener('click', async (e) => {
+  if (!e.target.closest('[data-sensor-parar]')) return;
+  await sensorBus.parar(); vibrar(10); toast('Modo sensor parado'); active.rerender?.();
+});
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') sensorBus.revisar(); });
+
 function avisoModal({ codigo, parada, linea, destino, minutos, color }) {
   const ya = avisos.find(codigo, linea, destino);
   const opciones = [2, 5, 10, 15].filter((n) => n < minutos);
@@ -90,17 +114,19 @@ function avisoModal({ codigo, parada, linea, destino, minutos, color }) {
       <div class="btn-row">${opciones.map((n) => `<button class="btn ghost" type="button" data-antes="${n}">${n} min</button>`).join('')}</div>
       <p class="help">${plugin('BusSevViaje') ? 'Aunque cierres la app, en los últimos minutos el móvil vuelve a mirar a TUSSAM y corrige el aviso si el autobús se adelanta o se retrasa.' : 'El aviso se calcula con el tiempo de ahora y se corrige cada vez que abres la app. Si el autobús se retrasa mucho con la app cerrada, puede llegar un poco antes o después.'}</p>`
     : '<p class="help">Este autobús está a punto de llegar; no hace falta aviso.</p>'}
-    ${plugin('BusSevViaje') && minutos > 0 ? `<button class="btn ghost bj-btn sensor-btn" type="button" id="av-sensor"><span>📳 Modo sensor</span><small>Guárdate el móvil: vibra cada minuto desde que falten 5 (más fuerte cuanto más cerca)</small></button>` : ''}
+    ${plugin('BusSevViaje') && sensorBus.es(codigo, linea, destino) ? `<div class="sensor-on"><span class="sensor-ico" aria-hidden="true">📳</span><div><b>Modo sensor activo</b><p>Vibrará cada minuto desde que falten 5</p></div><button class="btn ghost" type="button" id="av-sensor-parar">Parar</button></div>`
+      : plugin('BusSevViaje') && minutos > 0 ? `<button class="btn ghost bj-btn sensor-btn" type="button" id="av-sensor"><span>📳 Modo sensor</span><small>Guárdate el móvil: vibra cada minuto desde que falten 5 (más fuerte cuanto más cerca)</small></button>` : ''}
     <button class="btn ghost bj-btn" type="button" id="av-bajar">🚌 Me subo a este: avísame al bajar</button>
     <div class="actions">${ya ? '<button class="btn danger" type="button" id="av-del">Quitar aviso</button>' : ''}<button class="btn ghost" type="button" id="av-x">Cerrar</button></div>`,
   (m, close) => {
     $('#av-x', m).onclick = close;
     $('#av-bajar', m).onclick = () => { close(); bajada.elegir(codigo, linea, destino); };
+    $('#av-sensor-parar', m)?.addEventListener('click', async () => { await sensorBus.parar(); close(); toast('Modo sensor parado'); active.rerender?.(); });
     $('#av-sensor', m)?.addEventListener('click', async () => {
       try {
         await avisos.permiso().catch(() => null);
-        await native('BusSevViaje', 'empezarSensor', { codigo, linea, destino, parada });
-        close(); vibrar(20);
+        await sensorBus.empezar({ codigo, linea, destino, parada });
+        close(); active.rerender?.();
         toast(minutos > 5 ? `Modo sensor activado: empezará a vibrar cuando al ${linea} le falten 5 minutos` : 'Modo sensor activado: ya puedes guardarte el móvil');
       } catch (e) { toast(e?.message || 'No se ha podido activar el modo sensor'); }
     });

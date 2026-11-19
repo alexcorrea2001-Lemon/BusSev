@@ -123,7 +123,7 @@ el horario oficial y la información de paradas y líneas, que va guardada dentr
 - **Icono de la app** a elegir: Clásico, Noche, Azulejo, Feria, Semana Santa, Giralda y Verde.
   (Al cambiarlo, Android quita el acceso de la pantalla de inicio y hay que volver a ponerlo: te avisa antes.)
 - **Sonido del aviso de llegada**: campanas, ding-dong, marimba o estación (se repite 3 veces), con botón para probarlo.
-- **Cielo de Sevilla** (se puede quitar): la barra de arriba se pinta con el cielo real de Sevilla — amanecer, día,
+- **Cielo de Sevilla** (opcional, se enciende en Ajustes): la barra de arriba se pinta con el cielo real de Sevilla — amanecer, día,
   atardecer o noche con estrellas y la luna en su fase — y nubes o lluvia si las hay (previsión de Open-Meteo).
 - **Temáticas** que cambian solas: Navidad, Semana Santa, Feria y Halloween, con adornos y, si quieres,
   **pasos, coches de caballos o carrozas** en el mapa en vez de autobuses.
