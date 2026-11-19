@@ -167,7 +167,16 @@ public class BajadaService extends Service implements LocationListener {
                 .setContentIntent(LlegadaReceiver.abrirParada(this, codigoDestino, ID_FIJA))
                 .addAction(0, "Parar", piParar());
         if (Build.VERSION.SDK_INT >= 21) b.setColor(0xFFD41C2B);
+        // Android 16: chip en la barra con lo que queda («3 paradas», «Próxima»)
+        SensorService.promocionar(b, chipCorto(texto));
         return b.build();
+    }
+    static String chipCorto(String t) {
+        if (t == null) return "";
+        if (t.startsWith("Bájate en la próxima")) return "Próxima";
+        if (t.startsWith("Has llegado")) return "Llegas";
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile("Quedan (\\d+) paradas").matcher(t);
+        return m.find() ? m.group(1) + " paradas" : "En ruta";
     }
     private void actualizarFija(String texto) {
         NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);

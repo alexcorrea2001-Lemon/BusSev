@@ -41,6 +41,9 @@ Guarda las paradas que más usas y ve de un vistazo cuánto le falta a cada auto
 - **Filtro de líneas** para ver solo la que te interesa.
 - **Minutos** que le faltan a cada línea y **avísame cuando llegue**: elige el autobús y te avisa con una
   notificación (con el sonido que elijas), aunque tengas la app cerrada.
+- **📳 Modo sensor**: te guardas el móvil y vibra según se acerca tu autobús, sin mirar la pantalla. Empieza cuando
+  faltan 5 minutos y da un aviso por minuto cada vez más fuerte (un toque suave, dos, tres, uno largo y, al llegar,
+  uno muy fuerte). En Android 16 los minutos salen también como un chip en la barra de arriba.
 - Si TUSSAM no da tiempos, te enseña los **próximos según el horario oficial**.
 - **Horario en esta parada**: todos los pasos del día de cada línea, según el horario oficial (GTFS).
 - **Mapa** con la parada, los autobuses que vienen y el camino que les queda (también en pantalla completa).

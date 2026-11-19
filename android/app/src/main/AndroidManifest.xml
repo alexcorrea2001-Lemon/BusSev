@@ -161,6 +161,12 @@
             android:exported="false"
             android:foregroundServiceType="location" />
 
+        <!-- Modo sensor: vibra según se acerca tu autobús (con notificación fija y chip en la barra) -->
+        <service
+            android:name=".SensorService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+
         <activity
             android:name=".BusSevWidgetConfig"
             android:theme="@android:style/Theme.DeviceDefault.Dialog.NoActionBar"
@@ -191,6 +197,11 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
     <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- Modo sensor: servicio que pregunta a TUSSAM con la pantalla apagada -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- Android 16: la cuenta atrás del bus como chip en la barra de estado («Live Updates») -->
+    <uses-permission android:name="android.permission.POST_PROMOTED_NOTIFICATIONS" />
 
     <!-- Actualizar BusSev desde dentro de la app: permite abrir el instalador de Android con la versión nueva
          descargada de GitHub (Android te pide igualmente que lo autorices la primera vez). -->
