@@ -50,6 +50,13 @@ public class BajadaService extends Service implements LocationListener {
     private boolean avisado = false, llegado = false;
     private long inicio = 0;
 
+    /* Pasaporte: verificación del viaje (que vas de verdad en ese autobús) */
+    private String[] codigos = new String[0];
+    private long ultimoLlegando = 0, salida = 0;      // último momento en que TUSSAM dio tu bus «llegando» a tu parada · cuándo saliste
+    private int fixes = 0, dentro = 0, saltos = 0;
+    private boolean mock = false;
+    private Location previa = null;
+
     static boolean activo(Context c) {
         return c.getSharedPreferences(LlegadaReceiver.PREFS, Context.MODE_PRIVATE).getString("bajada", null) != null;
     }
@@ -75,11 +82,14 @@ public class BajadaService extends Service implements LocationListener {
                 JSONObject p = ps.getJSONObject(i);
                 pos[i] = new double[]{p.getDouble("lat"), p.getDouble("lon")};
                 nombres[i] = p.optString("nombre", "Parada " + p.optString("codigo"));
+                if (codigos.length != ps.length()) codigos = new String[ps.length()];
+                codigos[i] = p.optString("codigo");
                 if (i == ps.length() - 1) codigoDestino = p.optString("codigo");
             }
             destino = nombres.length > 0 ? nombres[nombres.length - 1] : "";
             inicio = v.optLong("inicio", System.currentTimeMillis());
             actual = 0; avisado = false; llegado = false;
+            ultimoLlegando = 0; salida = 0; fixes = 0; dentro = 0; saltos = 0; mock = false; previa = null;
             getSharedPreferences(LlegadaReceiver.PREFS, MODE_PRIVATE).edit().putString("bajada", v.put("inicio", inicio).toString()).apply();
         } catch (Exception e) { stopSelf(); return START_NOT_STICKY; }
         if (pos.length < 2) { parar(); return START_NOT_STICKY; }
@@ -99,7 +109,33 @@ public class BajadaService extends Service implements LocationListener {
         } catch (SecurityException e) { parar(); return START_NOT_STICKY; }
         h.removeCallbacksAndMessages(null);
         h.postDelayed(new Runnable() { public void run() { parar(); } }, Math.max(60_000L, MAX_MS - (System.currentTimeMillis() - inicio)));
+        h.post(mirarTussam);
         return START_REDELIVER_INTENT;
+    }
+
+    /* Mientras sigues en tu parada, se pregunta a TUSSAM cada 20 s si tu autobús está llegando */
+    private final Runnable mirarTussam = new Runnable() {
+        public void run() {
+            if (salida > 0 || llegado || codigos.length == 0) return;
+            if (System.currentTimeMillis() - inicio > 45 * 60_000L) return;
+            new Thread(new Runnable() { public void run() {
+                try {
+                    for (TussamTiempos.Llegada x : TussamTiempos.tiempos(codigos[0], TussamTiempos.token(false)))
+                        if (SensorService.mismaLinea(x.linea, linea) && x.minutos <= 1) { ultimoLlegando = System.currentTimeMillis(); break; }
+                } catch (Exception ignored) { }
+            } }).start();
+            h.postDelayed(this, 20_000L);
+        }
+    };
+
+    /* Distancia (m) de un punto al tramo entre dos paradas */
+    static double distSegmento(double[] a, double[] b, double lat, double lon) {
+        double k = Math.cos(Math.toRadians(lat)) * 111320.0, m = 110540.0;
+        double ax = (a[1] - lon) * k, ay = (a[0] - lat) * m, bx = (b[1] - lon) * k, by = (b[0] - lat) * m;
+        double dx = bx - ax, dy = by - ay, L = dx * dx + dy * dy;
+        double t = L == 0 ? 0 : Math.max(0, Math.min(1, -(ax * dx + ay * dy) / L));
+        double px = ax + t * dx, py = ay + t * dy;
+        return Math.sqrt(px * px + py * py);
     }
 
     static float dist(double[] a, double lat, double lon) {
@@ -111,18 +147,32 @@ public class BajadaService extends Service implements LocationListener {
     @Override
     public void onLocationChanged(Location l) {
         if (l == null || llegado) return;
+        if (Build.VERSION.SDK_INT >= 31 ? l.isMock() : (Build.VERSION.SDK_INT >= 18 && l.isFromMockProvider())) mock = true;   // ubicación falsa
         if (l.hasAccuracy() && l.getAccuracy() > 150) return;    // posición muy mala: se espera a otra
         double la = l.getLatitude(), lo = l.getLongitude();
+        // Verificación: ¿vas por el recorrido de la línea? (solo con buena precisión y ya en marcha)
+        if (salida > 0 && (!l.hasAccuracy() || l.getAccuracy() <= 60)) {
+            double dmin = Double.MAX_VALUE;
+            for (int i = 0; i + 1 < pos.length; i++) dmin = Math.min(dmin, distSegmento(pos[i], pos[i + 1], la, lo));
+            fixes++; if (dmin <= 170) dentro++;
+            if (previa != null) {
+                double dt = (l.getTime() - previa.getTime()) / 1000.0;
+                if (dt >= 3 && previa.distanceTo(l) / dt > 34) saltos++;     // más de ~120 km/h: un salto imposible
+            }
+            previa = l;
+        }
         int ultimo = pos.length - 1;
         // ¿Por qué parada va? La más cercana de las que quedan (nunca hacia atrás)
         int mejor = actual; float dm = Float.MAX_VALUE;
         for (int i = actual; i <= ultimo; i++) { float d = dist(pos[i], la, lo); if (d < dm) { dm = d; mejor = i; } }
         if (dm < CERCA_PARADA_M) actual = Math.max(actual, mejor);
+        if (actual >= 1 && salida == 0) { salida = System.currentTimeMillis(); previa = null; }
         float dDest = dist(pos[ultimo], la, lo);
         int quedan = Math.max(0, ultimo - actual);
         if (dDest < LLEGADA_M || (actual == ultimo && dm < LLEGADA_M)) {
             llegado = true;
             if (!avisado) avisarBajar(true);
+            registrarViaje();
             actualizarFija("Has llegado a " + destino);
             h.postDelayed(new Runnable() { public void run() { parar(); } }, 60_000L);
             return;
@@ -134,6 +184,43 @@ public class BajadaService extends Service implements LocationListener {
     @Override public void onStatusChanged(String p, int s, Bundle b) { }
     @Override public void onProviderEnabled(String p) { }
     @Override public void onProviderDisabled(String p) { }
+
+    /* Pasaporte: guarda el viaje (verificado o no, con el motivo) firmado, para que la app lo recoja */
+    private void registrarViaje() {
+        try {
+            long fin = System.currentTimeMillis();
+            long sal = salida > 0 ? salida : inicio;
+            double km = 0;
+            for (int i = 0; i + 1 < pos.length; i++) km += dist(pos[i], pos[i + 1][0], pos[i + 1][1]) / 1000.0;
+            double horas = Math.max(1, fin - sal) / 3600000.0, vel = km / horas;
+            String motivo = null;
+            if (mock) motivo = "la ubicación del móvil era falsa";
+            else if (pos.length < 3) motivo = "hacen falta al menos 2 paradas";
+            else if (fin - sal < 90_000L) motivo = "el viaje fue demasiado corto";
+            else if (ultimoLlegando == 0 || sal - ultimoLlegando > 5 * 60_000L) motivo = "TUSSAM no tenía ningún " + linea + " llegando a tu parada cuando saliste";
+            else if (fixes < 4 || dentro < fixes * 0.7) motivo = "tu camino no siguió el recorrido de la línea";
+            else if (saltos > 0 || vel > 60) motivo = "la posición dio saltos imposibles";
+            else if (vel < 4.5) motivo = "ibas demasiado despacio para ir en autobús";
+            JSONObject v = new JSONObject();
+            v.put("id", inicio + "-" + linea);
+            v.put("linea", linea);
+            v.put("desde", codigos.length > 0 ? codigos[0] : "");
+            v.put("desdeNombre", nombres.length > 0 ? nombres[0] : "");
+            v.put("hasta", codigoDestino);
+            v.put("hastaNombre", destino);
+            v.put("lat", pos[pos.length - 1][0]);
+            v.put("lon", pos[pos.length - 1][1]);
+            v.put("inicio", sal);
+            v.put("fin", fin);
+            v.put("paradas", pos.length - 1);
+            v.put("km", Math.round(km * 100) / 100.0);
+            v.put("verificado", motivo == null);
+            if (motivo != null) v.put("motivo", motivo);
+            v.put("firma", Pasaporte.firma(v));
+            Pasaporte.guardar(this, v);
+            Pasaporte.avisarViaje(this, v);
+        } catch (Exception ignored) { }
+    }
 
     private void canales() {
         NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);

@@ -78,6 +78,7 @@ public class MainActivity extends BridgeActivity {
 
     private void handleIntent(Intent intent) {
         if (intent == null) return;
+        if ("pasaporte".equals(intent.getStringExtra("bussev_abrir"))) { pendingParada = "P"; return; }   // notificación de un logro
         String cod = intent.getStringExtra("bussev_parada");
         if (cod != null) {
             cod = cod.replaceAll("[^0-9]", "");
@@ -91,7 +92,8 @@ public class MainActivity extends BridgeActivity {
         if (wv == null) return;
         final String cod = pendingParada;
         wv.evaluateJavascript(
-            "(window.busSevAbrirParada?(window.busSevAbrirParada('" + cod + "'),true):false)",
+            "P".equals(cod) ? "(window.busSevAbrirParada?(location.hash='pasaporte',true):false)"
+                : "(window.busSevAbrirParada?(window.busSevAbrirParada('" + cod + "'),true):false)",
             new ValueCallback<String>() {
                 public void onReceiveValue(String value) {
                     if ("true".equals(value)) {

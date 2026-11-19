@@ -432,6 +432,7 @@ views.tarjeta = (el) => {
           <span class="card-btn-sub">${c.ultimo?.fecha ? `${c.avisoSaldo?.on && c.ultimo.saldo != null && c.ultimo.saldo < Number(c.avisoSaldo.importe) ? '⚠ Saldo bajo · ' : ''}Actualizada ${haceCuanto(c.ultimo.fecha)}` : 'Toca para consultar'}</span></button>`).join('')}</div>`
       : `<div class="empty" style="padding:16px">${ICON.nfc}<h2>Añade tu tarjeta</h2><p>${tarjeta.nfc() ? 'Acércala al móvil o escribe su número.' : 'Escribe el número que tiene detrás.'}</p></div>`}
       <button class="btn ghost block" type="button" id="t-add">+ Añadir tarjeta por su número</button>
+      ${window.pasaporte?.entradaHTML?.() || ''}
       <a class="btn ghost block" href="#tarifas">💶 Tarifas y títulos de viaje</a>`;
   }
   function pintar() {

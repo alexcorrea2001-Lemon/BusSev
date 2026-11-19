@@ -3326,6 +3326,7 @@ function route() {
   if (h === 'ruta') return show('ruta');
   if (h === 'avisos') return show('avisos');
   if (h === 'viaje') return show('viaje');
+  if (h === 'pasaporte') return show('pasaporte');
   if (h === 'tarifas') return show('tarifas');
   if (TABS.includes(h)) return show(h);
   history.replaceState(null, '', '#favoritas');

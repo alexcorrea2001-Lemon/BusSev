@@ -819,7 +819,7 @@ const copia = {
   crear() {
     const fotos = {};
     for (const c of tarjeta.list()) { const f = tarjeta.foto(c.num); if (f) fotos[c.num] = f; }
-    return { app: 'BusSev', version: 1, fecha: new Date().toISOString(), favs: favs.list(), cards: tarjeta.list(), settings, fotos };
+    return { app: 'BusSev', version: 1, fecha: new Date().toISOString(), favs: favs.list(), cards: tarjeta.list(), settings, fotos, pasaporte: window.pasaporte?.copia?.() || [] };
   },
   async exportar() {
     const json = JSON.stringify(this.crear());
@@ -853,7 +853,11 @@ const copia = {
     if (['oscuro', 'claro', 'tema'].includes(S.mapStyle)) s.mapStyle = S.mapStyle;
     const fotos = {};
     for (const [k, v] of Object.entries(o.fotos || {})) if (/^\d{12}$/.test(k) && typeof v === 'string' && v.length < 900_000 && /^data:image\/(jpeg|png);base64,[A-Za-z0-9+/=]+$/.test(v)) fotos[k] = v;
-    return { favs: fv, cards, settings: s, fotos };
+    // Pasaporte: solo forma; quien decide si un viaje vale es Android, comprobando su firma (copia.aplicar)
+    const pas = (Array.isArray(o.pasaporte) ? o.pasaporte : []).slice(0, 2000).filter((v) => v && typeof v.id === 'string' && typeof v.firma === 'string' && /^[0-9a-f]{64}$/.test(v.firma))
+      .map((v) => ({ id: txt(v.id, 40), linea: txt(v.linea, 8), desde: txt(v.desde, 8), hasta: txt(v.hasta, 8), desdeNombre: txt(v.desdeNombre, 80), hastaNombre: txt(v.hastaNombre, 80),
+        lat: Number(v.lat) || 0, lon: Number(v.lon) || 0, inicio: Number(v.inicio) || 0, fin: Number(v.fin) || 0, paradas: Number(v.paradas) || 0, km: Number(v.km) || 0, verificado: v.verificado === true, firma: v.firma }));
+    return { favs: fv, cards, settings: s, fotos, pasaporte: pas };
   },
   importar(file) {
     return new Promise((resolve, reject) => {
@@ -869,6 +873,7 @@ const copia = {
     store.set('cards', d.cards);
     for (const [k, v] of Object.entries(d.fotos)) tarjeta.setFoto(k, v);
     Object.assign(settings, d.settings); saveSettings(); applyTheme();
+    if (d.pasaporte?.length) window.pasaporte?.restaurar(d.pasaporte).then((n) => { if (n) toast(`Pasaporte recuperado: ${n} ${n === 1 ? 'viaje' : 'viajes'}`); });
   },
 };
 
