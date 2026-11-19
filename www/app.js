@@ -2138,10 +2138,11 @@ views.favoritas = (el) => {
   function paint() {
     const list = favs.list();
     if (!list.length) {
-      el.innerHTML = `<div class="page-head"><h1>Favoritas</h1></div><div id="fav-bajada">${window.bajadaHTML?.() || ''}</div>` + emptyHTML(ICON.star, 'Aún no tienes paradas favoritas', 'Abre una parada (desde el mapa, el buscador o Cerca) y pulsa la estrella. Luego podrás ponerle nombre, color y elegir qué líneas ver.', '<a class="btn" href="#mapa">Buscar en el mapa</a><a class="btn ghost" href="#avisos">Avisos de TUSSAM</a>');
+      el.innerHTML = `<div class="page-head"><h1>Favoritas</h1></div>${window.anio?.bannerHTML?.() || ''}<div id="fav-bajada">${window.bajadaHTML?.() || ''}</div>` + emptyHTML(ICON.star, 'Aún no tienes paradas favoritas', 'Abre una parada (desde el mapa, el buscador o Cerca) y pulsa la estrella. Luego podrás ponerle nombre, color y elegir qué líneas ver.', '<a class="btn" href="#mapa">Buscar en el mapa</a><a class="btn ghost" href="#avisos">Avisos de TUSSAM</a>');
       return false;
     }
     const avs = window.avisos ? avisos.list() : [];
+    window.anio?.favoritas?.(list.map((f) => f.codigo));
     const tarjetaDe = (f) => {
         const p = cache.paradaByCode.get(f.codigo) || { codigo: f.codigo, nombre: f.nombre };
         const r = results?.get(f.codigo);
@@ -2170,6 +2171,7 @@ views.favoritas = (el) => {
     }
     el.__marco = marco;
     el.innerHTML = `<div class="stack view-anim"><div class="page-head row-between"><div><h1>Favoritas</h1><p>Tus paradas con los tiempos en directo.</p></div><a class="btn ghost sm" href="#ruta">${ICON.route}Cómo llegar</a></div>
+      ${window.anio?.bannerHTML?.() || ''}
       <div id="fav-bajada">${window.bajadaHTML?.() || ''}</div>
       <div id="fav-offline">${offlineHTML()}</div>
       ${servicioHoyHTML()}
@@ -3266,6 +3268,7 @@ function show(name, arg) {
     document.querySelectorAll('.view-detail').forEach((v) => { v.innerHTML = ''; });
   }
   el.hidden = false; el.dataset.active = '1';
+  try { window.anio?.vista?.(name, arg); } catch { /* nada */ }
   document.body.dataset.view = name;   // para ocultar el buscador en Ajustes (y lo que haga falta por pantalla)
   // Al volver atrás se deja la pantalla donde estaba (p. ej. Ajustes tras mirar Avisos o Tarifas); si no, arriba.
   const yVuelta = volviendo ? (posScroll.get(location.hash || '#favoritas') || 0) : 0;
@@ -3327,6 +3330,7 @@ function route() {
   if (h === 'avisos') return show('avisos');
   if (h === 'viaje') return show('viaje');
   if (h === 'pasaporte') return show('pasaporte');
+  if (h === 'tuano') return show('tuano');
   if (h === 'tarifas') return show('tarifas');
   if (TABS.includes(h)) return show(h);
   history.replaceState(null, '', '#favoritas');

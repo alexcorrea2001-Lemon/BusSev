@@ -50,6 +50,7 @@ const avisos = {
     if (plugin('BusSevViaje')) {
       try {
         await native('BusSevViaje', 'vigilarLlegada', { id, codigo: a.codigo, parada: a.parada, linea: a.linea, destino: a.destino, antes: a.antes, at, sonido: settings.sonidoAviso || 'sistema' });
+        window.anio?.apuntar?.('aviso', { codigo: a.codigo, linea: a.linea });
         vigilado = true;
       } catch { /* se usa la notificación de siempre */ }
     }
@@ -85,7 +86,7 @@ window.avisos = avisos; // lo usa app.js para marcar los avisos activos
 const sensorBus = {
   get() { const s = store.get('sensorActivo', null); return s && Date.now() - s.inicio < 41 * 60000 ? s : null; },
   es(codigo, linea, destino) { const s = this.get(); return !!s && s.codigo === String(codigo) && s.linea === String(linea) && (!s.destino || !destino || s.destino === destino); },
-  async empezar(d) { await native('BusSevViaje', 'empezarSensor', d); store.set('sensorActivo', { ...d, codigo: String(d.codigo), linea: String(d.linea), inicio: Date.now() }); },
+  async empezar(d) { await native('BusSevViaje', 'empezarSensor', d); window.anio?.apuntar?.('sensor', { codigo: d.codigo, linea: d.linea }); store.set('sensorActivo', { ...d, codigo: String(d.codigo), linea: String(d.linea), inicio: Date.now() }); },
   async parar() { store.set('sensorActivo', null); try { await native('BusSevViaje', 'pararSensor', {}); } catch { /* ya estaba parado */ } },
   async revisar() {
     if (!plugin('BusSevViaje') || !store.get('sensorActivo', null)) return;
@@ -181,7 +182,7 @@ const bajada = {
     try { await getPosition(true); } catch (e) { toast(geoErrorText(e)); return false; }   // pide el permiso de ubicación
     if (plugin('BusSevViaje')) {
       try { await avisos.permiso(); } catch (e) { toast(e.message); }
-      try { await native('BusSevViaje', 'empezarBajada', { linea: lineaInfo(linea)?.etiqueta || etiquetaLinea(linea), paradas }); }
+      try { await native('BusSevViaje', 'empezarBajada', { linea: lineaInfo(linea)?.etiqueta || etiquetaLinea(linea), paradas }); window.anio?.apuntar?.('bajada', { codigo: paradas[0]?.codigo, linea }); }
       catch (e) { toast(e?.message || 'No se ha podido empezar el aviso.'); return false; }
     } else this.empezarWeb(linea, paradas);
     store.set('bajada', { linea, k, destino: fin.nombre, codigo: fin.codigo, inicio: Date.now(), paradas, actual: 0 });
@@ -819,7 +820,7 @@ const copia = {
   crear() {
     const fotos = {};
     for (const c of tarjeta.list()) { const f = tarjeta.foto(c.num); if (f) fotos[c.num] = f; }
-    return { app: 'BusSev', version: 1, fecha: new Date().toISOString(), favs: favs.list(), cards: tarjeta.list(), settings, fotos, pasaporte: window.pasaporte?.copia?.() || [] };
+    return { app: 'BusSev', version: 1, fecha: new Date().toISOString(), favs: favs.list(), cards: tarjeta.list(), settings, fotos, pasaporte: window.pasaporte?.copia?.() || [], anio: window.anio?.copia?.() || {} };
   },
   async exportar() {
     const json = JSON.stringify(this.crear());
@@ -857,7 +858,7 @@ const copia = {
     const pas = (Array.isArray(o.pasaporte) ? o.pasaporte : []).slice(0, 2000).filter((v) => v && typeof v.id === 'string' && typeof v.firma === 'string' && /^[0-9a-f]{64}$/.test(v.firma))
       .map((v) => ({ id: txt(v.id, 40), linea: txt(v.linea, 8), desde: txt(v.desde, 8), hasta: txt(v.hasta, 8), desdeNombre: txt(v.desdeNombre, 80), hastaNombre: txt(v.hastaNombre, 80),
         lat: Number(v.lat) || 0, lon: Number(v.lon) || 0, inicio: Number(v.inicio) || 0, fin: Number(v.fin) || 0, paradas: Number(v.paradas) || 0, km: Number(v.km) || 0, verificado: v.verificado === true, firma: v.firma }));
-    return { favs: fv, cards, settings: s, fotos, pasaporte: pas };
+    return { favs: fv, cards, settings: s, fotos, pasaporte: pas, anio: o.anio && typeof o.anio === 'object' ? o.anio : null };
   },
   importar(file) {
     return new Promise((resolve, reject) => {
@@ -873,6 +874,7 @@ const copia = {
     store.set('cards', d.cards);
     for (const [k, v] of Object.entries(d.fotos)) tarjeta.setFoto(k, v);
     Object.assign(settings, d.settings); saveSettings(); applyTheme();
+    if (d.anio) window.anio?.restaurar?.(d.anio);
     if (d.pasaporte?.length) window.pasaporte?.restaurar(d.pasaporte).then((n) => { if (n) toast(`Pasaporte recuperado: ${n} ${n === 1 ? 'viaje' : 'viajes'}`); });
   },
 };
