@@ -106,9 +106,11 @@ Las paradas que tienes cerca y cuánto le falta a cada autobús. Si tienes la ub
 <p align="center"><img src="docs/capturas/tarjeta.png" alt="Tarjeta TUSSAM leída por NFC" width="280"></p>
 
 ### 🛂 Pasaporte de Sevilla
-Colecciona **sellos** de 18 lugares (Giralda, Torre del Oro, Triana, Plaza de España, Las Setas, la Macarena,
-el Real de la Feria…) y **medallas** de bronce, plata y oro (primer viaje, 10/50/100 viajes, 5/10/20 líneas,
-Búho, Madrugador, rachas, fin de semana, Semana Santa, Feria, Navidad…). Está en la pestaña **Tarjeta**.
+Colecciona **sellos** de 30 lugares (Giralda, Torre del Oro, Triana, Plaza de España, Las Setas, la Macarena,
+el Real de la Feria, Torre Sevilla, el Alamillo, el Estadio de La Cartuja, Los Remedios, Sevilla Este…) y
+**37 medallas** de bronce, plata y oro: 1 a 250 viajes, 5 a 30 líneas, kilómetros (Maratón, «Hasta Madrid»),
+Búho, Madrugador, Cenicienta, transbordos, ida y vuelta, rachas, la Ruta monumental, los dos estadios,
+Semana Santa, Feria, Navidad, Nochevieja, Reyes… Está en la pestaña **Tarjeta**, debajo de las tarifas.
 - Solo cuentan los **viajes verificados**: en la parada toca tu bus y elige **«Me subo a este: avísame al bajar»**.
   El móvil comprueba tres cosas: que TUSSAM daba **ese autobús llegando a tu parada** cuando saliste, que tu GPS
   ha seguido **su recorrido a velocidad de autobús**, y que la ubicación **no es falsa** (apps de GPS simulado).
@@ -116,6 +118,15 @@ Búho, Madrugador, rachas, fin de semana, Semana Santa, Feria, Navidad…). Est�
 - Cada viaje va **firmado** dentro de la app, así que no se pueden inventar viajes ni colarlos en una copia de
   seguridad: al restaurar solo entran los que tienen la firma buena.
 - Al ganar un sello o una medalla te llega una **notificación con su dibujo**, y la puedes **compartir** como imagen.
+
+### ✨ Tu año en BusSev
+Del **1 de diciembre al 15 de enero**, Favoritas te enseña tu resumen del año en **historias a pantalla completa**
+(toca a la derecha para avanzar, a la izquierda para volver, mantén pulsado para pausar): los días que usaste BusSev
+y tu mes más busero, tu **parada y tu línea del año**, tu hora punta, tus viajes verificados (km, vueltas a la C1
+y CO₂ que no echó un coche), sellos y medallas, los avisos que te salvaron, lo que gastaste en el bonobús y
+**qué tipo de viajero eres** (Búho, Madrugador, Explorador, Previsor…). Al final, una tarjeta para **compartir**
+como imagen. El resto del año puedes verlo «hasta ahora» desde el Pasaporte. Todo se calcula en tu móvil y va en
+la copia de seguridad; solo sale la imagen que tú compartas.
 
 ### ⚠️ Avisos de TUSSAM
 Desvíos, obras y horarios especiales (con sus **PDF e imágenes**). BusSev los revisa al abrirse y te manda una

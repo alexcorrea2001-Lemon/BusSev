@@ -257,6 +257,7 @@ const viaLegible = (v) => {
 function aplicarConsulta(num, res) {
   const c = tarjeta.get(num);
   if (!c || !res?.ok) return;
+  try { window.anio?.apuntar?.('tarjeta'); window.anio?.saldo?.(c.ultimo?.saldo, res.saldo); } catch { /* nada */ }
   tarjeta.update(num, {
     ultimo: { saldo: res.saldo, tipo: res.tipo, titulo: res.titulo, caducidad: res.caducidad, caducaEl: res.caducaEl, sinCaducidad: res.sinCaducidad, sinSaldoWeb: !!res.sinSaldoWeb, fecha: res.fecha, via: res.manual ? 'manual' : (res.diag?.via || null) },
     // si TUSSAM dice el tipo, se quita el que se hubiera elegido a mano
@@ -432,8 +433,8 @@ views.tarjeta = (el) => {
           <span class="card-btn-sub">${c.ultimo?.fecha ? `${c.avisoSaldo?.on && c.ultimo.saldo != null && c.ultimo.saldo < Number(c.avisoSaldo.importe) ? '⚠ Saldo bajo · ' : ''}Actualizada ${haceCuanto(c.ultimo.fecha)}` : 'Toca para consultar'}</span></button>`).join('')}</div>`
       : `<div class="empty" style="padding:16px">${ICON.nfc}<h2>Añade tu tarjeta</h2><p>${tarjeta.nfc() ? 'Acércala al móvil o escribe su número.' : 'Escribe el número que tiene detrás.'}</p></div>`}
       <button class="btn ghost block" type="button" id="t-add">+ Añadir tarjeta por su número</button>
-      ${window.pasaporte?.entradaHTML?.() || ''}
-      <a class="btn ghost block" href="#tarifas">💶 Tarifas y títulos de viaje</a>`;
+      <a class="btn ghost block" href="#tarifas">💶 Tarifas y títulos de viaje</a>
+      ${window.pasaporte?.entradaHTML?.() || ''}`;
   }
   function pintar() {
     if (dead) return;

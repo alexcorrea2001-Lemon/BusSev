@@ -25,6 +25,7 @@ const PRUEBAS = [
   ['Horario por parada, Cómo llegar y avisos de viaje', 'node', ['viaje.mjs']],
   ['Personalizar favoritas, tarjetas y parada', 'node', ['personalizar.mjs']],
   ['Pasaporte de Sevilla (sellos, medallas, viajes verificados)', 'node', ['pasaporte.mjs']],
+  ['Tu año en BusSev (resumen e historias)', 'node', ['anio.mjs']],
   ['Todas las pantallas sin errores', 'node', ['pantallas.mjs']],
 ];
 let fallos = 0;

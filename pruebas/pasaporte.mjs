@@ -35,6 +35,25 @@ nuevos = JSON.parse(ev(`JSON.stringify(pasaporte.registrar(${JSON.stringify(mas)
 assert.ok(nuevos.includes('m:largo'), 'viaje de 14 paradas');
 assert.ok(nuevos.includes('m:l5'), 'C1, 27, 01, 02, 03, 13 → 5 o más líneas verificadas');
 assert.equal(JSON.parse(ev(`JSON.stringify(pasaporte.registrar(${JSON.stringify(mas)}))`)).length, 0, 'repetir no da logros otra vez');
+// Reglas nuevas, con calcular() directamente (no toca lo guardado)
+const calc = (l) => JSON.parse(ev(`JSON.stringify(pasaporte.calcular(${JSON.stringify(l)}))`));
+const H = 3600000, base = new Date(2026, 11, 31, 23, 40).getTime();
+const r1 = calc([
+  { ...viaje(40, {}), inicio: base, fin: base + 30 * 60000, desde: '10', hasta: '20', linea: '2', km: 30 },                 // cruza medianoche, 31-dic
+  { ...viaje(41, {}), inicio: base + 50 * 60000, fin: base + 70 * 60000, desde: '20', hasta: '10', linea: '6', km: 15 },    // 20 min después, otra línea, vuelta
+]);
+assert.ok(r1['m:medianoche'] && r1['m:nochevieja'] && r1['m:transbordo'] && r1['m:km42'], 'Cenicienta, Uvas, Transbordo y Maratón');
+assert.ok(!r1['m:idavuelta'], 'la vuelta fue otro día (1 de enero), no cuenta como ida y vuelta');
+const dia = new Date(2026, 6, 20, 9, 0).getTime();
+const r2 = calc([
+  { ...viaje(50, {}), inicio: dia, fin: dia + H / 2, desde: '1', hasta: '9' },
+  { ...viaje(51, {}), inicio: dia + 7 * H, fin: dia + 7.5 * H, desde: '9', hasta: '1', lat: 37.38259, lon: -5.97180 },      // 16:00 julio, Nervión
+  { ...viaje(52, {}), inicio: dia + 8 * H, fin: dia + 8.5 * H, lat: 37.3565, lon: -5.9817 },                              // Heliópolis
+]);
+assert.ok(r2['m:idavuelta'] && r2['m:calor'] && r2['m:derbi'], 'Ida y vuelta, Cuarenta grados y De los dos');
+assert.ok(!r2['m:transbordo'], 'misma línea y con horas de hueco: no es transbordo');
+const r3 = calc(Array.from({ length: 20 }, (_, i) => viaje(60 + i, { linea: '27' })));
+assert.ok(r3['m:fiel'] && !calc(Array.from({ length: 19 }, (_, i) => viaje(60 + i, { linea: '27' })))['m:fiel'], 'Fiel a tu línea con 20, no con 19');
 // Temporadas
 assert.equal(ev(`pasaporte.temporada(new Date(2027, 2, 25).getTime())`), 'semanasanta', 'Jueves Santo 2027 (25 de marzo)');
 assert.equal(ev(`pasaporte.temporada(new Date(2026, 11, 24).getTime())`), 'navidad');
@@ -44,10 +63,10 @@ assert.equal(ev(`pasaporte.temporada(new Date(2026, 6, 10).getTime())`), '');
 await a.ir('#tarjeta', 500);
 assert.ok(a.$('a.ps-entrada[href="#pasaporte"]'), 'entrada en la pestaña Tarjeta');
 await a.ir('#pasaporte', 600);
-assert.equal($$('.ps-sellos .ps-item').length, 18, 'todos los sellos');
-assert.equal($$('.ps-medallas .ps-med').length, 18, 'todas las medallas');
+assert.equal($$('.ps-sellos .ps-item').length, Number(ev('pasaporte.LUGARES.length')), 'todos los sellos');
+assert.equal($$('.ps-medallas .ps-med').length, Number(ev('pasaporte.MEDALLAS.length')), 'todas las medallas');
 assert.ok(a.$('.ps-med.ok'), 'medallas conseguidas marcadas');
-assert.match(a.$('.ps-portada').textContent, /1 de 18 sellos/);
+assert.match(a.$('.ps-portada').textContent, /1 de 30 sellos/);
 assert.match(a.$('#view-pasaporte').textContent, /No contó/, 'los no verificados salen con el motivo');
 
 // Android entrega un viaje nuevo → notificación con el dibujo del logro

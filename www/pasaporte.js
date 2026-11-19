@@ -29,6 +29,18 @@ const LUGARES = [
   ['realferia', 'Real de la Feria', 37.37070, -6.00630, 350, 'farolillo', '#b3262f'],
   ['parquemarialuisa', 'Parque de María Luisa', 37.37460, -5.98920, 200, 'arbol', '#2f7a4a'],
   ['aeropuerto', 'Aeropuerto', 37.41800, -5.89310, 500, 'avion', '#1f4fa0'],
+  ['plazaarmas', 'Plaza de Armas', 37.39160, -6.00330, 170, 'bus', '#a0661a'],
+  ['torresevilla', 'Torre Sevilla', 37.39262, -6.00930, 250, 'rascacielos', '#1f4fa0'],
+  ['estadiocartuja', 'Estadio de La Cartuja', 37.41400, -6.00500, 300, 'estadio', '#4b3b8f'],
+  ['alamillo', 'Parque del Alamillo', 37.41790, -5.98950, 420, 'arpa', '#2f7a4a'],
+  ['barqueta', 'Puente de la Barqueta', 37.40400, -5.99780, 220, 'arco', '#7a1d34'],
+  ['remedios', 'Los Remedios', 37.37700, -6.00000, 280, 'naranjo', '#a0661a'],
+  ['virgenrocio', 'Virgen del Rocío', 37.36120, -5.97970, 230, 'hospital', '#1f4fa0'],
+  ['cerroaguila', 'Cerro del Águila', 37.37300, -5.96300, 300, 'casa', '#b3262f'],
+  ['sanpablo', 'San Pablo', 37.39900, -5.96300, 350, 'casa', '#4b3b8f'],
+  ['sevillaeste', 'Sevilla Este', 37.40300, -5.92300, 500, 'bloques', '#2f7a4a'],
+  ['pinomontano', 'Pino Montano', 37.42600, -5.96400, 400, 'bloques', '#7a1d34'],
+  ['bellavista', 'Bellavista', 37.32700, -5.96800, 400, 'casa', '#1f4fa0'],
 ];
 
 /* ---------- Medallas ---------- */
@@ -36,22 +48,41 @@ const LUGARES = [
 const MEDALLAS = [
   ['primer', 'Primer viaje', 'Tu primer viaje verificado', 'bus', 'bronce', { viajes: 1 }],
   ['v10', 'Habitual', '10 viajes verificados', 'bus', 'bronce', { viajes: 10 }],
+  ['v25', 'Asiduo', '25 viajes verificados', 'bus', 'bronce', { viajes: 25 }],
   ['v50', 'Sevillano de bus', '50 viajes verificados', 'bus', 'plata', { viajes: 50 }],
   ['v100', 'Leyenda de TUSSAM', '100 viajes verificados', 'trofeo', 'oro', { viajes: 100 }],
+  ['v250', 'Inseparables', '250 viajes verificados', 'corazon', 'oro', { viajes: 250 }],
+  ['km42', 'Maratón', '42 km en bus, sumando tus viajes', 'ruta', 'bronce', { km: 42 }],
+  ['km100', 'Cien kilómetros', '100 km en bus, sumando tus viajes', 'ruta', 'plata', { km: 100 }],
+  ['km530', 'Hasta Madrid', '530 km en bus: lo que hay de Sevilla a Madrid', 'ruta', 'oro', { km: 530 }],
   ['l5', 'Explorador', '5 líneas distintas', 'mapa', 'bronce', { lineas: 5 }],
   ['l10', 'Coleccionista de líneas', '10 líneas distintas', 'mapa', 'plata', { lineas: 10 }],
   ['l20', 'Conoce toda Sevilla', '20 líneas distintas', 'mapa', 'oro', { lineas: 20 }],
+  ['l30', 'Enciclopedia TUSSAM', '30 líneas distintas', 'libro', 'oro', { lineas: 30 }],
+  ['fiel', 'Fiel a tu línea', '20 viajes en la misma línea', 'corazon', 'plata', { fiel: 20 }],
+  ['transbordo', 'Transbordista', 'Cambiar de línea en menos de 45 minutos', 'flechas', 'bronce', { transbordo: 45 }],
+  ['idavuelta', 'Ida y vuelta', 'Ir y volver el mismo día entre las mismas paradas', 'idavuelta', 'bronce', { idavuelta: true }],
   ['buho', 'Búho', 'Un viaje de madrugada o en un nocturno', 'luna', 'plata', { buho: true }],
   ['madrugador', 'Madrugador', 'Un viaje antes de las 7 de la mañana', 'sol', 'bronce', { antesDe: 7 }],
   ['circular', 'Vuelta al centro', 'Un viaje en una circular (C1–C6)', 'vuelta', 'bronce', { circular: true }],
+  ['medianoche', 'Cenicienta', 'Un viaje que empieza antes de las 12 de la noche y acaba después', 'medianoche', 'plata', { medianoche: true }],
+  ['calor', 'Cuarenta grados', 'Un viaje en julio o agosto entre las 3 y las 6 de la tarde', 'termometro', 'bronce', { calor: true }],
   ['largo', 'Viaje largo', 'Un viaje de 12 paradas o más', 'reloj', 'plata', { paradas: 12 }],
+  ['puntaapunta', 'De punta a punta', 'Un viaje de 25 paradas o más', 'reloj', 'oro', { paradas: 25 }],
   ['racha5', 'En racha', 'Viajes 5 días seguidos', 'fuego', 'plata', { racha: 5 }],
+  ['racha10', 'Imparable', 'Viajes 10 días seguidos', 'fuego', 'oro', { racha: 10 }],
   ['finde', 'De finde', 'Viajes el sábado y el domingo del mismo fin de semana', 'calendario', 'bronce', { finde: true }],
   ['s5', 'Turista', '5 sellos de lugares', 'estrella', 'bronce', { sellos: 5 }],
-  ['s12', 'Guía de Sevilla', '12 sellos de lugares', 'estrella', 'oro', { sellos: 12 }],
+  ['s12', 'Guía de Sevilla', '12 sellos de lugares', 'estrella', 'plata', { sellos: 12 }],
+  ['s20', 'Cartógrafo', '20 sellos de lugares', 'mapa', 'oro', { sellos: 20 }],
+  ['stodos', 'Sevilla entera', 'Todos los sellos del pasaporte', 'corona', 'oro', { sellos: LUGARES.length }],
+  ['monumental', 'Ruta monumental', 'Sellos de la Giralda, Torre del Oro, Alcázar, Plaza de España y Las Setas', 'corona', 'plata', { grupo: ['giralda', 'torreoro', 'alcazar', 'plazaespana', 'setas'] }],
+  ['derbi', 'De los dos', 'Sellos de los dos estadios: Nervión y Heliópolis', 'balon', 'plata', { grupo: ['nervion', 'heliopolis'] }],
   ['semanasanta', 'Cofrade', 'Un viaje en Semana Santa', 'capirote', 'oro', { temporada: 'semanasanta' }],
   ['feria', 'Al real en bus', 'Un viaje en semana de Feria', 'farolillo', 'oro', { temporada: 'feria' }],
   ['navidad', 'Luces de Navidad', 'Un viaje entre el 8 de diciembre y el 6 de enero', 'estrella', 'plata', { temporada: 'navidad' }],
+  ['nochevieja', 'Uvas en bus', 'Un viaje el 31 de diciembre', 'uvas', 'oro', { dia: 1231 }],
+  ['reyes', 'Noche de Reyes', 'Un viaje el 5 de enero, día de la Cabalgata', 'corona', 'plata', { dia: 105 }],
 ];
 
 /* ---------- Pictogramas (trazo de 24×24, todos con el mismo estilo) ---------- */
@@ -81,6 +112,22 @@ const PICTO = {
   fuego: '<path d="M12 21c-4 0-7-2.6-7-6.5 0-3.6 2.6-5.5 4-8.5 1 2 2 3 3 3 0-2 .5-4 2.5-6.5C15 6 19 9 19 14.5 19 18.4 16 21 12 21z"/><path d="M12 21c-1.8 0-3-1.2-3-3 0-2 1.5-3 3-5 1.5 2 3 3 3 5 0 1.8-1.2 3-3 3z"/>',
   calendario: '<rect x="3" y="5" width="18" height="16" rx="2.5"/><path d="M3 10h18M8 3v4M16 3v4M7.5 14h3M13.5 14h3M7.5 17.5h3"/>',
   estrella: '<path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1 5.8L12 16.8l-5.2 2.8 1-5.8L3.5 9.7l5.9-.8z"/>',
+  rascacielos: '<path d="M9 22V7.5Q9 3 12 2.5 15 3 15 7.5V22M6.5 22h11M9 9.5h6M9 13h6M9 16.5h6"/>',
+  arpa: '<path d="M2 19h20M4.5 21L9.5 3M9 5l4 14M8.2 8L16 19M7.4 11L19 19M6.5 14l15 5"/>',
+  arco: '<path d="M2 17h20M3.5 17Q12 2 20.5 17M8 17v-6.2M12 17V9.5M16 17v-6.2"/>',
+  naranjo: '<path d="M12 21.5V15.5M9.5 21.5h5"/><circle cx="12" cy="9.5" r="6.2"/><circle cx="9.8" cy="8" r="1"/><circle cx="14.3" cy="9.6" r="1"/><circle cx="11.4" cy="12.4" r="1"/>',
+  hospital: '<rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="M12 7.5v9M7.5 12h9"/>',
+  casa: '<path d="M3 11.5L12 4l9 7.5M5.5 9.5V21h13V9.5"/><path d="M10 21v-5.5h4V21M7.8 12.5h2M14.2 12.5h2"/>',
+  bloques: '<path d="M2 21h20M3.5 21V9h5.5v12M9 21V3.5h6.5V21M15.5 21v-9h5v9"/><path d="M5.3 12h2M5.3 15.5h2M11 6.5h2.5M11 10h2.5M11 13.5h2.5M17.3 15h1.5"/>',
+  corazon: '<path d="M12 20s-7.5-4.6-7.5-10.2A4.2 4.2 0 0 1 12 7.2a4.2 4.2 0 0 1 7.5 2.6C19.5 15.4 12 20 12 20z"/>',
+  ruta: '<circle cx="5" cy="18.5" r="2"/><circle cx="19" cy="5.5" r="2"/><path d="M7 18.5h7.5a3.25 3.25 0 0 0 0-6.5h-5a3.25 3.25 0 0 1 0-6.5H17"/>',
+  flechas: '<path d="M4 8h15l-3.5-3.5M20 16H5l3.5 3.5"/>',
+  idavuelta: '<path d="M5 9h12a3 3 0 0 1 0 6H7"/><path d="M8 6L5 9l3 3M10 18l-3-3 3-3"/>',
+  medianoche: '<circle cx="12" cy="12.5" r="8.5"/><path d="M12 12.5V6.5M10.6 7.8L12 6.5l1.4 1.3"/><path d="M12 2v1.5"/>',
+  termometro: '<path d="M10 14.2V5a2 2 0 0 1 4 0v9.2a4 4 0 1 1-4 0z"/><path d="M12 9v8M17 5.5h2.5M17 8.5h2.5M17 11.5h2.5"/>',
+  balon: '<circle cx="12" cy="12" r="8.5"/><path d="M12 8.2l3.2 2.3-1.2 3.8H10l-1.2-3.8zM12 3.5v4.7M15.2 10.5l4.4-1.5M14 14.3l2.6 3.8M10 14.3l-2.6 3.8M8.8 10.5L4.4 9"/>',
+  corona: '<path d="M4 17.5L3 7.5l5 4 4-6.5 4 6.5 5-4-1 10z"/><path d="M4 21h16"/><circle cx="12" cy="13.5" r="1"/>',
+  uvas: '<circle cx="9" cy="10.5" r="2.1"/><circle cx="13.2" cy="10.5" r="2.1"/><circle cx="11.1" cy="14.2" r="2.1"/><circle cx="15.3" cy="14.2" r="2.1"/><circle cx="13.2" cy="17.9" r="2.1"/><path d="M11 8.4C11 6 12 4 14.5 3"/><path d="M14 5.5c1.6-.8 3.4-.4 4.5.8"/>',
   capirote: '<path d="M12 2L7.5 13h9z"/><path d="M6.5 13h11l2 9h-15z"/><circle cx="10.6" cy="10" r=".6"/><circle cx="13.4" cy="10" r=".6"/><path d="M12 15.5v4M10.3 17h3.4"/>',
 };
 const pic = (k, color, w = 1.8) => `<g fill="none" stroke="${color}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round">${PICTO[k] || PICTO.estrella}</g>`;
@@ -148,7 +195,7 @@ const esCircular = (l) => /^C\d$/i.test(String(l || '').trim());
 const esNocturna = (l) => /^A\d/i.test(String(l || '')) || !!(typeof lineaFor === 'function' && lineaFor(l)?.nocturna);
 
 const pasaporte = {
-  LUGARES, MEDALLAS, selloSVG, medallaSVG, temporada,
+  LUGARES, MEDALLAS, selloSVG, medallaSVG, temporada, pic,
   estado() { const s = store.get('pasaporte', null) || {}; return { viajes: s.viajes || [], logros: s.logros || {}, vistos: s.vistos || {} }; },
   guardar(s) { store.set('pasaporte', s); },
   /* Calcula todo lo conseguido con estos viajes (solo los verificados) */
@@ -171,6 +218,14 @@ const pasaporte = {
       else if (r.paradas) t = v.find((x) => (x.paradas || 0) >= r.paradas)?.fin ?? null;
       else if (r.temporada) t = v.find((x) => temporada(x.inicio) === r.temporada)?.fin ?? null;
       else if (r.sellos) t = nSellos >= r.sellos ? Object.values(out).sort((a, b) => a - b)[r.sellos - 1] : null;
+      else if (r.km) { let k = 0; for (const x of v) { k += Number(x.km) || 0; if (k >= r.km) { t = x.fin; break; } } }
+      else if (r.fiel) { const c = new Map(); for (const x of v) { const n = (c.get(x.linea) || 0) + 1; c.set(x.linea, n); if (n >= r.fiel) { t = x.fin; break; } } }
+      else if (r.transbordo) { for (let i = 1; i < v.length; i++) { const a = v[i - 1], b = v[i], hueco = b.inicio - a.fin; if (b.linea !== a.linea && hueco >= 0 && hueco <= r.transbordo * 60000) { t = b.fin; break; } } }
+      else if (r.idavuelta) t = v.find((b) => v.some((a) => a.fin <= b.inicio && hoyClave(a.inicio) === hoyClave(b.inicio) && a.desde && a.desde === b.hasta && a.hasta === b.desde))?.fin ?? null;
+      else if (r.medianoche) t = v.find((x) => hoyClave(x.inicio) !== hoyClave(x.fin))?.fin ?? null;
+      else if (r.calor) t = v.find((x) => { const d = new Date(x.inicio), h = d.getHours(); return (d.getMonth() === 6 || d.getMonth() === 7) && h >= 15 && h < 18; })?.fin ?? null;
+      else if (r.dia) t = v.find((x) => { const d = new Date(x.inicio); return (d.getMonth() + 1) * 100 + d.getDate() === r.dia; })?.fin ?? null;
+      else if (r.grupo) t = r.grupo.every((g) => out[`s:${g}`]) ? Math.max(...r.grupo.map((g) => out[`s:${g}`])) : null;
       else if (r.racha) {
         let racha = 1;
         for (let i = 1; i < dias.length && t == null; i++) {
@@ -281,6 +336,7 @@ views.pasaporte = (el) => {
       <section class="ps-portada"><span class="ps-escudo grande">${pic('torre', '#e9c77b', 1.6).replace('<g ', '<svg viewBox="0 0 24 24"><g ').replace(/<\/g>$/, '</g></svg>')}</span>
         <div><b>${r.sellos} de ${LUGARES.length} sellos · ${r.medallas} de ${MEDALLAS.length} medallas</b><small>${r.viajes} ${r.viajes === 1 ? 'viaje verificado' : 'viajes verificados'}</small>
         <span class="ps-barra"><i style="width:${Math.round(100 * (r.sellos + r.medallas) / total)}%"></i></span></div></section>
+      ${window.anio?.entradaHTML?.() || ''}
       <div class="alert ps-como">Para que un viaje cuente, en la parada toca tu autobús y elige <b>«Me subo a este: avísame al bajar»</b>. El móvil comprueba que de verdad vas en ese bus (llegaba a tu parada, vas por su recorrido y a su velocidad) y, al bajarte, te da los sellos y medallas que ganes.</div>
       <h2 class="ps-h">Sellos de lugares</h2>
       <div class="ps-sellos">${LUGARES.map(([id, n]) => { const t = s.logros[`s:${id}`]; return `<button type="button" class="ps-item${t ? ' ok' : ''}" data-ps="s:${id}">${selloSVG(id, { apagado: !t, fecha: t ? fmtFecha(t) : '' })}<span>${esc(n)}</span><small>${t ? fmtFecha(t) : 'Sin sellar'}</small></button>`; }).join('')}</div>
