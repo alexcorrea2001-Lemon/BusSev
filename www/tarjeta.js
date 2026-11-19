@@ -518,7 +518,8 @@ views.tarjeta = (el) => {
     const varias = tarjeta.list().length > 1 && !nueva;
     const ok = '<span class="sel-ok" aria-hidden="true"></span>';
     // Fondo de las miniaturas de marco: la propia tarjeta (su color o su tipo), sin dibujo
-    const fondoMini = () => cardBackground({ ...c, color: d.color, diseno: '' }, tipoDeTarjeta(c, res));
+    // Las miniaturas de los marcos llevan la tarjeta tal como está: su foto, su dibujo o su color
+    const fondoMini = () => cardBackground({ ...c, color: d.color, diseno: d.diseno }, tipoDeTarjeta(c, res));
     const svgIco = (dd) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${dd}</svg>`;
     openModal(`<div class="pz-top">
         <div class="pz-tit"><h2>${nueva ? 'Guardar tarjeta' : 'Personalizar tarjeta'}</h2><span class="pz-sub">${esc(tarjeta.fmt(num))}</span></div>
@@ -550,7 +551,11 @@ views.tarjeta = (el) => {
       <div class="actions pz-acc"><button class="btn ghost" type="button" id="c-cancel">Cancelar</button><button class="btn" type="button" id="c-ok">Guardar</button></div>`,
     (m, close) => {
       m.classList.add('pz');
-      const minis = () => m.querySelectorAll('.mk-mini').forEach((x) => { x.style.cssText = fondoMini(); });
+      const minis = () => {
+        const dis = !tarjeta.foto(num) && d.diseno && D[d.diseno];
+        const arte = dis ? dis.svg.replace('class="tc-arte"', 'class="tc-arte mk-arte"') : '';
+        m.querySelectorAll('.mk-mini').forEach((x) => { const k = x.parentElement.dataset.mc; x.style.cssText = fondoMini(); x.innerHTML = arte + (k ? `<i class="tc-marco mk-${k}"></i>` : ''); });
+      };
       minis(); preview(m);
       $('#c-name', m).oninput = () => preview(m);
       const marcar = (sel, attr, val) => m.querySelectorAll(sel).forEach((x) => x.setAttribute('aria-pressed', x.dataset[attr] === val));
@@ -559,7 +564,7 @@ views.tarjeta = (el) => {
         m.querySelectorAll('[data-panel]').forEach((p) => { p.hidden = p.dataset.panel !== b.dataset.tab; });
       }; });
       m.querySelectorAll('[data-cem]').forEach((b) => { b.onclick = () => { d.emoji = b.dataset.cem; marcar('[data-cem]', 'cem', d.emoji); vibrar(10); preview(m); }; });
-      m.querySelectorAll('[data-dis]').forEach((b) => { b.onclick = () => { d.diseno = b.dataset.dis; marcar('[data-dis]', 'dis', d.diseno); vibrar(10); preview(m); }; });
+      m.querySelectorAll('[data-dis]').forEach((b) => { b.onclick = () => { d.diseno = b.dataset.dis; marcar('[data-dis]', 'dis', d.diseno); vibrar(10); minis(); preview(m); }; });
       m.querySelectorAll('[data-mc]').forEach((b) => { b.onclick = () => { d.marco = b.dataset.mc; marcar('[data-mc]', 'mc', d.marco); vibrar(10); preview(m); }; });
       m.querySelectorAll('[data-opt]').forEach((b) => { b.onclick = () => { const k = b.dataset.opt; d[k] = !d[k]; b.setAttribute('aria-pressed', d[k]); vibrar(10); preview(m); }; });
       const posTxt = () => { const l = tarjeta.list(); const i = l.findIndex((x) => x.num === num); const p = $('#c-pos', m); if (p && i >= 0) p.textContent = `· ${i + 1} de ${l.length}`; };
@@ -570,8 +575,8 @@ views.tarjeta = (el) => {
         m.querySelectorAll('[data-cc]').forEach((x) => { const on = x.dataset.cc === d.color; x.setAttribute('aria-pressed', on); x.innerHTML = on ? ICON.check : ''; });
         minis(); preview(m);
       }; });
-      $('#c-foto', m).onchange = async (e) => { try { tarjeta.setFoto(num, await leerFoto(e.target.files?.[0]), 'fondo'); preview(m); } catch (err) { toast(err.message); } };
-      $('#c-sinfoto', m).onclick = () => { tarjeta.setFoto(num, ''); preview(m); };
+      $('#c-foto', m).onchange = async (e) => { try { tarjeta.setFoto(num, await leerFoto(e.target.files?.[0]), 'fondo'); minis(); preview(m); } catch (err) { toast(err.message); } };
+      $('#c-sinfoto', m).onclick = () => { tarjeta.setFoto(num, ''); minis(); preview(m); };
       const deshacer = () => { tarjeta.setFoto(num, originalFondo); };
       $('#c-cancel', m).onclick = () => { deshacer(); close(); };
       m.closest('.modal-bg').addEventListener('click', (e) => { if (e.target === e.currentTarget) deshacer(); });
