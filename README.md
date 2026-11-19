@@ -210,8 +210,15 @@ Los horarios oficiales de TUSSAM (GTFS) se descargan **solos** cada vez que GitH
 Solo se usan si el archivo está completo y es igual o más reciente que el que ya hay; si no, se queda el anterior
 y la compilación sigue. Los datos nuevos (y el trazado oficial) también se guardan en el repositorio.
 
-Además, **el día 1 de cada mes** GitHub mira si TUSSAM ha publicado horarios o recorridos nuevos y, solo si los hay,
-compila una versión nueva por su cuenta.
+Además, **cada lunes** GitHub mira si TUSSAM, Metro o Renfe han publicado horarios o recorridos nuevos (por ejemplo,
+cuando una línea cambia de recorrido) y, solo si los hay, compila una versión nueva por su cuenta. Si no hay nada
+nuevo no compila, así que no se llena *Releases* de copias. Las calles de OpenStreetMap se revisan una vez al mes.
+Estas revisiones se mantienen encendidas solas: GitHub apaga las tareas programadas tras 60 días sin actividad, y
+cada revisión las vuelve a encender.
+
+> Los **tiempos en directo** no dependen de esto: salen de TUSSAM en el momento, así que un cambio de recorrido
+> se nota en los minutos desde el primer día. Lo que se actualiza con la revisión es el trazado en el mapa,
+> el horario oficial de cada parada y Cómo llegar.
 
 ### Metro, Cercanías y Sevici
 - **Metro de Sevilla**: horarios oficiales (GTFS del Punto de Acceso Nacional), convertidos al compilar en `www/metro.js`
