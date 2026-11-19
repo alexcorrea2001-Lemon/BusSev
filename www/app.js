@@ -19,6 +19,8 @@ const DEFAULTS = {
 };
 const settings = { ...DEFAULTS, ...store.get('settings', {}) };
 if (!['oscuro', 'claro', 'tema', 'satelite'].includes(settings.mapStyle)) settings.mapStyle = 'oscuro';
+if (settings.fondo === 'niebla') settings.fondo = 'azulejo';
+if (settings.color === 'azulejo') settings.color = 'azul';
 const saveSettings = () => store.set('settings', settings);
 
 // [acento, acento suave, texto sobre acento] para tema claro y oscuro
@@ -31,7 +33,6 @@ const PALETTES = {
   grafito: { label: 'Grafito', light: ['#2b3445', '#e6e9ef', '#ffffff'], dark: ['#d0d6e2', '#2a2f3a', '#111318'] },
   rosa:    { label: 'Rosa',    light: ['#c2185b', '#fbe4ee', '#ffffff'], dark: ['#ff79b0', '#3b1a2a', '#2a0716'] },
   turquesa:{ label: 'Turquesa',light: ['#00838f', '#dcf3f5', '#ffffff'], dark: ['#4dd0e1', '#123236', '#002a2f'] },
-  azulejo: { label: 'Azulejo', patron: true, light: ['#1d4f9c', '#e8eef8', '#ffffff'], dark: ['#7aa2e8', '#1c2a45', '#0b1430'] },
   // Pasteles (texto oscuro encima para que se lea bien)
   rosaP:   { label: 'Rosa pastel',     pastel: true, light: ['#f2a7c3', '#fdeef4', '#3d0f22'], dark: ['#f5b5cd', '#3a2430', '#2a0b18'] },
   menta:   { label: 'Menta',           pastel: true, light: ['#8fd8bf', '#e6f8f1', '#0d3a2c'], dark: ['#9de3ca', '#1d3a31', '#0b2a20'] },
@@ -43,7 +44,7 @@ const PALETTES = {
 /* Colores de fondo (además del blanco y el negro de siempre) */
 const FONDOS = {
   crema:   { label: 'Crema',        base: 'light', bg: '#f7f1e6', surface: '#fffaf1', s2: '#efe6d6', line: '#e4d8c3', muted: '#6d6457' },
-  niebla:  { label: 'Gris azulado', base: 'light', bg: '#eef1f5', surface: '#fbfcfe', s2: '#e1e6ee', line: '#d5dce6', muted: '#5b6474' },
+  azulejo: { label: 'Azulejos',     base: 'light', bg: '#f6f0e1', surface: '#fffcf5', s2: '#ece4d0', line: '#ddd2b8', muted: '#5d6478', patron: true },
   salvia:  { label: 'Salvia',       base: 'light', bg: '#edf3ee', surface: '#fafdfb', s2: '#dfeae2', line: '#d0dfd4', muted: '#56665a' },
   rosado:  { label: 'Rosado',       base: 'light', bg: '#f8eef1', surface: '#fffafb', s2: '#f0e1e6', line: '#e8d3da', muted: '#6c5960' },
   noche:   { label: 'Azul noche',   base: 'dark',  bg: '#0d1422', surface: '#162033', s2: '#1f2b42', line: '#2a3853', muted: '#93a0b8' },
@@ -419,7 +420,6 @@ function applyTheme() {
     if (mk) { mk.classList.remove('veh-paso', 'veh-coche', 'veh-carroza', 'veh-butano'); if (v) mk.classList.add(v.clase); }
   });
   document.querySelectorAll('img.lg-busimg').forEach((i) => { i.src = busImg(); });
-  root.dataset.color = settings.color || 'rojo';
   pintarLogo();
   updateMapStyles();
   fiesta(tem, dia);
@@ -2929,12 +2929,12 @@ views.ajustes = (el) => {
           <div class="chips">${[['papanoel', '🎅 Navidad'], ['nochevieja', '🍇 Nochevieja'], ['anonuevo', '🎆 Año Nuevo'], ['reyes', '👑 Reyes']].map(([k, t]) => `<button type="button" class="chip${pruebaDia === k ? ' on' : ''}" data-dia="${k}" aria-pressed="${pruebaDia === k}">${t}</button>`).join('')}${pruebaDia ? '<button type="button" class="chip" data-dia="">Quitar</button>' : ''}</div></div>
         ${sw('vehiculosFiesta', settings.vehiculosFiesta, 'Vehículos de fiesta en el mapa', `Cambia los autobuses del mapa según la temática: pasos en Semana Santa, coches de caballos en la Feria, coches de miedo en Halloween, carrozas en Navidad y, el resto del año, el «Butano», el autobús naranja de TUSSAM de toda la vida. Cada autobús lleva uno al azar.${VEHICULOS_FIESTA[tem] ? ` Ahora: <b>${esc(VEHICULOS_FIESTA[tem].nombre)}</b>.` : ''}`)}</div>
       <div class="set-group"><h3>Color de la app</h3>
-        <div class="swatches">${Object.entries(PALETTES).map(([k, p]) => `<button class="swatch" type="button" data-color="${k}" aria-pressed="${settings.color === k}" aria-label="${p.label}" style="background:${p.patron ? `var(--azulejo-mini) center / 22px 22px, ${p[resolvedTheme][0]}` : p[resolvedTheme][0]};color:${p[resolvedTheme][2]}">${settings.color === k ? ICON.check : ''}</button>`).join('')}</div>
+        <div class="swatches">${Object.entries(PALETTES).map(([k, p]) => `<button class="swatch" type="button" data-color="${k}" aria-pressed="${settings.color === k}" aria-label="${p.label}" style="background:${p[resolvedTheme][0]};color:${p[resolvedTheme][2]}">${settings.color === k ? ICON.check : ''}</button>`).join('')}</div>
         ${tem !== 'normal' ? '<p>Mientras haya una temática puesta, la app usa sus colores. Con la temática Normal vuelve tu color.</p>' : '<p>Los pasteles llevan el texto oscuro encima para que se lea bien.</p>'}</div>
       <div class="set-group"><h3>Color de fondo</h3>
         <div class="fondos">
           <button type="button" class="fondo" data-fondo="" aria-pressed="${!settings.fondo}"><span style="background:${resolvedTheme === 'dark' ? '#111214' : '#f4f4f6'}"></span><small>Normal</small></button>
-          ${Object.entries(FONDOS).map(([k, f]) => `<button type="button" class="fondo" data-fondo="${k}" aria-pressed="${settings.fondo === k}"><span style="background:${f.bg};border-color:${f.line}"><i style="background:${f.surface}"></i></span><small>${esc(f.label)}</small></button>`).join('')}
+          ${Object.entries(FONDOS).map(([k, f]) => `<button type="button" class="fondo" data-fondo="${k}" aria-pressed="${settings.fondo === k}"><span style="background:${f.patron ? `var(--azulejo-mini) center / 18px 18px, ${f.bg}` : f.bg};border-color:${f.line}"><i style="background:${f.surface}"></i></span><small>${esc(f.label)}</small></button>`).join('')}
         </div>
         <p>Los cuatro primeros son claros y el resto oscuros: al elegir uno, el tema cambia solo a claro u oscuro.</p></div>
       ${isNative() && window.Capacitor?.isPluginAvailable?.('BusSevApariencia') ? `<div class="set-group"><h3>Icono de la app</h3>
