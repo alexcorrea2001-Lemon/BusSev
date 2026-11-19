@@ -22,6 +22,15 @@ import org.json.JSONObject;
  */
 @CapacitorPlugin(name = "BusSevViaje")
 public class ViajePlugin extends Plugin {
+    private static ViajePlugin instancia;
+    @Override public void load() { instancia = this; }
+    /* Avisa a la web (si la app está abierta, aunque sea de fondo) */
+    static void emitir(String evento, String dato) {
+        try {
+            ViajePlugin p = instancia;
+            if (p != null && p.getBridge() != null) p.getBridge().triggerWindowJSEvent(evento, "{\"id\":" + org.json.JSONObject.quote(dato) + "}");
+        } catch (Exception ignored) { }
+    }
 
     @PluginMethod
     public void vigilarLlegada(PluginCall call) {
@@ -121,5 +130,41 @@ public class ViajePlugin extends Plugin {
         r.put("activo", s != null);
         if (s != null) { try { r.put("sensor", new JSObject(s)); } catch (Exception ignored) { } }
         call.resolve(r);
+    }
+
+    /* Pasaporte: viajes que ha comprobado Android y aún no ha recogido la app */
+    @PluginMethod
+    public void viajesPendientes(PluginCall call) {
+        JSObject r = new JSObject();
+        org.json.JSONArray a = Pasaporte.sacarPendientes(getContext());
+        com.getcapacitor.JSArray out = new com.getcapacitor.JSArray();
+        for (int i = 0; i < a.length(); i++) { org.json.JSONObject v = a.optJSONObject(i); if (v != null) out.put(v.toString()); }
+        r.put("viajes", out);
+        call.resolve(r);
+    }
+
+    /* Pasaporte: qué viajes (de una copia de seguridad, por ejemplo) tienen una firma buena */
+    @PluginMethod
+    public void comprobarViajes(PluginCall call) {
+        JSObject r = new JSObject();
+        com.getcapacitor.JSArray ok = new com.getcapacitor.JSArray();
+        try {
+            org.json.JSONArray a = call.getArray("viajes");
+            for (int i = 0; a != null && i < a.length(); i++) {
+                Object o = a.get(i);
+                org.json.JSONObject v = o instanceof org.json.JSONObject ? (org.json.JSONObject) o : new org.json.JSONObject(String.valueOf(o));
+                if (Pasaporte.firmaValida(v)) ok.put(v.optString("id"));
+            }
+        } catch (Exception ignored) { }
+        r.put("validos", ok);
+        call.resolve(r);
+    }
+
+    /* Pasaporte: notificación de un sello o medalla con su dibujo */
+    @PluginMethod
+    public void notificarLogro(PluginCall call) {
+        String id = call.getString("id", "");
+        Pasaporte.notificar(getContext(), 7700 + Math.abs(id.hashCode() % 200), call.getString("titulo", "¡Logro conseguido!"), call.getString("texto", ""), id);
+        call.resolve();
     }
 }

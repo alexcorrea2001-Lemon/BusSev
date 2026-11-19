@@ -1384,3 +1384,51 @@ html.oculta #fiesta-cielo .f-cruza, html.oculta #fiesta-cielo .f-cruza svg, html
 @keyframes sensor-vib { 0%, 86%, 100% { transform: none; } 88%, 92%, 96% { transform: translateX(-2px) rotate(-6deg); } 90%, 94%, 98% { transform: translateX(2px) rotate(6deg); } }
 :root.a-quieto .sensor-ico { animation: none; }
 #p-sensor:empty { display: none; }
+
+/* ---------- Pasaporte de Sevilla ---------- */
+.ps-entrada, .ps-portada { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-radius: 18px; color: #f5e9d0; text-decoration: none;
+  background: radial-gradient(120% 140% at 0% 0%, #8a2a40 0%, #5c1a2b 55%, #3d0f1c 100%); box-shadow: inset 0 0 0 1px rgb(233 199 123 / .45), var(--shadow); }
+.ps-entrada svg:last-child { color: #e9c77b; width: 20px; height: 20px; flex: none; }
+.ps-escudo { flex: none; width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; border: 1.5px solid #e9c77b; }
+.ps-escudo svg { width: 26px; height: 26px; }
+.ps-escudo.grande { width: 58px; height: 58px; } .ps-escudo.grande svg { width: 32px; height: 32px; }
+.ps-ent-tx, .ps-portada > div { flex: 1; min-width: 0; display: grid; gap: 3px; }
+.ps-entrada b, .ps-portada b { font-size: 17px; font-weight: 800; letter-spacing: -.01em; }
+.ps-entrada small, .ps-portada small { color: #e9c77b; font-size: 12.5px; }
+.ps-barra { display: block; height: 5px; border-radius: 3px; background: #3d0f1c; overflow: hidden; margin-top: 4px; }
+.ps-barra i { display: block; height: 100%; background: linear-gradient(90deg, #c99a32, #f3d98b); border-radius: 3px; }
+.ps-como { font-size: 13.5px; line-height: 1.45; }
+.ps-h { margin: 6px 2px 0; font-size: 12px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
+.ps-sellos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.ps-item { display: grid; justify-items: center; gap: 2px; padding: 10px 4px 8px; border-radius: 16px; border: 0; background: var(--surface); color: var(--ink); font: inherit; cursor: pointer; text-align: center; }
+.ps-item svg { width: 76px; height: 76px; }
+.ps-item span { font-size: 12px; font-weight: 700; line-height: 1.15; }
+.ps-item small { font-size: 11px; color: var(--muted); }
+.ps-sello.apagado { filter: grayscale(1); }
+.ps-medallas { display: grid; gap: 8px; }
+.ps-med { display: flex; align-items: center; gap: 12px; padding: 8px 14px 8px 8px; border-radius: 16px; border: 0; background: var(--surface); color: var(--ink); font: inherit; cursor: pointer; text-align: left; }
+.ps-med svg { width: 52px; height: 52px; flex: none; }
+.ps-med-tx { flex: 1; min-width: 0; display: grid; gap: 1px; }
+.ps-med-tx b { font-size: 14.5px; } .ps-med-tx small { font-size: 12.5px; color: var(--muted); }
+.ps-med:not(.ok) .ps-med-tx b { color: var(--muted); }
+.ps-fecha { font-size: 11.5px; color: var(--muted); }
+.ps-viaje .help { margin: 2px 0 0; }
+.ps-celebra { display: grid; justify-items: center; gap: 6px; text-align: center; padding-top: 6px; }
+.ps-celebra svg { width: 150px; height: 150px; animation: ps-golpe .55s cubic-bezier(.2, 1.4, .4, 1) both; }
+.ps-celebra h2 { margin: 6px 0 0; }
+.ps-cel-n { margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -.01em; }
+@keyframes ps-golpe { 0% { transform: scale(2.2) rotate(-14deg); opacity: 0; } 60% { transform: scale(.92) rotate(3deg); opacity: 1; } 100% { transform: scale(1) rotate(-4deg); } }
+:root.a-quieto .ps-celebra svg { animation: none; transform: rotate(-4deg); }
+
+/* Sello conseguido: sobre papel, como en una página de pasaporte */
+.ps-item.ok { background: #f6eedc radial-gradient(circle at 30% 20%, #fffaf0, #efe2c6 80%); color: #3a2a1c; box-shadow: inset 0 0 0 1px #e2cfa6, 0 2px 8px rgba(0,0,0,.18); }
+.ps-item.ok small { color: #8a6a3e; }
+.ps-item:not(.ok) svg { opacity: .55; }
+/* Medalla conseguida: borde dorado; viajes con aire entre filas */
+.ps-med.ok { background: linear-gradient(90deg, rgba(233,199,123,.16), var(--surface) 60%); box-shadow: inset 0 0 0 1px rgba(233,199,123,.45); }
+.ps-med:not(.ok) svg { opacity: .6; }
+.ps-viaje { display: flex; align-items: center; gap: 12px; padding: 11px 14px; }
+.ps-viaje + .ps-viaje { border-top: 1px solid var(--line); }
+.ps-viaje > div { flex: 1; min-width: 0; }
+.ps-viaje b { display: block; font-size: 14.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ps-viaje .help { font-size: 12.5px; line-height: 1.35; }

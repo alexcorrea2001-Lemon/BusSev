@@ -105,6 +105,18 @@ Las paradas que tienes cerca y cuánto le falta a cada autobús. Si tienes la ub
 
 <p align="center"><img src="docs/capturas/tarjeta.png" alt="Tarjeta TUSSAM leída por NFC" width="280"></p>
 
+### 🛂 Pasaporte de Sevilla
+Colecciona **sellos** de 18 lugares (Giralda, Torre del Oro, Triana, Plaza de España, Las Setas, la Macarena,
+el Real de la Feria…) y **medallas** de bronce, plata y oro (primer viaje, 10/50/100 viajes, 5/10/20 líneas,
+Búho, Madrugador, rachas, fin de semana, Semana Santa, Feria, Navidad…). Está en la pestaña **Tarjeta**.
+- Solo cuentan los **viajes verificados**: en la parada toca tu bus y elige **«Me subo a este: avísame al bajar»**.
+  El móvil comprueba tres cosas: que TUSSAM daba **ese autobús llegando a tu parada** cuando saliste, que tu GPS
+  ha seguido **su recorrido a velocidad de autobús**, y que la ubicación **no es falsa** (apps de GPS simulado).
+  Si un viaje no cuenta, te dice por qué.
+- Cada viaje va **firmado** dentro de la app, así que no se pueden inventar viajes ni colarlos en una copia de
+  seguridad: al restaurar solo entran los que tienen la firma buena.
+- Al ganar un sello o una medalla te llega una **notificación con su dibujo**, y la puedes **compartir** como imagen.
+
 ### ⚠️ Avisos de TUSSAM
 Desvíos, obras y horarios especiales (con sus **PDF e imágenes**). BusSev los revisa al abrirse y te manda una
 notificación si hay uno nuevo en las líneas de tus paradas favoritas. Puedes elegir dónde verlos: en Favoritas,
