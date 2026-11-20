@@ -200,6 +200,8 @@ const ondas = '<svg class="tc-waves" viewBox="0 0 400 250" preserveAspectRatio="
    El brillo son 2–3 capas de arcoíris ya pintadas entre el dibujo y las letras: al mover la luz (con el dedo o
    inclinando el móvil) solo se DESLIZAN, que es lo que el móvil hace más rápido. Quieto, no gasta nada. */
 const HOLOS = [['', 'Ninguno'], ['holo', 'Holo'], ['cosmos', 'Cosmos'], ['rayado', 'Rayado']];
+const FUERZAS = [[34, 'Suave'], [50, 'Media'], [70, 'Fuerte']];
+const fuerzaCercana = (f) => FUERZAS.reduce((m, [v]) => (Math.abs(v - f) < Math.abs(m - f) ? v : m), 50);
 const holoDe = (c) => (HOLOS.some(([k]) => k && k === c?.holo) ? c.holo : c?.brillo ? 'holo' : '');   // el brillo de antes pasa a Holo
 const fuerzaDe = (c) => Math.max(20, Math.min(90, Number(c?.holoFuerza) || 48));
 function holoHTML(k, fuerza) {
@@ -438,10 +440,9 @@ views.tarjeta = (el) => {
     const cad = u?.sinCaducidad ? 'No caduca' : (u?.caducidad || '—');
     const tipo = tipoPorId(tipoId)?.nombre || u?.titulo || 'Tarjeta TUSSAM';
     return `<div class="tcard tc-reverso" style="${cardBackground(c || { num }, tipoId)}" aria-hidden="true">
-      <i class="rv-banda"></i>
+      <div class="rv-top"><span>${esc(c?.name || tipo)}</span><span>${esc(c?.ocultarNum ? `•••• ${String(num).slice(-4)}` : tarjeta.fmt(num))}</span></div>
       <div class="rv-saldo"><small>SALDO</small><b>${esc(saldo)}</b></div>
-      <div class="rv-datos">${viajes != null ? `<div><small>VIAJES QUE TE QUEDAN</small><b>${viajes}</b></div>` : `<div><small>TIPO</small><b>${esc(tipo)}</b></div>`}<div><small>CADUCA</small><b>${esc(cad)}</b></div></div>
-      <div class="rv-pie"><span>${esc(tipo)}</span><span>${esc(c?.ocultarNum ? `•••• ${String(num).slice(-4)}` : tarjeta.fmt(num))}</span></div></div>`;
+      <div class="rv-panel">${viajes != null ? `<div><small>VIAJES QUE TE QUEDAN</small><b>${viajes}</b></div>` : `<div><small>TIPO</small><b>${esc(tipo)}</b></div>`}<div><small>CADUCA</small><b>${esc(cad)}</b></div></div></div>`;
   }
   function avisosHTML(c, u) {
     const s = c.avisoSaldo || { on: false, importe: 3 };
@@ -587,7 +588,7 @@ views.tarjeta = (el) => {
     const prev = tarjeta.get(num);
     const c = prev || { num, name: '', color: '', tipo: '' };
     const d = { color: c.color || '', emoji: claveIcono(c.emoji), diseno: c.diseno || '', marco: c.marco || '', ocultarNum: !!c.ocultarNum,
-      holo: holoDe(c), holoFuerza: fuerzaDe(c), purpurina: !!c.purpurina };
+      holo: holoDe(c), holoFuerza: fuerzaCercana(fuerzaDe(c)), purpurina: !!c.purpurina };
     const detect = tipoDetectado(c, detalle?.res?.ok ? detalle.res : null);   // si TUSSAM dice el tipo, no se puede cambiar
     const originalFondo = tarjeta.foto(num);
     const D = window.DISENOS_TARJETA || {}, MC = window.MARCOS_TARJETA || [];
@@ -603,7 +604,7 @@ views.tarjeta = (el) => {
     openModal(`<div class="pz-top">
         <div class="pz-tit"><h2>${nueva ? 'Guardar tarjeta' : 'Personalizar tarjeta'}</h2><span class="pz-sub">${esc(tarjeta.fmt(num))}</span></div>
         <div class="pz-prev tc-prev" id="c-prev" inert></div>
-        <div class="seg pz-tabs" role="tablist"><button type="button" data-tab="tarjeta" aria-pressed="true">Tarjeta</button><button type="button" data-tab="diseno" aria-pressed="false">Diseño</button><button type="button" data-tab="marco" aria-pressed="false">Marco</button></div>
+        <div class="seg pz-tabs" role="tablist"><button type="button" data-tab="tarjeta" aria-pressed="true">Tarjeta</button><button type="button" data-tab="diseno" aria-pressed="false">Diseño</button><button type="button" data-tab="marco" aria-pressed="false">Marco</button><button type="button" data-tab="brillo" aria-pressed="false">Brillo</button></div>
       </div>
       <div class="pz-panel" data-panel="tarjeta">
         <section class="pz-sec"><h3>Nombre</h3><input id="c-name" maxlength="24" placeholder="Por ejemplo: Mía, Mamá, Trabajo" value="${esc(c.name || '')}"></section>
@@ -611,13 +612,6 @@ views.tarjeta = (el) => {
         <section class="pz-sec"><h3>Color</h3>${swatchesHTML(d.color, 'data-cc')}<p class="help">Sin color, se usa el de su tipo de tarjeta.</p></section>
         <section class="pz-sec"><h3>Opciones</h3><div class="opt-tiles">
           <button type="button" class="opt-tile" data-opt="ocultarNum" aria-pressed="${d.ocultarNum}"><span class="opt-ic">${svgIco('<path d="M3 12s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6z"/><circle cx="12" cy="12" r="2.5"/><path d="M4 20L20 4"/>')}</span><span class="opt-tx"><b>Ocultar el número</b><small>Solo se ven los 4 últimos (•••• 1234)</small></span>${ok}</button>
-        </div></section>
-        <section class="pz-sec"><h3>Acabados</h3>
-          <p class="help">Brillo holográfico: se mueve al pasar el dedo por la tarjeta o al inclinar el móvil.</p>
-          <div class="hl-tiles">${HOLOS.map(([k, n]) => `<button type="button" class="hl-tile" data-hl="${k}" aria-pressed="${d.holo === k}"><span class="hl-mini">${k ? holoHTML(k, 60) : '<span class="hl-nada">Sin brillo</span>'}</span><span class="est-n">${n}</span>${ok}</button>`).join('')}</div>
-          <div class="hl-fuerza" id="c-fuerza" ${d.holo ? '' : 'hidden'}><label for="c-hf">Intensidad</label><input type="range" id="c-hf" min="20" max="90" step="2" value="${d.holoFuerza}"></div>
-          <div class="opt-tiles" style="margin-top:12px">
-          <button type="button" class="opt-tile" data-opt="purpurina" aria-pressed="${d.purpurina}"><span class="opt-ic">${svgIco('<path d="M12 2.5l1.6 5.4 5.4 1.6-5.4 1.6L12 16.5l-1.6-5.4L5 9.5l5.4-1.6zM18.5 15l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z"/>')}</span><span class="opt-tx"><b>Purpurina</b><small>Destellos diminutos que se encienden de vez en cuando</small></span>${ok}</button>
         </div></section>
         ${varias ? `<section class="pz-sec"><h3>Orden <span class="orden-pos" id="c-pos"></span></h3><div class="btn-row"><button class="btn ghost" type="button" data-cmv="primera">⭐ La primera</button><button class="btn ghost" type="button" data-cmv="-1">${ICON.arriba}Subir</button><button class="btn ghost" type="button" data-cmv="1">${ICON.abajo}Bajar</button></div></section>` : ''}
       </div>
@@ -630,6 +624,14 @@ views.tarjeta = (el) => {
           <div class="btn-row"><label class="btn ghost" for="c-foto" style="cursor:pointer">Elegir foto</label><button class="btn ghost" type="button" id="c-sinfoto">Quitar foto</button></div>
           <input id="c-foto" type="file" accept="image/*" hidden></section>
       </div>
+      <div class="pz-panel" data-panel="brillo" hidden>
+        <section class="pz-sec"><h3>Brillo holográfico</h3><p class="help">Como el de las cartas coleccionables: se mueve al pasar el dedo por la tarjeta o al inclinar el móvil.</p>
+          <div class="dis-tiles">${HOLOS.map(([k, n]) => `<button type="button" class="dis-tile" data-hl="${k}" aria-pressed="${d.holo === k}">${k ? `<span class="dis-mini hl-mini">${holoHTML(k, 56)}</span>` : '<span class="dis-mini nada"><span>Sin brillo</span></span>'}<span class="est-n">${n}</span>${ok}</button>`).join('')}</div></section>
+        <section class="pz-sec" id="c-fuerza" ${d.holo ? '' : 'hidden'}><h3>Intensidad</h3>
+          <div class="seg">${FUERZAS.map(([v, n]) => `<button type="button" data-hf="${v}" aria-pressed="${fuerzaCercana(d.holoFuerza) === v}">${n}</button>`).join('')}</div></section>
+        <section class="pz-sec"><h3>Purpurina</h3>
+          <div class="switch-row"><div><p class="help" style="margin:0">Destellos diminutos que se encienden de vez en cuando.</p></div><input class="switch" type="checkbox" id="c-purp" ${d.purpurina ? 'checked' : ''} aria-label="Purpurina"></div></section>
+      </div>
       <div class="pz-panel" data-panel="marco" hidden>
         <section class="pz-sec"><h3>Marco</h3><div class="mk-tiles">${MC.map(([k, nn]) => `<button type="button" class="mk-tile" data-mc="${k}" aria-pressed="${d.marco === k}"><span class="mk-mini">${k ? `<i class="tc-marco mk-${k}"></i>` : ''}</span><span class="est-n">${nn}</span>${ok}</button>`).join('')}</div></section>
       </div>
@@ -641,7 +643,21 @@ views.tarjeta = (el) => {
         const arte = dis ? dis.svg.replace('class="tc-arte"', 'class="tc-arte mk-arte"') : '';
         m.querySelectorAll('.mk-mini').forEach((x) => { const k = x.parentElement.dataset.mc; x.style.cssText = fondoMini(); x.innerHTML = arte + (k ? `<i class="tc-marco mk-${k}"></i>` : ''); });
       };
-      const minisHolo = () => { const f = fondoMini(); m.querySelectorAll('.hl-mini').forEach((x) => { x.style.cssText = f; }); luzHolo(m.querySelector('.hl-tiles'), 0.3, -0.15); };
+      const minisHolo = () => {
+        const f = fondoMini(), dis = !tarjeta.foto(num) && d.diseno && D[d.diseno];
+        const arte = dis ? dis.svg.replace('class="tc-arte"', 'class="tc-arte mk-arte"') : '';
+        m.querySelectorAll('.hl-mini').forEach((x) => { x.style.cssText = f; x.querySelector('.mk-arte')?.remove(); if (arte) x.insertAdjacentHTML('afterbegin', arte); });
+        luzHolo(m.querySelector('[data-panel="brillo"]'), 0.35, -0.3);
+      };
+      /* Cambiar el brillo sin volver a dibujar la tarjeta (con una foto de fondo, redibujar parpadea) */
+      const acabado = () => {
+        const tc = $('#c-prev .tcard', m);
+        if (!tc) { preview(m); return; }
+        tc.querySelectorAll('.tc-holo, .tc-purp').forEach((x) => x.remove());
+        tc.classList.toggle('con-holo', !!d.holo);
+        const ref = tc.querySelector('.tc-marco') || tc.querySelector('.tc-top');
+        ref.insertAdjacentHTML('beforebegin', holoHTML(d.holo, d.holoFuerza) + (d.purpurina ? purpurinaHTML(num) : ''));
+      };
       minis(); minisHolo(); preview(m);
       // En la vista previa la luz se pasea sola, para que veas el brillo mientras eliges
       const t0 = performance.now();
@@ -653,9 +669,13 @@ views.tarjeta = (el) => {
       };
       requestAnimationFrame(paseo);
       m.querySelectorAll('[data-hl]').forEach((b) => { b.onclick = () => {
-        d.holo = b.dataset.hl; marcar('[data-hl]', 'hl', d.holo); $('#c-fuerza', m).hidden = !d.holo; vibrar(10); preview(m);
+        d.holo = b.dataset.hl; marcar('[data-hl]', 'hl', d.holo); $('#c-fuerza', m).hidden = !d.holo; vibrar(10); acabado();
       }; });
-      $('#c-hf', m).oninput = (e) => { d.holoFuerza = Number(e.target.value); preview(m); };
+      m.querySelectorAll('[data-hf]').forEach((b) => { b.onclick = () => {
+        d.holoFuerza = Number(b.dataset.hf); marcar('[data-hf]', 'hf', b.dataset.hf); vibrar(10);
+        $('#c-prev .tc-holo', m)?.style.setProperty('--fuerza', (d.holoFuerza / 100).toFixed(2));
+      }; });
+      $('#c-purp', m).onchange = (e) => { d.purpurina = e.target.checked; vibrar(10); acabado(); };
       $('#c-name', m).oninput = () => preview(m);
       const marcar = (sel, attr, val) => m.querySelectorAll(sel).forEach((x) => x.setAttribute('aria-pressed', x.dataset[attr] === val));
       m.querySelectorAll('[data-tab]').forEach((b) => { b.onclick = () => {

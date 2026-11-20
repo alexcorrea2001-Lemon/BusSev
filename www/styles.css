@@ -1575,27 +1575,25 @@ body[data-view="tuano"] .topbar, body[data-view="tuano"] .tabbar { visibility: h
 .tgiro.viva { transition: transform .08s linear; }
 .tgiro > .tcard { backface-visibility: hidden; -webkit-backface-visibility: hidden; }
 .tgiro > .tc-reverso { position: absolute; inset: 0; transform: rotateY(180deg); }
-.tc-reverso { display: block !important; padding: 0 !important; color: #fff; }
-.tc-reverso::before { content: ""; position: absolute; inset: 0; z-index: 0; background: linear-gradient(160deg, rgb(0 0 0 / .45), rgb(0 0 0 / .72)); border-radius: inherit; }
+/* El reverso: tu tarjeta oscurecida y difuminada, con el saldo grande y un panel translúcido */
+.tc-reverso { display: block !important; padding: 0 !important; color: #fff; background-size: cover !important; }
+.tc-reverso::before { content: ""; position: absolute; inset: 0; z-index: 0; border-radius: inherit;
+  background: linear-gradient(165deg, rgb(10 10 14 / .42), rgb(10 10 14 / .7));
+  -webkit-backdrop-filter: blur(7px) saturate(1.2); backdrop-filter: blur(7px) saturate(1.2); }
 .tc-reverso > * { position: absolute !important; z-index: 1; }
-.tc-reverso .rv-banda { left: 0; right: 0; top: 11%; height: 17%; background: linear-gradient(180deg, #0b0b0d, #1d1e22 60%, #0b0b0d); }
-.tc-reverso .rv-saldo { left: 18px; top: 36%; }
-.tc-reverso small { display: block; font-size: 10px; font-weight: 800; letter-spacing: .14em; opacity: .7; }
-.tc-reverso .rv-saldo b { font: 700 clamp(26px, 8.5vw, 36px)/1.05 var(--font-board); }
-.tc-reverso .rv-datos { left: 18px; right: 18px; top: 62%; display: flex; justify-content: space-between; gap: 12px; }
-.tc-reverso .rv-datos b { font: 700 17px/1.2 var(--font-board); }
-.tc-reverso .rv-datos div:last-child { text-align: right; }
-.tc-reverso .rv-pie { left: 18px; right: 18px; bottom: 12px; display: flex; justify-content: space-between; gap: 10px; font-size: 11px; opacity: .65; }
+.tc-reverso small { display: block; font-size: 10px; font-weight: 800; letter-spacing: .14em; opacity: .7; margin-bottom: 2px; }
+.tc-reverso .rv-top { left: 18px; right: 18px; top: 16px; display: flex; justify-content: space-between; gap: 10px;
+  font: 700 13px/1 var(--font-board); letter-spacing: .06em; text-transform: uppercase; opacity: .85; }
+.tc-reverso .rv-saldo { left: 18px; top: 30%; }
+.tc-reverso .rv-saldo b { font: 700 clamp(30px, 10vw, 42px)/1 var(--font-board); }
+.tc-reverso .rv-panel { left: 12px; right: 12px; bottom: 12px; display: grid; grid-template-columns: 1fr auto; gap: 12px; padding: 10px 12px;
+  border-radius: 12px; background: rgb(255 255 255 / .1); box-shadow: inset 0 0 0 1px rgb(255 255 255 / .16); }
+.tc-reverso .rv-panel b { font: 700 18px/1.15 var(--font-board); }
+.tc-reverso .rv-panel div:last-child { text-align: right; }
 .tflip-pista { margin: -6px 0 0; text-align: center; }
-/* Personalizar: miniaturas de acabados e intensidad */
-.hl-tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
-.hl-tile { position: relative; display: grid; gap: 5px; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: center; }
-.hl-mini { position: relative; display: block; aspect-ratio: 1.586; border-radius: 10px; overflow: hidden; isolation: isolate; box-shadow: inset 0 0 0 1px var(--line); }
-.hl-mini .tc-holo { position: absolute; inset: 0; --arco: repeating-linear-gradient(118deg, hsl(0 100% 62%) 0px, hsl(38 100% 58%) 9px, hsl(58 100% 55%) 16px, hsl(125 90% 50%) 25px, hsl(188 100% 52%) 34px, hsl(228 100% 64%) 42px, hsl(278 100% 64%) 51px, hsl(328 100% 62%) 60px, hsl(360 100% 62%) 68px); }
-.hl-mini .h-cosmos .malla { -webkit-mask-size: 90px 90px; mask-size: 90px 90px; }
-.hl-nada { position: absolute; inset: 0; display: grid; place-items: center; font-size: 11px; font-weight: 700; color: #fff; background: rgb(0 0 0 / .35); }
-.hl-tile[aria-pressed="true"] .hl-mini { box-shadow: 0 0 0 2.5px var(--accent); }
-.hl-tile .sel-ok { position: absolute; top: 4px; right: 4px; }
-.hl-fuerza { display: grid; gap: 6px; margin-top: 12px; }
-.hl-fuerza label { font-size: 13px; font-weight: 700; color: var(--muted); }
-.hl-fuerza input[type=range] { width: 100%; accent-color: var(--accent); }
+/* Personalizar → Brillo: las miniaturas son las de Diseño, con el brillo encima */
+.hl-mini { isolation: isolate; }
+.hl-mini .mk-arte { position: absolute; inset: 0; width: 100%; height: 100%; }
+.hl-mini .tc-holo { position: absolute; inset: 0; overflow: hidden; border-radius: inherit;
+  --arco: repeating-linear-gradient(118deg, hsl(0 100% 62%) 0px, hsl(38 100% 58%) 10px, hsl(58 100% 55%) 18px, hsl(125 90% 50%) 28px, hsl(188 100% 52%) 38px, hsl(228 100% 64%) 47px, hsl(278 100% 64%) 57px, hsl(328 100% 62%) 66px, hsl(360 100% 62%) 76px); }
+.hl-mini .h-cosmos .malla { -webkit-mask-size: 110px 110px; mask-size: 110px 110px; }

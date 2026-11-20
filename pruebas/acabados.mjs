@@ -48,31 +48,37 @@ assert.match(giro.style.transform, /rotateY\(0deg\)/, 'otro toque la vuelve a po
 toque(100, 100, 160, 100);
 assert.match(giro.style.transform, /rotateY\(0deg\)/, 'arrastrar no la gira');
 
-// Personalizar: elegir Cosmos, subir la intensidad y poner purpurina
+// Personalizar → pestaña Brillo: elegir Cosmos, intensidad Fuerte y purpurina, sin volver a dibujar la tarjeta
 a.$('#t-edit').click();
 await espera(400);
 const m = a.$('.modal');
+assert.ok(m.querySelector('[data-tab="brillo"]'), 'pestaña Brillo');
+assert.ok(m.querySelector('[data-panel="brillo"] [data-hl]') && !m.querySelector('[data-panel="tarjeta"] [data-hl]'), 'el brillo va en su pestaña, no mezclado con Tarjeta');
 assert.equal(m.querySelectorAll('[data-hl]').length, 4, 'Ninguno, Holo, Cosmos y Rayado');
-assert.ok(!m.querySelector('[data-opt="brillo"]'), 'ya no está el «Efecto brillo» de antes');
+assert.ok(!m.querySelector('[data-opt="brillo"]') && !m.querySelector('[data-opt="purpurina"]'), 'sin los botones de antes');
+assert.equal(m.querySelectorAll('[data-hf]').length, 3, 'Suave, Media y Fuerte');
+const tarjetaPrevia = a.$('#c-prev .tcard');
 m.querySelector('[data-hl="cosmos"]').click();
 assert.ok(a.$('#c-prev .tc-holo.h-cosmos'), 'la vista previa lo enseña');
-const r = m.querySelector('#c-hf'); r.value = '80'; r.dispatchEvent(new a.w.Event('input', { bubbles: true }));
-m.querySelector('[data-opt="purpurina"]').click();
+m.querySelector('[data-hf="70"]').click();
+assert.equal(a.$('#c-prev .tc-holo').style.getPropertyValue('--fuerza'), '0.70');
+const sw = m.querySelector('#c-purp'); sw.checked = true; sw.dispatchEvent(new a.w.Event('change', { bubbles: true }));
 assert.ok(a.$('#c-prev .tc-purp'));
+assert.equal(a.$('#c-prev .tcard'), tarjetaPrevia, 'la tarjeta no se ha vuelto a dibujar (sin parpadeos)');
 m.querySelector('[data-hl=""]').click();
 assert.ok(m.querySelector('#c-fuerza').hidden, 'sin brillo no hay intensidad');
 m.querySelector('[data-hl="cosmos"]').click();
 m.querySelector('#c-ok').click();
 await espera(200);
 const g = JSON.parse(a.w.localStorage.getItem('bussev.cards')).find((x) => x.num === '001234567812');
-assert.equal(g.holo, 'cosmos'); assert.equal(g.holoFuerza, 80); assert.equal(g.purpurina, true);
+assert.equal(g.holo, 'cosmos'); assert.equal(g.holoFuerza, 70); assert.equal(g.purpurina, true);
 assert.ok(!('brillo' in g));
 
 // Copia de seguridad: la personalización de la tarjeta ya no se pierde al restaurar
 const copia = JSON.parse(ev(`JSON.stringify(copia.crear())`));
 const d = JSON.parse(ev(`JSON.stringify(copia.validar(${JSON.stringify(copia)}))`));
 const c1 = d.cards.find((x) => x.num === '001234567812'), c2 = d.cards.find((x) => x.num === '001234567813');
-assert.equal(c1.holo, 'cosmos'); assert.equal(c1.holoFuerza, 80); assert.equal(c1.purpurina, true);
+assert.equal(c1.holo, 'cosmos'); assert.equal(c1.holoFuerza, 70); assert.equal(c1.purpurina, true);
 assert.equal(c2.holo, 'holo', 'el brillo de antes también pasa');
 const raro = JSON.parse(ev(`JSON.stringify(copia.validar({ app: 'BusSev', cards: [{ num: '001234567814', holo: '<script>', holoFuerza: 9999, marco: 'inventado', diseno: 'x' }] }))`)).cards[0];
 assert.equal(raro.holo, ''); assert.equal(raro.holoFuerza, 90); assert.equal(raro.marco, ''); assert.equal(raro.diseno, '');
