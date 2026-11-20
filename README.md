@@ -40,7 +40,10 @@ Guarda las paradas que más usas y ve de un vistazo cuánto le falta a cada auto
 - Botones **Personalizar** (o Guardar) · **Cómo llegar** · **Avisar**.
 - **Filtro de líneas** para ver solo la que te interesa.
 - **Minutos** que le faltan a cada línea y **avísame cuando llegue**: elige el autobús y te avisa con una
-  notificación (con el sonido que elijas), aunque tengas la app cerrada.
+  notificación (con el sonido que elijas), aunque tengas la app cerrada. En los últimos 15 minutos verás la
+  **cuenta atrás** en la barra de arriba (chip en Android 16), y el aviso trae el botón **«Me he subido»**.
+- **¿Llego o no llego?**: si abres la parada estando en ella o yendo hacia ella, la notificación te dice cuánto le
+  falta a tu bus y si llegas andando: 🟢 con margen, 🟡 aligera o 🔴 no llegas (y cuándo pasa el siguiente).
 - **📳 Modo sensor**: te guardas el móvil y vibra según se acerca tu autobús, sin mirar la pantalla. Empieza cuando
   faltan 5 minutos y da un aviso por minuto cada vez más fuerte (un toque suave, dos, tres, uno largo y, al llegar,
   uno muy fuerte). En Android 16 los minutos salen también como un chip en la barra de arriba.
@@ -111,10 +114,15 @@ el Real de la Feria, Torre Sevilla, el Alamillo, el Estadio de La Cartuja, Los R
 **37 medallas** de bronce, plata y oro: 1 a 250 viajes, 5 a 30 líneas, kilómetros (Maratón, «Hasta Madrid»),
 Búho, Madrugador, Cenicienta, transbordos, ida y vuelta, rachas, la Ruta monumental, los dos estadios,
 Semana Santa, Feria, Navidad, Nochevieja, Reyes… Está en la pestaña **Tarjeta**, debajo de las tarifas.
-- Solo cuentan los **viajes verificados**: en la parada toca tu bus y elige **«Me subo a este: avísame al bajar»**.
-  El móvil comprueba tres cosas: que TUSSAM daba **ese autobús llegando a tu parada** cuando saliste, que tu GPS
-  ha seguido **su recorrido a velocidad de autobús**, y que la ubicación **no es falsa** (apps de GPS simulado).
-  Si un viaje no cuenta, te dice por qué.
+- **Tus viajes cuentan solos**: abre BusSev en la parada para ver cuánto le falta a tu bus, como siempre, y súbete.
+  BusSev sigue el viaje unos minutos con la ubicación (solo el permiso «mientras usas la app») y, al bajarte, te
+  dice si ha contado. Si solo mirabas desde casa o te vas sin subirte, se apaga sola sin decir nada. También
+  cuentan los viajes con **«Me he subido»** (en el aviso de llegada y el modo sensor) y con «avísame al bajar».
+  Se puede apagar en *Ajustes → Pasaporte de Sevilla → Contar mis viajes*.
+- Solo cuentan los **viajes verificados**. El móvil comprueba que TUSSAM daba **ese autobús llegando a tu parada**
+  cuando saliste, que tu posición ha ido **por su recorrido a la par que él** (adivina en qué línea vas aunque
+  varias salgan de la misma parada) y que la ubicación **no es falsa** (apps de GPS simulado). Si ibas en coche
+  o en bici por la misma calle, no cuenta.
 - Cada viaje va **firmado** dentro de la app, así que no se pueden inventar viajes ni colarlos en una copia de
   seguridad: al restaurar solo entran los que tienen la firma buena.
 - Al ganar un sello o una medalla te llega una **notificación con su dibujo**, y la puedes **compartir** como imagen.

@@ -12,7 +12,7 @@ import com.getcapacitor.BridgeActivity;
 import com.getcapacitor.WebViewListener;
 
 public class MainActivity extends BridgeActivity {
-    private String pendingParada = null;
+    private String pendingParada = null, pendingSubido = null;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -84,20 +84,31 @@ public class MainActivity extends BridgeActivity {
             cod = cod.replaceAll("[^0-9]", "");
             if (!cod.isEmpty()) pendingParada = cod;
         }
+        // «Me he subido» desde el aviso de llegada o el modo sensor
+        String sub = intent.getStringExtra("bussev_subido");
+        pendingSubido = sub != null && pendingParada != null && !"P".equals(pendingParada) ? sub.replaceAll("[^A-Za-z0-9]", "") : null;
+        if (pendingSubido != null && pendingSubido.isEmpty()) pendingSubido = null;
+        int cancelar = intent.getIntExtra("bussev_cancelar", 0);
+        if (cancelar != 0) {
+            android.app.NotificationManager nm = (android.app.NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+            if (nm != null) nm.cancel(cancelar);
+        }
+        intent.removeExtra("bussev_subido");
     }
 
     private void entregarParada(final int intentos) {
         if (pendingParada == null || getBridge() == null) return;
         final WebView wv = getBridge().getWebView();
         if (wv == null) return;
-        final String cod = pendingParada;
+        final String cod = pendingParada, sub = pendingSubido;
         wv.evaluateJavascript(
             "P".equals(cod) ? "(window.busSevAbrirParada?(location.hash='pasaporte',true):false)"
+                : sub != null ? "(window.busSevSubido?(window.busSevSubido('" + cod + "','" + sub + "'),true):false)"
                 : "(window.busSevAbrirParada?(window.busSevAbrirParada('" + cod + "'),true):false)",
             new ValueCallback<String>() {
                 public void onReceiveValue(String value) {
                     if ("true".equals(value)) {
-                        pendingParada = null;
+                        pendingParada = null; pendingSubido = null;
                     } else if (intentos > 0) {
                         wv.postDelayed(new Runnable() { public void run() { entregarParada(intentos - 1); } }, 350);
                     }

@@ -161,6 +161,12 @@
             android:exported="false"
             android:foregroundServiceType="location" />
 
+        <!-- Viajes automáticos del Pasaporte y «¿Llego o no llego?» (GPS solo mientras esperas o vas en el bus) -->
+        <service
+            android:name=".ViajeAutoService"
+            android:exported="false"
+            android:foregroundServiceType="location" />
+
         <!-- Modo sensor: vibra según se acerca tu autobús (con notificación fija y chip en la barra) -->
         <service
             android:name=".SensorService"
