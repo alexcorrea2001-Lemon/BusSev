@@ -120,8 +120,8 @@ public class ViajeAutoService extends Service implements LocationListener {
         lm = (LocationManager) getSystemService(LOCATION_SERVICE);
         try {
             lm.removeUpdates(this);
-            if (lm.isProviderEnabled(LocationManager.GPS_PROVIDER)) lm.requestLocationUpdates(LocationManager.GPS_PROVIDER, 4000, 0, this, Looper.getMainLooper());
-            if (lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) lm.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 8000, 0, this, Looper.getMainLooper());
+            if (lm.isProviderEnabled(LocationManager.GPS_PROVIDER)) lm.requestLocationUpdates(LocationManager.GPS_PROVIDER, Energia.gpsMs(this, 4000), 0, this, Looper.getMainLooper());
+            if (lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) lm.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, Energia.gpsMs(this, 8000), 0, this, Looper.getMainLooper());
         } catch (SecurityException e) { parar(); return START_NOT_STICKY; }
         h.removeCallbacksAndMessages(null);
         h.post(mirarTussam);

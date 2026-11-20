@@ -13,9 +13,8 @@ Cada tanda es una compilación que se prueba en el móvil antes de seguir.
   - Silencio de noche para los avisos de TUSSAM.
   - Buscador más listo: sitios, «Cómo llegar aquí» y búsquedas recientes.
 
-## Siguiente
-- Arreglos del mapa de sellos (moverlo con un dedo, la brújula clarita) y abrir la app directamente en el Pasaporte.
-- Ahorro de batería y de datos, y datos gastados al mes (ya hecho, pendiente de publicar).
+- Arreglos: mapa de sellos con un dedo, brújula que se ponía clarita, abrir la app directamente en el Pasaporte.
+- Ahorro de batería y de datos, datos gastados al mes y widget que no gasta con la pantalla apagada.
 
 ## Pendiente de confirmar
 - El resto de tandas de la lista original (pegarla aquí).

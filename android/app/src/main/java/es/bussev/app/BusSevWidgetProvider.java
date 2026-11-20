@@ -54,7 +54,28 @@ public class BusSevWidgetProvider extends AppWidgetProvider {
 
     @Override
     public void onUpdate(Context context, AppWidgetManager mgr, int[] ids) {
-        for (int id : ids) actualizar(context, mgr, id);
+        // La actualización de cada media hora no gasta datos ni batería si nadie la ve (pantalla apagada) o
+        // si el móvil está ahorrando: solo se avisa de que hay que tocar ⟳. Al tocar, o al abrir la app, sí se pide.
+        boolean dormido = !Energia.pantalla(context) || Energia.ahorro(context) || Energia.datosRestringidos(context);
+        for (int id : ids) {
+            if (dormido && yaPintado(context, id)) marcarViejo(context, mgr, id);
+            else actualizar(context, mgr, id);
+        }
+    }
+
+    /** El widget ya enseñó tiempos alguna vez (si es nuevo, se piden siempre) */
+    static boolean yaPintado(Context c, int id) { return prefs(c).getLong("pintado_" + id, 0) > 0; }
+
+    /** Solo cambia la línea de abajo: los tiempos que se ven son de hace rato */
+    static void marcarViejo(Context c, AppWidgetManager mgr, int id) {
+        try {
+            boolean varias = esVarias(prefs(c), id);
+            RemoteViews v = new RemoteViews(c.getPackageName(), varias ? R.layout.bussev_widget_varias : R.layout.bussev_widget);
+            long t = prefs(c).getLong("pintado_" + id, 0);
+            String h = new java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault()).format(new java.util.Date(t));
+            v.setTextViewText(varias ? R.id.wv_updated : R.id.w_updated, "De las " + h + " · toca ⟳");
+            mgr.partiallyUpdateAppWidget(id, v);
+        } catch (Exception ignored) { }
     }
 
     /* Al cambiarlo de tamaño se vuelve a pintar con las filas que caben */
@@ -184,7 +205,7 @@ public class BusSevWidgetProvider extends AppWidgetProvider {
                             v.setTextViewText(ROW_DEST[r], a.destino);
                             v.setTextViewText(ROW_MIN[r], a.minutos <= 0 ? "ya" : (a.minutos + " min"));
                         }
-                        v.setTextViewText(R.id.w_updated, "Actualizado a las " + hora());
+                        v.setTextViewText(R.id.w_updated, "Actualizado a las " + hora()); prefs(context).edit().putLong("pintado_" + widgetId, System.currentTimeMillis()).apply();
                     }
                 } catch (Exception e) {
                     for (int r = 0; r < 3; r++) v.setViewVisibility(ROW_BOX[r], View.GONE);
@@ -262,7 +283,7 @@ public class BusSevWidgetProvider extends AppWidgetProvider {
                         v.setTextViewText(V_BUS[r], resumen(filtrar(TussamTiempos.tiempos(st[0], tok), st[2])));
                     } catch (Exception e) { v.setTextViewText(V_BUS[r], "Sin conexión"); algunError = true; }
                 }
-                v.setTextViewText(R.id.wv_updated, algunError ? "Sin conexión" : "Actualizado a las " + hora());
+                v.setTextViewText(R.id.wv_updated, algunError ? "Sin conexión" : "Actualizado a las " + hora()); if (!algunError) prefs(context).edit().putLong("pintado_" + widgetId, System.currentTimeMillis()).apply();
                 mgr.updateAppWidget(widgetId, v);
             }
         }).start();

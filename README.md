@@ -194,6 +194,12 @@ el horario oficial y la información de paradas y líneas, que va guardada dentr
 - **Temáticas** que cambian solas: Navidad, Semana Santa, Feria y Halloween, con adornos y, si quieres,
   **pasos, coches de caballos o carrozas** en el mapa en vez de autobuses.
 - Cada cuánto **se actualizan los tiempos** y si ver los **autobuses en directo** en el mapa.
+- **Ahorro de batería** (automático, siempre o nunca): con el ahorro de batería de Android o con un 15 % o menos,
+  los tiempos se piden como mucho cada minuto, se quedan quietos el cielo de la barra y el brillo de la tarjeta al
+  inclinarla, y el widget y el GPS de los viajes gastan menos. Las demás animaciones siguen igual.
+- **Ahorro de datos** (sigue al de Android): tiempos cada 45 s como mucho, el cielo y Sevici se consultan menos y la
+  versión nueva se busca solo con wifi. Y en Ajustes ves **cuántos datos ha gastado BusSev este mes** (y el pasado).
+- El **widget** no gasta datos con la pantalla apagada: enseña «De las 9:40 · toca ⟳» y se actualiza al tocarlo.
 - **Accesibilidad**: **modo sencillo** (solo lo esencial y botones grandes), tamaño del texto, botones más grandes,
   alto contraste, menos animaciones, vibración y **lectura en voz alta** (también al abrir una parada).
 - **Copia de seguridad** de favoritas y tarjetas para pasarlas a otro móvil.

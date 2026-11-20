@@ -342,11 +342,8 @@ views.pasaporte = (el) => {
       const b = createMap(caja, [37.389, -5.975], 11.4);
       if (!b) return;
       bm = b;
-      b.m.dragPan.disable();            // con un dedo se baja por la página; con dos se mueve y se acerca
-      b.m.scrollZoom.disable();
-      b.m.on('touchstart', (e) => { if (e.originalEvent.touches?.length >= 2) b.m.dragPan.enable(); });
-      b.m.on('touchend', () => b.m.dragPan.disable());
-      b.ready.then(() => { if (bm !== b) return; b.fit(LUGARES.map((l) => [l[2], l[3]]), { padding: 26 }); actualizarPines(); });
+      b.m.scrollZoom.disable();         // la rueda del ratón baja por la página; con el dedo se mueve y con dos se acerca
+      b.ready.then(() => { if (bm !== b) return; b.fit(LUGARES.map((l) => [l[2], l[3]]), { padding: { top: 26, bottom: 26, left: 26, right: 70 } }); actualizarPines(); });
     }).catch(() => { caja.innerHTML = '<div class="map-fallback">No se ha podido cargar el mapa.</div>'; });
   };
   let pines = [];
@@ -380,7 +377,7 @@ views.pasaporte = (el) => {
         : 'Tus viajes <b>cuentan solos</b>: abre BusSev en la parada para ver cuánto le falta a tu bus, como siempre, y súbete. El móvil comprueba que de verdad vas en ese autobús (llegaba a tu parada y vas por su recorrido, a la par que él) y, al bajarte, te da los sellos y medallas que ganes.'}</div>
       <h2 class="ps-h">Mapa de sellos</h2>
       <div class="ps-mapa-hueco" id="ps-mapa-hueco"></div>
-      <p class="help ps-mapa-pie">Toca un sitio para ver qué línea te lleva. Acerca con dos dedos.</p>
+      <p class="help ps-mapa-pie">Toca un sitio para ver qué línea te lleva. Muévelo con un dedo y acerca con dos.</p>
       <h2 class="ps-h">Sellos de lugares</h2>
       <div class="ps-sellos">${LUGARES.map(([id, n]) => { const t = s.logros[`s:${id}`]; return `<button type="button" class="ps-item${t ? ' ok' : ''}" data-ps="s:${id}">${selloSVG(id, { apagado: !t, fecha: t ? fmtFecha(t) : '' })}<span>${esc(n)}</span><small>${t ? fmtFecha(t) : 'Sin sellar'}</small></button>`; }).join('')}</div>
       <h2 class="ps-h">Medallas</h2>

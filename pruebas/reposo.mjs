@@ -5,7 +5,7 @@ const src = fs.readFileSync(R + 'www/app.js', 'utf8');
 const a = src.indexOf('const REPOSO_MS'), b = src.indexOf('const refreshNote');
 const dom = new JSDOM('<body></body>', { url: 'https://localhost/' });
 let ahora = 1_800_000_000_000; const timers = new Map(); let nid = 0;
-const ctx = { window: dom.window, document: dom.window.document, settings: { refresh: 30 }, appVisible: true, resumeHandlers: new Set(),
+const ctx = { window: dom.window, document: dom.window.document, settings: { refresh: 30 }, appVisible: true, resumeHandlers: new Set(), energia: { bateria: () => false, datos: () => false },
   addEventListener: (t, f, o) => dom.window.addEventListener(t, f, o), Set, Math,
   Date: class extends Date { static now() { return ahora; } },
   setInterval: (f, ms) => { timers.set(++nid, { f, ms, t: ahora + ms }); return nid; }, clearInterval: (id) => timers.delete(id) };
