@@ -21,6 +21,8 @@ cuánto saldo tiene tu tarjeta y los avisos de desvíos y obras. Es gratis, no t
 Guarda las paradas que más usas y ve de un vistazo cuánto le falta a cada autobús.
 - **Tiempos en directo** de cada línea, con el siguiente autobús y a qué distancia va.
 - Ordénalas como quieras (ves al momento en qué puesto queda la parada) y **agrúpalas** por títulos («Casa», «Trabajo»…).
+- **La más cercana, arriba** (opcional, en Ajustes): se ordenan solas según dónde estés; en casa sale primero «Casa»
+  y en el trabajo, «Trabajo». Usa la última ubicación del móvil, sin preguntar.
 - Arriba te avisa de lo que importa hoy: **buses nocturnos**, **servicios especiales** (Feria, Semana Santa),
   **festivos**, **saldo bajo** o **tarjeta a punto de caducar**, y si estás **sin conexión**.
 - Botón de **avisos de TUSSAM** que afectan a tus líneas, y el aviso dentro de cada parada a la que le toca.
@@ -42,6 +44,8 @@ Guarda las paradas que más usas y ve de un vistazo cuánto le falta a cada auto
 - **Minutos** que le faltan a cada línea y **avísame cuando llegue**: elige el autobús y te avisa con una
   notificación (con el sonido que elijas), aunque tengas la app cerrada. En los últimos 15 minutos verás la
   **cuenta atrás** en la barra de arriba (chip en Android 16), y el aviso trae el botón **«Me he subido»**.
+- **Avisos que se repiten**: «de lunes a viernes, desde las 7:40, avísame cuando al 27 le falten 5 min». Lo pones
+  una vez y cada día el móvil lo vigila solo con TUSSAM, aunque no abras la app. Los ves y los quitas en Ajustes.
 - **¿Llego o no llego?**: si abres la parada estando en ella o yendo hacia ella, la notificación te dice cuánto le
   falta a tu bus y si llegas andando: 🟢 con margen, 🟡 aligera o 🔴 no llegas (y cuándo pasa el siguiente).
 - **📳 Modo sensor**: te guardas el móvil y vibra según se acerca tu autobús, sin mirar la pantalla. Empieza cuando
@@ -56,6 +60,8 @@ Guarda las paradas que más usas y ve de un vistazo cuánto le falta a cada auto
 
 ### 🧭 Cómo llegar
 Te dice qué coger para ir de un sitio a otro: **directo o con transbordo**, ordenado por la hora a la que llegas.
+- **Salir ahora**, **salir a las…** o **llegar antes de las…** (te propone la que más tarde te deja salir de casa),
+  con el botón **«Avísame para salir»**: una notificación 5 minutos antes de tu hora de salida.
 - Busca **calles con número de portal**, **sitios** (hospitales, centros comerciales, estaciones…), **paradas** o
   tu ubicación. Guarda los **sitios recientes**.
 - **Combinar con** (se activa en casillas, apagado de serie): **Metro** (Línea 1), **Cercanías Renfe** (C1 a C5) y
@@ -147,9 +153,13 @@ Desvíos, obras y horarios especiales (con sus **PDF e imágenes**). BusSev los 
 notificación si hay uno nuevo en las líneas de tus paradas favoritas. Puedes elegir dónde verlos: en Favoritas,
 en cada parada favorita, al abrir una parada o al abrir una línea.
 
-### 📲 Widget de inicio
-Pon una parada en la **pantalla de inicio** del móvil y ve los próximos autobuses sin abrir la app.
-Elige qué líneas ver y, al tocarlo, se abre directo en esa parada.
+### 📲 Widgets, accesos directos y ajustes rápidos
+- **Widget de paradas**: una parada con sus próximos autobuses, o **«Mis favoritas»** (tus 3 primeras paradas, cada
+  una con sus dos próximos buses). Se adapta al tamaño (más alto, más filas) y tiene botón para refrescar.
+- **Widget de saldo**: tu tarjeta con el saldo y los viajes que te quedan (de la última consulta en la app).
+- **Accesos directos**: mantén pulsado el icono de BusSev y abre al momento una de tus 4 primeras favoritas.
+- **Botón en los ajustes rápidos** (al bajar la cortina): el próximo bus de tu primera favorita, «27 · 4 min».
+  Tócalo para refrescar sin abrir la app. Se añade editando los botones de la cortina.
 
 ### ✈️ Sin conexión
 Si te quedas sin datos, BusSev te sigue enseñando los **últimos tiempos que tenía** (avisándote de que no están al día),

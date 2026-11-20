@@ -28,6 +28,7 @@ const PRUEBAS = [
   ['Tu año en BusSev (resumen e historias)', 'node', ['anio.mjs']],
   ['Viajes automáticos del Pasaporte', 'node', ['viajes-auto.mjs']],
   ['Acabados de la tarjeta (holográfico, purpurina, girar)', 'node', ['acabados.mjs']],
+  ['Avisos que se repiten, cercanía, widgets y hora en Cómo llegar', 'node', ['tanda3.mjs']],
   ['Todas las pantallas sin errores', 'node', ['pantallas.mjs']],
 ];
 let fallos = 0;

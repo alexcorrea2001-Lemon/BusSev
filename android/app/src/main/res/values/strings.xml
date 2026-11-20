@@ -4,4 +4,8 @@
     <string name="title_activity_main">BusSev</string>
     <string name="package_name">es.bussev.app</string>
     <string name="custom_url_scheme">es.bussev.app</string>
+    <string name="widget_paradas">BusSev · Paradas</string>
+    <string name="widget_saldo">BusSev · Saldo</string>
+    <string name="widget_saldo_desc">El saldo de tu tarjeta TUSSAM y los viajes que te quedan</string>
+    <string name="tile_bus">Próximo bus</string>
 </resources>

@@ -8,7 +8,12 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Color;
+import android.graphics.Typeface;
 import android.os.Build;
+import android.os.Bundle;
+import android.text.SpannableStringBuilder;
+import android.text.style.ForegroundColorSpan;
+import android.text.style.StyleSpan;
 import android.view.View;
 import android.widget.RemoteViews;
 
@@ -22,7 +27,12 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 
-/** Widget de inicio: una parada favorita con sus próximos autobuses. */
+/**
+ * Widget de inicio. Dos modos:
+ *  - una parada favorita con sus próximos autobuses;
+ *  - «Mis favoritas»: tus primeras paradas, cada una con sus dos próximos autobuses.
+ * Se adapta al tamaño: más alto, más filas.
+ */
 public class BusSevWidgetProvider extends AppWidgetProvider {
     static final String PREFS = "bussev_widget";
     static final String ACTION_REFRESH = "es.bussev.app.WIDGET_REFRESH";
@@ -45,6 +55,20 @@ public class BusSevWidgetProvider extends AppWidgetProvider {
     @Override
     public void onUpdate(Context context, AppWidgetManager mgr, int[] ids) {
         for (int id : ids) actualizar(context, mgr, id);
+    }
+
+    /* Al cambiarlo de tamaño se vuelve a pintar con las filas que caben */
+    @Override
+    public void onAppWidgetOptionsChanged(Context context, AppWidgetManager mgr, int id, Bundle opts) {
+        actualizar(context, mgr, id);
+    }
+
+    /** Cuántas filas caben según la altura del widget */
+    static int filas(AppWidgetManager mgr, int id) {
+        try {
+            int h = mgr.getAppWidgetOptions(id).getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 110);
+            return h < 100 ? 1 : h < 150 ? 2 : 3;
+        } catch (Exception e) { return 3; }
     }
 
     @Override
@@ -105,9 +129,15 @@ public class BusSevWidgetProvider extends AppWidgetProvider {
         return s;
     }
 
+    static boolean esVarias(SharedPreferences p, int id) {
+        try { return "varias".equals(new JSONObject(p.getString("stop_" + id, "{}")).optString("modo")); } catch (Exception e) { return false; }
+    }
+
     static void actualizar(final Context context, final AppWidgetManager mgr, final int widgetId) {
         final SharedPreferences p = prefs(context);
+        if (esVarias(p, widgetId)) { actualizarVarias(context, mgr, widgetId); return; }
         final String[] stop = leerStop(p, widgetId);
+        final int maxFilas = filas(mgr, widgetId);
 
         Intent open = context.getPackageManager().getLaunchIntentForPackage(context.getPackageName());
         if (open == null) open = new Intent(context, MainActivity.class);
@@ -144,7 +174,7 @@ public class BusSevWidgetProvider extends AppWidgetProvider {
                         for (int r = 0; r < 3; r++) v.setViewVisibility(ROW_BOX[r], View.GONE);
                         v.setTextViewText(R.id.w_updated, "Sin autobuses ahora mismo");
                     } else {
-                        int n = Math.min(3, list.size());
+                        int n = Math.min(maxFilas, list.size());
                         for (int r = 0; r < 3; r++) {
                             if (r >= n) { v.setViewVisibility(ROW_BOX[r], View.GONE); continue; }
                             TussamTiempos.Llegada a = list.get(r);
@@ -176,6 +206,95 @@ public class BusSevWidgetProvider extends AppWidgetProvider {
             if (hsv[1] > 0.85f) hsv[1] = 0.85f;    // baja un pelín la saturación
             return Color.HSVToColor(hsv);
         } catch (Exception e) { return Color.WHITE; }
+    }
+
+    /* ---------- «Mis favoritas» ---------- */
+    static final int[] V_BOX = { R.id.wv_box0, R.id.wv_box1, R.id.wv_box2 };
+    static final int[] V_NOM = { R.id.wv_nom0, R.id.wv_nom1, R.id.wv_nom2 };
+    static final int[] V_BUS = { R.id.wv_bus0, R.id.wv_bus1, R.id.wv_bus2 };
+
+    static void actualizarVarias(final Context context, final AppWidgetManager mgr, final int widgetId) {
+        final SharedPreferences p = prefs(context);
+        final int maxFilas = filas(mgr, widgetId);
+        final List<String[]> paradas = new ArrayList<>();
+        try {
+            JSONArray favs = new JSONArray(p.getString("favs", "[]"));
+            for (int i = 0; i < favs.length() && paradas.size() < 3; i++) {
+                JSONObject f = favs.optJSONObject(i);
+                if (f == null || f.optString("codigo", "").isEmpty()) continue;
+                JSONArray la = f.optJSONArray("lineas");
+                paradas.add(new String[]{ f.optString("codigo"), f.optString("nombre", "Parada " + f.optString("codigo")), la != null ? la.toString() : "[]" });
+            }
+        } catch (Exception e) { /* sin favoritas */ }
+        Intent open = context.getPackageManager().getLaunchIntentForPackage(context.getPackageName());
+        if (open == null) open = new Intent(context, MainActivity.class);
+        final PendingIntent piOpen = PendingIntent.getActivity(context, widgetId, open, piFlags());
+        Intent ref = new Intent(context, BusSevWidgetProvider.class).setAction(ACTION_REFRESH).putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId);
+        final PendingIntent piRef = PendingIntent.getBroadcast(context, widgetId, ref, piFlags());
+        final int n = Math.min(maxFilas, paradas.size());
+
+        RemoteViews cargando = baseVarias(context, piOpen, piRef);
+        for (int r = 0; r < 3; r++) {
+            if (r >= n) { cargando.setViewVisibility(V_BOX[r], View.GONE); continue; }
+            cargando.setViewVisibility(V_BOX[r], View.VISIBLE);
+            cargando.setTextViewText(V_NOM[r], paradas.get(r)[1]);
+            cargando.setTextViewText(V_BUS[r], "…");
+            cargando.setOnClickPendingIntent(V_BOX[r], piParada(context, paradas.get(r)[0], widgetId * 10 + r));
+        }
+        cargando.setTextViewText(R.id.wv_updated, paradas.isEmpty() ? "Marca paradas como favoritas en BusSev" : "Actualizando…");
+        mgr.updateAppWidget(widgetId, cargando);
+        if (paradas.isEmpty()) return;
+
+        new Thread(new Runnable() {
+            public void run() {
+                RemoteViews v = baseVarias(context, piOpen, piRef);
+                String tok = null;
+                try { tok = TussamTiempos.token(p); } catch (Exception ignored) { }
+                boolean algunError = false;
+                for (int r = 0; r < 3; r++) {
+                    if (r >= n) { v.setViewVisibility(V_BOX[r], View.GONE); continue; }
+                    String[] st = paradas.get(r);
+                    v.setViewVisibility(V_BOX[r], View.VISIBLE);
+                    v.setTextViewText(V_NOM[r], st[1]);
+                    v.setOnClickPendingIntent(V_BOX[r], piParada(context, st[0], widgetId * 10 + r));
+                    try {
+                        if (tok == null) throw new Exception("sin token");
+                        v.setTextViewText(V_BUS[r], resumen(filtrar(TussamTiempos.tiempos(st[0], tok), st[2])));
+                    } catch (Exception e) { v.setTextViewText(V_BUS[r], "Sin conexión"); algunError = true; }
+                }
+                v.setTextViewText(R.id.wv_updated, algunError ? "Sin conexión" : "Actualizado a las " + hora());
+                mgr.updateAppWidget(widgetId, v);
+            }
+        }).start();
+    }
+
+    /* «27 3 min · C1 7 min»: el número de línea en su color y en negrita */
+    static CharSequence resumen(List<TussamTiempos.Llegada> l) {
+        if (l == null || l.isEmpty()) return "Sin autobuses ahora";
+        SpannableStringBuilder sb = new SpannableStringBuilder();
+        for (int i = 0; i < Math.min(2, l.size()); i++) {
+            TussamTiempos.Llegada a = l.get(i);
+            if (i > 0) sb.append("   ");
+            int ini = sb.length();
+            sb.append(a.linea);
+            sb.setSpan(new ForegroundColorSpan(visible(a.color)), ini, sb.length(), 0);
+            sb.setSpan(new StyleSpan(Typeface.BOLD), ini, sb.length(), 0);
+            sb.append(" ").append(a.minutos <= 0 ? "ya" : a.minutos + " min");
+        }
+        return sb;
+    }
+
+    static PendingIntent piParada(Context c, String codigo, int req) {
+        Intent i = new Intent(c, MainActivity.class).putExtra("bussev_parada", codigo)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        return PendingIntent.getActivity(c, 0x30000000 | (req & 0x0FFFFFFF), i, piFlags());
+    }
+
+    static RemoteViews baseVarias(Context context, PendingIntent piOpen, PendingIntent piRef) {
+        RemoteViews v = new RemoteViews(context.getPackageName(), R.layout.bussev_widget_varias);
+        v.setOnClickPendingIntent(R.id.wv_root, piOpen);
+        v.setOnClickPendingIntent(R.id.wv_refresh, piRef);
+        return v;
     }
 
     static RemoteViews base(Context context, PendingIntent piOpen, PendingIntent piRef) {

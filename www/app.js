@@ -12,7 +12,7 @@ const store = {
 };
 const DEFAULTS = {
   theme: 'dark', color: 'rojo', refresh: 30, liveLines: true, mapStyle: 'oscuro',
-  tematicaAuto: true, tematica: 'normal', cieloSevilla: false, contarViajes: true,
+  tematicaAuto: true, tematica: 'normal', cieloSevilla: false, contarViajes: true, favsCerca: false,
   voz: false, vozAuto: false, letraGrande: false, escalaTexto: 1.22, altoContraste: false, menosAnimaciones: false, vibrar: true, botonesGrandes: false,
   modoSencillo: false,
   revisarCada: 3, avisosTussam: 'mias', avisosResumen: true, avisosTarjetas: true, avisosParada: true, avisosLinea: true, saldoURL: '', tiemposServidor: false, fondo: '', vehiculosFiesta: false, avisarVersion: true,
@@ -760,6 +760,7 @@ function actualizarWidget() {
     }));
     window.Capacitor.nativePromise('BusSevWidget', 'setConfig', {
       favoritas,   // las credenciales ya no pasan por aquí: van cifradas en Android
+      tarjetas: window.datosWidgetTarjetas?.() || [],   // widget de saldo
     }).catch(() => { /* */ });
   } catch { /* */ }
 }
@@ -814,17 +815,20 @@ function getShape(numero, sentido, stops) {
 /* ================================================================== */
 /* Favoritas (con nombre, color y líneas a mostrar)                    */
 /* ================================================================== */
+/* Al cambiar las favoritas se avisa al widget, al botón de ajustes rápidos y a los accesos directos (con un poco de calma) */
+let avisoFavsT = 0;
+const tocadasFavs = () => { clearTimeout(avisoFavsT); avisoFavsT = setTimeout(() => actualizarWidget(), 400); };
 const favs = {
   list() { return store.get('favs', []); },
   get(c) { return this.list().find((f) => f.codigo === c) || null; },
   has(c) { return !!this.get(c); },
-  add(p) { const l = this.list(); if (!l.some((f) => f.codigo === p.codigo)) l.push({ codigo: p.codigo, nombre: p.nombre }); store.set('favs', l); },
-  remove(c) { store.set('favs', this.list().filter((f) => f.codigo !== c)); },
-  update(c, patch) { store.set('favs', this.list().map((f) => (f.codigo === c ? { ...f, ...patch } : f))); },
+  add(p) { const l = this.list(); if (!l.some((f) => f.codigo === p.codigo)) l.push({ codigo: p.codigo, nombre: p.nombre }); store.set('favs', l); tocadasFavs(); },
+  remove(c) { store.set('favs', this.list().filter((f) => f.codigo !== c)); tocadasFavs(); },
+  update(c, patch) { store.set('favs', this.list().map((f) => (f.codigo === c ? { ...f, ...patch } : f))); tocadasFavs(); },
   move(c, d) {
     const l = this.list(); const i = l.findIndex((f) => f.codigo === c); const j = i + d;
     if (i < 0 || j < 0 || j >= l.length) return;
-    [l[i], l[j]] = [l[j], l[i]]; store.set('favs', l);
+    [l[i], l[j]] = [l[j], l[i]]; store.set('favs', l); tocadasFavs();
   },
 };
 function filtrarLineas(tiempos, fav) {
@@ -2131,12 +2135,43 @@ function offlineHTML() {
 }
 
 /* ---------- Favoritas ---------- */
+/* Favoritas por cercanía (opcional): la parada (o el grupo) que tienes más cerca, arriba.
+   La posición se pide SIN preguntar: Android da la última conocida; si no hay, se queda tu orden. */
+const cercania = {
+  pos: null, t: 0, pidiendo: false,
+  activa: () => settings.favsCerca === true,
+  async actualizar(alCambiar) {
+    if (!this.activa() || this.pidiendo || Date.now() - this.t < 60_000) return;
+    this.pidiendo = true;
+    try {
+      let p = null;
+      if (window.Capacitor?.isPluginAvailable?.('BusSevViaje')) {
+        const r = await window.Capacitor.nativePromise('BusSevViaje', 'dondeEstoy', {}).catch(() => ({}));
+        if (typeof r?.lat === 'number') p = [r.lat, r.lon];
+      } else if (store.get('geoOk', false)) {
+        p = await new Promise((ok) => navigator.geolocation?.getCurrentPosition((x) => ok([x.coords.latitude, x.coords.longitude]), () => ok(null), { maximumAge: 120000, timeout: 8000 }) ?? ok(null));
+      }
+      this.t = Date.now();
+      if (p) { const antes = this.pos; this.pos = p; if (!antes || haversine(antes, p) > 80) alCambiar?.(); }
+    } finally { this.pidiendo = false; }
+  },
+  dist(f) {
+    const p = cache.paradaByCode.get(f.codigo) || (window.BUSSEV_DATA?.paradas || []).find((x) => x.codigo === f.codigo);
+    return p && this.pos ? haversine(this.pos, [p.latitud, p.longitud]) : Infinity;
+  },
+  ordenar(list) {
+    if (!this.activa() || !this.pos || list.length < 2) return { list, aplicado: false };
+    return { list: [...list].sort((a, b) => this.dist(a) - this.dist(b)), aplicado: true };
+  },
+};
+window.cercaniaFavs = cercania;
+
 views.favoritas = (el) => {
   let stop = null, loading = false, results = null, dead = false;
   // Últimos tiempos guardados (< 10 min) para enseñarlos al instante al abrir, en vez de «Cargando…»
   const recientes = (codigo) => tiemposGuardados(codigo, 600000);
   function paint() {
-    const list = favs.list();
+    const { list, aplicado: porCerca } = cercania.ordenar(favs.list());
     if (!list.length) {
       el.innerHTML = `<div class="page-head"><h1>Favoritas</h1></div>${window.anio?.bannerHTML?.() || ''}<div id="fav-bajada">${window.bajadaHTML?.() || ''}</div>` + emptyHTML(ICON.star, 'Aún no tienes paradas favoritas', 'Abre una parada (desde el mapa, el buscador o Cerca) y pulsa la estrella. Luego podrás ponerle nombre, color y elegir qué líneas ver.', '<a class="btn" href="#mapa">Buscar en el mapa</a><a class="btn ghost" href="#avisos">Avisos de TUSSAM</a>');
       return false;
@@ -2157,7 +2192,8 @@ views.favoritas = (el) => {
     // Grupos («🏠 Casa», «💼 Trabajo»…): cada grupo con su título, en el orden en que aparece; las sueltas, primero
     const grupos = new Map();
     for (const f of list) { const g = (f.grupo || '').trim(); if (!grupos.has(g)) grupos.set(g, []); grupos.get(g).push(f); }
-    const cards = [...grupos.entries()].sort(([a], [b]) => (a ? 1 : 0) - (b ? 1 : 0))
+    // Por cercanía, los grupos van en el orden de su parada más cercana (Map conserva el orden de llegada)
+    const cards = [...grupos.entries()].sort(([a], [b]) => (porCerca ? 0 : (a ? 1 : 0) - (b ? 1 : 0)))
       .map(([g, fs]) => (g ? `<h2 class="fav-grupo">${esc(g)}</h2>` : '') + fs.map(tarjetaDe).join('')).join('');
     const marco = `${list.map((f) => f.codigo).join(',')}|${avs.map((a) => a.id + ':' + a.at).join(',')}`;
     if (el.__marco === marco && $('#fav-cards', el)) {
@@ -2171,7 +2207,7 @@ views.favoritas = (el) => {
       return true;
     }
     el.__marco = marco;
-    el.innerHTML = `<div class="stack view-anim"><div class="page-head row-between"><div><h1>Favoritas</h1><p>Tus paradas con los tiempos en directo.</p></div><a class="btn ghost sm" href="#ruta">${ICON.route}Cómo llegar</a></div>
+    el.innerHTML = `<div class="stack view-anim"><div class="page-head row-between"><div><h1>Favoritas</h1><p>${porCerca ? '📍 Primero la que tienes más cerca' : 'Tus paradas con los tiempos en directo.'}</p></div><a class="btn ghost sm" href="#ruta">${ICON.route}Cómo llegar</a></div>
       ${window.anio?.bannerHTML?.() || ''}
       <div id="fav-bajada">${window.bajadaHTML?.() || ''}</div>
       <div id="fav-offline">${offlineHTML()}</div>
@@ -2193,6 +2229,7 @@ views.favoritas = (el) => {
   async function load() {
     const list = favs.list();
     if (!list.length || loading) return;
+    cercania.actualizar(() => { if (!dead) paint(); });
     loading = true; spin(true);
     if (!results) results = new Map();
     try {
@@ -3041,6 +3078,8 @@ views.ajustes = (el) => {
       <div class="set-group"><h3>Color de la app</h3>
         <div class="swatches">${Object.entries(PALETTES).map(([k, p]) => `<button class="swatch" type="button" data-color="${k}" aria-pressed="${settings.color === k}" aria-label="${p.label}" style="background:${p[resolvedTheme][0]};color:${p[resolvedTheme][2]}">${settings.color === k ? ICON.check : ''}</button>`).join('')}</div>
         ${tem !== 'normal' ? '<p>Mientras haya una temática puesta, la app usa sus colores. Con la temática Normal vuelve tu color.</p>' : '<p>Los pasteles llevan el texto oscuro encima para que se lea bien.</p>'}</div>
+      ${(window.repetidos?.list() || []).length ? `<div class="set-group"><h3>Avisos que se repiten</h3>${window.repetidos.list().map((r) => `<div class="row-flat rep-fila">${badge(r.linea, lineaFor(r.linea)?.color, { sm: true })}<div><b>${esc(r.parada)}</b><p class="help">${esc(window.repetidos.texto(r))}</p></div><button class="btn ghost sm" type="button" data-rep-quitar="${r.id}">Quitar</button></div>`).join('')}</div>` : ''}
+      <div class="set-group"><h3>Favoritas</h3>${sw('favsCerca', settings.favsCerca === true, 'La más cercana, arriba', 'Tus favoritas se ordenan solas según dónde estés: en casa sale primero «Casa» y en el trabajo, «Trabajo». Si una está en un grupo, sube el grupo entero. Usa la última ubicación del móvil, sin preguntar; si no la hay, se queda tu orden.')}</div>
       <div class="set-group"><h3>Pasaporte de Sevilla</h3>${sw('contarViajes', settings.contarViajes !== false, 'Contar mis viajes', 'Al abrir una parada estando en ella (o yendo hacia ella), BusSev sigue tu viaje unos minutos con la ubicación: la notificación te enseña cuánto le falta a tu bus y si llegas andando, y si te subes, el viaje cuenta para el Pasaporte. Solo usa el permiso de ubicación «mientras usas la app» y todo se queda en tu móvil.')}</div>
       <div class="set-group"><h3>Cielo de Sevilla</h3>${sw('cieloSevilla', settings.cieloSevilla === true, 'El cielo de Sevilla arriba', 'La barra de arriba se pinta con el cielo real de Sevilla: amanecer, día, atardecer o noche con la luna, y nubes o lluvia si las hay. Con una temática (Feria, Navidad…) manda la temática.')}</div>
       <div class="set-group"><h3>Color de fondo</h3>
@@ -3130,6 +3169,7 @@ views.ajustes = (el) => {
       if (k === 'avisosTussam' && b.dataset.v !== 'no' && isNative()) window.avisos?.permisoOk?.();
       render();
     }; });
+    el.querySelectorAll('[data-rep-quitar]').forEach((b) => { b.onclick = async () => { await window.repetidos.quitar(Number(b.dataset.repQuitar)); toast('Aviso quitado'); render(); }; });
     el.querySelectorAll('[data-sw]').forEach((b) => { b.onchange = () => {
       settings[b.dataset.sw] = b.checked;
       // Modo sencillo enciende «Reducir animaciones»; al quitarlo, se apaga.
