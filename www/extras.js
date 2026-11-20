@@ -11,11 +11,11 @@ const native = (name, method, opts = {}) => window.Capacitor.nativePromise(name,
 /* ================================================================== */
 /* Selector de hora de BusSev: la hora grande en el centro, − y + de 5 en 5 minutos, y al tocar la hora se abre el
    reloj del móvil (el <input type="time"> va invisible encima). Con «dia», dice si es hoy o mañana. */
-function horaPickerHTML(id, valor, { dia = false } = {}) {
+function horaPickerHTML(id, valor, { dia = false, paso = 5 } = {}) {
   return `<div class="hora-pick" data-hora-pick="${id}">
-    <button type="button" class="hp-mas" data-hp="-5" aria-label="5 minutos antes">−</button>
+    <button type="button" class="hp-mas" data-hp="-${paso}" aria-label="${paso} minutos antes">−</button>
     <label class="hp-centro"><b class="hp-hora">${esc(valor)}</b>${dia ? '<small class="hp-dia"></small>' : ''}<input type="time" id="${id}" value="${esc(valor)}" aria-label="Hora"></label>
-    <button type="button" class="hp-mas" data-hp="5" aria-label="5 minutos después">+</button></div>`;
+    <button type="button" class="hp-mas" data-hp="${paso}" aria-label="${paso} minutos después">+</button></div>`;
 }
 function horaPicker(raiz, id, alCambiar) {
   const box = raiz.querySelector(`[data-hora-pick="${id}"]`);
@@ -41,6 +41,7 @@ function horaPicker(raiz, id, alCambiar) {
   pintar();
 }
 window.horaPickerHTML = horaPickerHTML;
+window.horaPicker = horaPicker;
 
 const avisos = {
   list() { const now = Date.now(); return store.get('avisos', []).filter((a) => a.at > now - 60_000); },
@@ -1005,6 +1006,7 @@ const copia = {
       holo: ['holo', 'cosmos', 'rayado'].includes(c.holo) ? c.holo : c.brillo === true ? 'holo' : '',
       holoFuerza: Math.max(20, Math.min(90, Number(c.holoFuerza) || 48)),
       purpurina: c.purpurina === true,
+      historial: (Array.isArray(c.historial) ? c.historial : []).filter((x) => Array.isArray(x) && Number.isFinite(x[0]) && x[0] > 1.5e12 && x[0] < Date.now() + 864e5 && Number.isFinite(x[1]) && x[1] >= 0 && x[1] < 1000).slice(-200).map((x) => [Math.round(x[0]), Math.round(x[1] * 100) / 100]),
     }));
     const s = {};
     const S = o.settings || {};

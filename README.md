@@ -85,14 +85,20 @@ Te dice qué coger para ir de un sitio a otro: **directo o con transbordo**, ord
 <p align="center"><img src="docs/capturas/mapa-linea.png" alt="El recorrido de una línea en el mapa" width="280"></p>
 
 ### 🔎 Buscador
-En la barra de arriba, en cualquier pantalla, busca **por número de poste**, **por nombre de la parada o la calle**
-o **por línea**. Los resultados salen al momento mientras escribes.
+En la barra de arriba, en cualquier pantalla, busca **por número de poste**, **por nombre de la parada o la calle**,
+**por línea** o por el **nombre que le diste a tu favorita** («Casa»). Los resultados salen al momento mientras escribes.
+- **Sitios y calles**: la Giralda, un hospital, una dirección con número… Al tocarlo ves las **paradas más cerca**
+  (y cuánto andas) y el botón **«Cómo llegar aquí»**.
+- **Perdona las erratas**: «macarnea» encuentra la Macarena.
+- **Búsquedas recientes**: al tocar el buscador vacío salen las paradas, líneas y sitios que abriste.
 
 ### 🛣️ Líneas
 - Todas las líneas, con filtro de nocturnas.
 - Lista de paradas de cada línea con el **tiempo de llegada** de los autobuses al lado de cada parada
   y las demás líneas que paran en ella.
-- Si una línea tiene un **desvío** por obras o un evento, te lo avisa con enlace al aviso.
+- Si una línea tiene un **desvío** por obras o un evento, se dibuja en su mapa: el **tramo que no hace** en rojo,
+  sus **paradas sin servicio** tachadas (también en la lista) y la **parada provisional** (P naranja). Se lee del
+  aviso de TUSSAM; si el aviso no dice qué paradas son, la línea sale discontinua con el enlace al aviso.
 
 ### 📍 Cerca
 Las paradas que tienes cerca y cuánto le falta a cada autobús. Si tienes la ubicación apagada, te avisa al momento.
@@ -102,6 +108,8 @@ Las paradas que tienes cerca y cuánto le falta a cada autobús. Si tienes la ub
 - Ve su **saldo**, tipo, caducidad y **cuántos viajes te quedan** (con el precio actual de TUSSAM).
 - Guarda varias tarjetas y ordénalas (y elige cuál es la primera).
 - **Avisos**: te avisa si te queda poco saldo o si la tarjeta va a caducar.
+- **Historial del saldo** con gráfica (las recargas salen en verde) y la **previsión**: «a tu ritmo (unos 5 € a la
+  semana), te quedas sin saldo hacia el sábado 28». Se apunta cada vez que consultas la tarjeta.
 - **Tarifas y títulos de viaje** actualizados desde la web de TUSSAM.
 
 #### 🎨 Personalizar cada tarjeta (con vista previa en directo, a pantalla completa)
@@ -155,6 +163,8 @@ la copia de seguridad; solo sale la imagen que tú compartas.
 Desvíos, obras y horarios especiales (con sus **PDF e imágenes**). BusSev los revisa al abrirse y te manda una
 notificación si hay uno nuevo en las líneas de tus paradas favoritas. Puedes elegir dónde verlos: en Favoritas,
 en cada parada favorita, al abrir una parada o al abrir una línea.
+- **Silencio de noche** (de 23:00 a 8:00, o las horas que elijas): los avisos que salgan de noche no suenan y te
+  llegan por la mañana.
 
 ### 📲 Widgets, accesos directos y ajustes rápidos
 - **Widget de paradas**: una parada con sus próximos autobuses, o **«Mis favoritas»** (tus 3 primeras paradas, cada

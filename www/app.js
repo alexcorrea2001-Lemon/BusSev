@@ -15,7 +15,7 @@ const DEFAULTS = {
   tematicaAuto: true, tematica: 'normal', cieloSevilla: false, contarViajes: true, favsCerca: false, consejos: true,
   voz: false, vozAuto: false, letraGrande: false, escalaTexto: 1.22, altoContraste: false, menosAnimaciones: false, vibrar: true, botonesGrandes: false,
   modoSencillo: false,
-  revisarCada: 3, avisosTussam: 'mias', avisosResumen: true, avisosTarjetas: true, avisosParada: true, avisosLinea: true, saldoURL: '', tiemposServidor: false, fondo: '', vehiculosFiesta: false, avisarVersion: true,
+  revisarCada: 3, avisosTussam: 'mias', avisosSilencio: true, silencioDesde: '23:00', silencioHasta: '08:00', avisosResumen: true, avisosTarjetas: true, avisosParada: true, avisosLinea: true, saldoURL: '', tiemposServidor: false, fondo: '', vehiculosFiesta: false, avisarVersion: true,
 };
 const settings = { ...DEFAULTS, ...store.get('settings', {}) };
 if (!['oscuro', 'claro', 'tema', 'satelite'].includes(settings.mapStyle)) settings.mapStyle = 'oscuro';
@@ -1709,6 +1709,9 @@ function addRouteLayers(bm) {
   bm.layer({ id: 'bs-route-casing', type: 'line', source: 'bs-route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#000000', 'line-opacity': 0.35, 'line-width': ['interpolate', ['linear'], ['zoom'], 12, 5, 16, 10] } });
   bm.layer({ id: 'bs-route', type: 'line', source: 'bs-route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': ['get', 'color'], 'line-width': ['interpolate', ['linear'], ['zoom'], 12, 3, 16, 6.5] } });
   bm.layer({ id: 'bs-route-stops', type: 'circle', source: 'bs-route-stops', paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 12, 2.5, 16, 5.5], 'circle-color': '#ffffff', 'circle-stroke-color': ['get', 'color'], 'circle-stroke-width': 2.2 } });
+  // Desvíos: el tramo que el autobús no hace (rojo discontinuo) y sus paradas sin servicio (grises con borde rojo)
+  bm.layer({ id: 'bs-desvio', type: 'line', source: 'bs-desvio', layout: { 'line-cap': 'butt', 'line-join': 'round' }, paint: { 'line-color': '#e53935', 'line-width': ['interpolate', ['linear'], ['zoom'], 12, 4, 16, 8], 'line-dasharray': [1.2, 1] } });
+  bm.layer({ id: 'bs-desvio-x', type: 'circle', source: 'bs-desvio-x', paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 12, 4, 16, 8], 'circle-color': '#9e9e9e', 'circle-stroke-color': '#e53935', 'circle-stroke-width': 2.6 } });
   // Desplazamiento lateral (carril) que pone tramosConCarril SOLO donde varias líneas comparten calle: ahí se
   // dibujan pegadas una a otra, centradas sobre la calzada. Donde una línea va sola, carril 0 (encima de la calle).
   const offsetPaths = ['interpolate', ['linear'], ['zoom'], 12, ['*', ['coalesce', ['get', 'carril'], 0], 3], 16, ['*', ['coalesce', ['get', 'carril'], 0], 6]];
@@ -1964,6 +1967,69 @@ async function lineaDeGolpe(linea, sentido, stops, shape, alAvanzar, cancelado) 
   return { buses: [...best.values()], ok, total: ks.length, limited, porCalle: shape.porCalle };
 }
 const busPopup = (b, label) => `<b>Línea ${esc(label)}</b> → ${esc(b.destino)}<br>${b.hacia ? `Llega a ${esc(b.hacia)} en ${b.min <= 0 ? 'nada' : b.min + ' min'}` : `${b.min <= 0 ? 'Llegando' : `Llega en ${b.min} min`} · a ${fmtDist(b.dist)}`}${b.vehiculo ? `<br><span class="muted">Autobús ${esc(b.vehiculo)}</span>` : ''}`;
+
+/* ---------- Desvíos en el mapa de una línea ----------
+   Con el texto del aviso (window.avisosTussam.desvioDeLinea) se buscan, entre las paradas de este sentido, las
+   que no se usan (por número o por nombre) y se sitúa la provisional (por número, o buscando la calle que dice). */
+const nombreParte = (n) => { const m = String(n).match(/^(.*?)\s*\(([^()]+)\)\s*$/); return m ? [m[1], m[2]] : [String(n), '']; };
+function nombraParada(texto, p) {
+  const t = ` ${norm(texto).replace(/[^a-z0-9ñ]+/g, ' ')} `;
+  const [nom, sub] = nombreParte(p.nombre).map((x) => norm(x).replace(/[^a-z0-9ñ]+/g, ' ').trim());
+  if (sub && sub.length >= 5) return t.includes(` ${sub} `);
+  return nom.length >= 8 && t.includes(` ${nom} `);
+}
+async function calcularDesvio(l, stops) {
+  const A = window.avisosTussam;
+  if (!A?.desvioDeLinea) return null;
+  const dv = await A.desvioDeLinea(l.numero);
+  if (!dv.ids.length) return null;
+  const anul = new Set(dv.anul.codigos.map(String));
+  const idxs = [];
+  stops.forEach((p, i) => {
+    if (anul.has(String(Number(p.codigo))) || dv.anul.textos.some((t) => nombraParada(t, p))) idxs.push(i);
+  });
+  const prov = [];
+  const todas = window.BUSSEV_DATA?.paradas || [];
+  for (const c of dv.prov.codigos) {
+    const p = todas.find((x) => String(Number(x.codigo)) === String(c));
+    if (p && !stops.some((x) => x.codigo === p.codigo)) prov.push({ pos: [p.latitud, p.longitud], nombre: `Parada ${p.codigo} · ${p.nombre}`, aprox: false });
+  }
+  // Por nombre de calle: «parada provisional en Avda. Eduardo Dato, esquina La Buhaira»
+  if (!prov.length && window.buscarLugares) {
+    const cerca = stops.length ? stops : [];
+    for (const t of dv.prov.textos.slice(0, 3)) {
+      const m = t.match(/provisional(?:es)?[^,.;]*?\b(?:en|situada en|ubicada en|a la altura de|frente a|junto a)\s+(.{4,90}?)(?:[.;(]|$)/i)
+        || t.match(/\b(?:en|a la altura de|frente a)\s+((?:calle|c\/|avda\.?|avenida|plaza|pza\.?|ronda|paseo|glorieta)\s.{3,80}?)(?:[.;(]|$)/i);
+      if (!m) continue;
+      const q = m[1].replace(/\besq(?:uina)?\.?\s*(?:con)?\s*/i, 'y ').trim();
+      try {
+        const ls = await window.buscarLugares(q);
+        const buena = ls.find((x) => x.pos && cerca.some((p) => haversine(x.pos, [p.latitud, p.longitud]) < 1500));
+        if (buena) { prov.push({ pos: buena.pos, nombre: m[1].trim(), aprox: true }); break; }
+      } catch { /* sin conexión */ }
+    }
+  }
+  return { ids: dv.ids, idxs, anuladas: new Set(idxs.map((i) => stops[i].codigo)), prov };
+}
+function dibujarDesvio(bm, stops, shape, dv, marcas) {
+  marcas.forEach((m) => m.remove()); marcas.length = 0;
+  if (!dv || (!dv.idxs.length && !dv.prov.length)) { bm.source('bs-desvio', fc([])); bm.source('bs-desvio-x', fc([])); return; }
+  const tramos = [];
+  // Tramos seguidos de paradas anuladas: desde la parada de antes hasta la de después
+  let ini = null;
+  const cerrar = (fin) => {
+    const a = shape.idx[Math.max(0, ini - 1)] ?? 0, b = shape.idx[Math.min(stops.length - 1, fin + 1)] ?? shape.pts.length - 1;
+    const trozo = shape.pts.slice(Math.min(a, b), Math.max(a, b) + 1);
+    if (trozo.length >= 2) tramos.push(lineF(trozo, {}));
+  };
+  dv.idxs.forEach((i, n) => { if (ini == null) ini = i; if (dv.idxs[n + 1] !== i + 1) { cerrar(i); ini = null; } });
+  bm.source('bs-desvio', fc(tramos));
+  bm.source('bs-desvio-x', fc(dv.idxs.map((i) => pointF(shape.pts[shape.idx[i]] || [stops[i].latitud, stops[i].longitud], { codigo: stops[i].codigo }))));
+  for (const p of dv.prov) {
+    const d = document.createElement('div'); d.className = 'desvio-prov'; d.textContent = 'P';
+    marcas.push(marker(bm, p.pos, d, `<b>Parada provisional</b><br>${esc(p.nombre)}${p.aprox ? '<br><span class="muted">Lugar aproximado, según el aviso de TUSSAM</span>' : ''}`, 'center'));
+  }
+}
 
 /* Dibuja una línea completa con sus buses en directo sobre un mapa */
 function lineController(bm, markers, { onStatus, onBuses } = {}) {
@@ -2712,7 +2778,8 @@ views.lineas = (el) => {
 
 /* ---------- Detalle de línea ---------- */
 views.linea = (el, numero) => {
-  let bm = null, dead = false, ctl = null, sentido = 1, avisoListener = null;
+  let bm = null, dead = false, ctl = null, sentido = 1, avisoListener = null, desvio = null, desvioSeq = 0;
+  const marcasDesvio = [];
   el.innerHTML = backHead(`<div class="grow"><h2>Línea ${esc(numero)}</h2></div>`) + skeletons(2);
   $('.back-btn', el).onclick = goBack;
   async function init() {
@@ -2776,7 +2843,8 @@ views.linea = (el, numero) => {
           const llega = !bs.length ? '' : mins[0] <= 0 ? 'llegando' : `${mins.filter((x) => x > 0).slice(0, 2).join(' · ')} min`;
           const [nom, sub] = partirNombre(p.nombre);
           const otras = lpp.get(p.codigo) || [];
-          return `<li><a href="#parada-${esc(p.codigo)}"><span class="dot${bs.length ? ' bus' : ''}"></span><span class="tl-txt"><b>${esc(nom)}</b>${sub ? `<span class="tl-sub">${esc(sub)}</span>` : ''}${otras.length ? `<span class="tl-lineas">${otras.slice(0, 8).map((n) => badge(etiquetaLinea(n), lineaFor(n)?.color, { sm: true })).join('')}${otras.length > 8 ? `<span class="tl-mas">+${otras.length - 8}</span>` : ''}</span>` : ''}</span><span class="tl-der">${bs.length ? `<span class="bus-tag">${llega}</span>` : ''}<span class="num-tag">Nº ${esc(p.codigo)}</span></span></a></li>`;
+          const sinServ = desvio?.anuladas?.has(p.codigo);
+          return `<li${sinServ ? ' class="tl-anulada"' : ''}><a href="#parada-${esc(p.codigo)}"><span class="dot${bs.length ? ' bus' : ''}"></span><span class="tl-txt"><b>${esc(nom)}</b>${sinServ ? '<span class="tl-desvio">⚠️ Sin servicio por un desvío</span>' : ''}${sub ? `<span class="tl-sub">${esc(sub)}</span>` : ''}${otras.length ? `<span class="tl-lineas">${otras.slice(0, 8).map((n) => badge(etiquetaLinea(n), lineaFor(n)?.color, { sm: true })).join('')}${otras.length > 8 ? `<span class="tl-mas">+${otras.length - 8}</span>` : ''}</span>` : ''}</span><span class="tl-der">${bs.length ? `<span class="bus-tag">${llega}</span>` : ''}<span class="num-tag">Nº ${esc(p.codigo)}</span></span></a></li>`;
         }).join('') || '<li class="board-empty">No hay paradas para este sentido.</li>';
       };
       if (bm) {
@@ -2794,17 +2862,31 @@ views.linea = (el, numero) => {
         el.querySelectorAll('[data-s]').forEach((b) => b.setAttribute('aria-pressed', Number(b.dataset.s) === sentido));
         if (ctl) bm.ready.then(() => { if (!dead) ctl.show(l, sentido); });
       };
-      el.querySelectorAll('[data-s]').forEach((b) => { b.onclick = () => { sentido = Number(b.dataset.s); draw(); }; });
+      el.querySelectorAll('[data-s]').forEach((b) => { b.onclick = () => { sentido = Number(b.dataset.s); draw(); pintarDesvio(); }; });
       active.refresh = () => ctl?.live();
       draw();
-      // #56 Desvíos: si esta línea tiene un aviso de TUSSAM, se marca en el mapa (recorrido discontinuo + pastilla)
-      const pintarDesvio = () => {
+      // Desvíos: si esta línea tiene un aviso de TUSSAM, se lee el aviso y se dibuja en el mapa el tramo que no
+      // hace, sus paradas sin servicio y la provisional. Si el aviso no dice qué paradas, el recorrido va
+      // discontinuo con la pastilla «Posible desvío».
+      const pintarDesvio = async () => {
         if (dead) return;
-        const avs = window.avisosTussam?.avisosDeLinea?.(l.numero) || [];
+        const my = ++desvioSeq;
+        const avs = (window.avisosTussam?.avisosDeLinea?.(l.numero) || []).filter((a) => a.seccion !== 'horarios');
         const banner = $('#l-av-banner', el); if (banner) setHTML(banner, settings.avisosLinea !== false ? (window.avisosTussam?.bannerHTML([l.numero]) || '') : '');
         const pill = $('#l-desvio', el);
-        if (pill) { pill.hidden = !avs.length; if (avs.length) pill.onclick = (e) => { e.preventDefault(); window.avisosTussam?.abrir?.(avs[0].id); }; }
-        if (bm && avs.length) bm.ready?.then(() => { if (!dead) { try { bm.m.setPaintProperty('bs-route', 'line-dasharray', [2, 1.5]); } catch { /* el estilo aún no está */ } } });
+        if (pill) { pill.hidden = !avs.length; pill.textContent = '⚠️ Posible desvío · ver aviso'; if (avs.length) pill.onclick = (e) => { e.preventDefault(); window.avisosTussam?.abrir?.(avs[0].id); }; }
+        const stops = ruta[sentido] || [];
+        desvio = avs.length ? await calcularDesvio(l, stops).catch(() => null) : null;
+        if (dead || my !== desvioSeq) return;
+        const hay = desvio && (desvio.idxs.length || desvio.prov.length);
+        if (pill && hay) pill.textContent = `⚠️ Desvío${desvio.idxs.length ? ` · ${desvio.idxs.length} ${desvio.idxs.length === 1 ? 'parada' : 'paradas'} sin servicio` : ''}${desvio.prov.length ? ' · provisional' : ''}`;
+        drawTimeline(ultimosBuses);
+        if (!bm) return;
+        bm.ready?.then(() => {
+          if (dead || my !== desvioSeq) return;
+          try { bm.m.setPaintProperty('bs-route', 'line-dasharray', avs.length && !hay ? [2, 1.5] : undefined); } catch { /* el estilo aún no está */ }
+          dibujarDesvio(bm, stops, getShape(l.numero, sentido, stops), hay ? desvio : null, marcasDesvio);
+        });
       };
       pintarDesvio();
       avisoListener = pintarDesvio;
@@ -2818,7 +2900,7 @@ views.linea = (el, numero) => {
     }
   }
   init();
-  return { cleanup: () => { dead = true; if (avisoListener) window.removeEventListener('bussev-avisos', avisoListener); ctl?.clear(); bm?.remove(); } };
+  return { cleanup: () => { dead = true; marcasDesvio.forEach((m) => m.remove()); if (avisoListener) window.removeEventListener('bussev-avisos', avisoListener); ctl?.clear(); bm?.remove(); } };
 };
 
 /* ---------- Detalle de parada ---------- */
@@ -3194,6 +3276,8 @@ views.ajustes = (el) => {
         <p>Comprueba el saldo y la caducidad de tus tarjetas guardadas al abrir la app, como mucho con esta frecuencia, y te avisa si el saldo está bajo.</p></div>
       <div class="set-group"><h3>Avisos de TUSSAM (desvíos, obras, horarios especiales)</h3>${segBtns('avisosTussam', [['mias', 'De mis líneas'], ['todas', 'Todos'], ['no', 'No avisar']], settings.avisosTussam)}
         <p>Notificaciones: al abrir la app (como mucho una vez por hora) mira la web de TUSSAM y te avisa si hay un aviso nuevo. «Mis líneas» son las que paran en tus favoritas.</p>
+        ${settings.avisosTussam !== 'no' ? `${sw('avisosSilencio', settings.avisosSilencio !== false, '🌙 Silencio de noche', 'Los avisos de TUSSAM que salgan de noche no suenan: te llegan por la mañana, a la hora en que acaba el silencio.')}
+        ${settings.avisosSilencio !== false ? `<div class="silencio-horas"><div><small>Desde</small>${horaPickerHTML('sil-desde', settings.silencioDesde || '23:00', { paso: 15 })}</div><div><small>Hasta</small>${horaPickerHTML('sil-hasta', settings.silencioHasta || '08:00', { paso: 15 })}</div></div>` : ''}` : ''}
         <h3 style="margin-top:14px">Dónde ver los avisos en la app</h3>
         ${sw('avisosResumen', settings.avisosResumen !== false, 'Botón en Favoritas', 'El botón «Ver avisos de TUSSAM» arriba de tus favoritas.')}
         ${sw('avisosTarjetas', settings.avisosTarjetas !== false, 'En cada parada favorita', 'Una línea con el aviso dentro de la tarjeta de la parada a la que afecta.')}
@@ -3309,6 +3393,8 @@ views.ajustes = (el) => {
         }
       } catch { toast('No se ha podido conectar con tu servidor'); }
     });
+    window.horaPicker?.(el, 'sil-desde', (v) => { if (v) { settings.silencioDesde = v; saveSettings(); } });
+    window.horaPicker?.(el, 'sil-hasta', (v) => { if (v) { settings.silencioHasta = v; saveSettings(); } });
     $('#s-exp', el).onclick = () => copia.exportar().catch(() => toast('No se ha podido guardar la copia.'));
     $('#s-imp', el).onchange = async (e) => {
       try {
@@ -3338,10 +3424,101 @@ function textoBusqueda(p) {
   if (h === undefined) { h = norm(`${p.nombre} ${p.direccion_completa || ''} ${p.calle || ''}`); textosBusqueda.set(p, h); }
   return h;
 }
+/* Erratas: «macarnea» encuentra «macarena». Distancia de edición con tope (1 letra; 2 en palabras largas) */
+function casiIgual(a, b, max) {
+  if (Math.abs(a.length - b.length) > max) return false;
+  let prev = Array.from({ length: b.length + 1 }, (_, k) => k), pp = null;
+  for (let x = 1; x <= a.length; x++) {
+    const cur = [x]; let mejor = x;
+    for (let y = 1; y <= b.length; y++) {
+      const c = a[x - 1] === b[y - 1] ? 0 : 1;
+      cur[y] = Math.min(prev[y] + 1, cur[y - 1] + 1, prev[y - 1] + c);
+      if (pp && y > 1 && a[x - 1] === b[y - 2] && a[x - 2] === b[y - 1]) cur[y] = Math.min(cur[y], pp[y - 2] + 1);   // letras cambiadas de sitio
+      mejor = Math.min(mejor, cur[y]);
+    }
+    if (mejor > max) return false;
+    pp = prev; prev = cur;
+  }
+  return prev[b.length] <= max;
+}
+const palabrasDe = new WeakMap();
+function palabrasBusqueda(p) { let w = palabrasDe.get(p); if (!w) { w = [...new Set(textoBusqueda(p).split(/[^a-z0-9ñ]+/).filter((x) => x.length >= 3))]; palabrasDe.set(p, w); } return w; }
+function paradasConErratas(paradas, words) {
+  const ws = words.filter((w) => w.length >= 4);
+  if (!ws.length || ws.length !== words.length) return [];
+  return paradas.filter((p) => { const pw = palabrasBusqueda(p); return ws.every((w) => pw.some((x) => x.startsWith(w) || casiIgual(w, x, w.length >= 9 ? 2 : 1))); });
+}
+
+/* Búsquedas recientes: lo que abriste desde el buscador (paradas, líneas y sitios), al tocar el campo vacío */
+const busqRecientes = {
+  list() { return store.get('busqRecientes', []); },
+  add(x) {
+    if (!x?.tipo) return;
+    const k = (o) => `${o.tipo}|${o.codigo || o.numero || o.nombre}`;
+    store.set('busqRecientes', [x, ...this.list().filter((o) => k(o) !== k(x))].slice(0, 8));
+  },
+  borrar() { store.set('busqRecientes', []); },
+};
+const recAttr = (o) => ` data-rec="${esc(JSON.stringify(o))}"`;
+function filaParada(p) {
+  const f = favs.get(p.codigo);
+  return `<a class="row" href="#parada-${esc(p.codigo)}"${recAttr({ tipo: 'parada', codigo: p.codigo, nombre: f?.alias || p.nombre })}><span class="stop-num">${esc(p.codigo)}</span><div class="row-main"><b>${f ? '★ ' : ''}${esc(f?.alias || p.nombre)}</b><span>${esc(f?.alias ? p.nombre : (p.direccion_completa || ''))}</span></div>${ICON.chev}</a>`;
+}
+function filaLinea(l) {
+  return `<a class="row" href="#linea-${esc(l.numero)}"${recAttr({ tipo: 'linea', numero: l.numero, nombre: l.nombre })}>${badge(l.numero, l.color)}<div class="row-main"><b>${esc(l.nombre)}</b><span>Línea</span></div>${ICON.chev}</a>`;
+}
+let sitiosEnPantalla = [];
+function filaSitio(x) {
+  const i = sitiosEnPantalla.push(x) - 1;
+  return `<button class="row sitio-row" type="button" data-sitio="${i}"><span class="sitio-ico" aria-hidden="true">${x.local ? '🏛️' : '📍'}</span><div class="row-main"><b>${esc(x.nombre)}</b><span>${esc(x.detalle || 'Sevilla')}</span></div>${ICON.chev}</button>`;
+}
+/* Sitios del Pasaporte (Giralda, Plaza de España, aeropuerto…): salen al momento, sin conexión */
+function sitiosConocidos(nq) {
+  if (nq.length < 3) return [];
+  return (window.pasaporte?.LUGARES || []).filter((l) => norm(l[1]).includes(nq) || norm(l[1]).split(/\s+/).some((w) => w.length >= 4 && casiIgual(nq, w, nq.length >= 9 ? 2 : 1)))
+    .slice(0, 3).map((l) => ({ nombre: l[1], detalle: 'Sitio de Sevilla', pos: [l[2], l[3]], local: true }));
+}
+/* Ficha de un sitio: las paradas más cercanas y «Cómo llegar aquí» */
+async function fichaSitio(x) {
+  let pos = x.pos;
+  if (!pos && x.cc && typeof posDeCartoCiudad === 'function') pos = await posDeCartoCiudad(x).catch(() => null);
+  if (!pos) { toast('No he podido situar ese sitio en el mapa'); return; }
+  busqRecientes.add({ tipo: 'sitio', nombre: x.nombre, detalle: x.detalle || '', pos });
+  const ps = (await getParadas()).map((p) => [p, haversine(pos, [p.latitud, p.longitud])]).sort((a, b) => a[1] - b[1]).slice(0, 4);
+  openModal(`<h2>${esc(x.nombre)}</h2><p class="help">${esc(x.detalle || 'Sevilla')}</p>
+    <div class="set-group"><h3>Paradas más cerca</h3>${ps.map(([p, d]) => `<a class="row-flat sitio-parada" href="#parada-${esc(p.codigo)}"><span class="stop-num">${esc(p.codigo)}</span><div style="flex:1;min-width:0"><b>${esc(favs.get(p.codigo)?.alias || p.nombre)}</b><p class="help">${fmtDist(d)} · ${Math.max(1, Math.round(d / 75))} min andando</p></div></a>`).join('')}</div>
+    <div class="actions"><button class="btn ghost" type="button" id="si-x">Cerrar</button>${settings.modoSencillo ? '' : '<button class="btn" type="button" id="si-ruta">Cómo llegar aquí</button>'}</div>`, (m, close) => {
+    $('#si-x', m).onclick = close;
+    $('#si-ruta', m)?.addEventListener('click', () => { close(); clearSearch(); irARuta({ tipo: 'lugar', nombre: x.nombre, pos }); });
+    m.querySelectorAll('.sitio-parada').forEach((a) => a.addEventListener('click', () => { close(); clearSearch(); }));
+  });
+}
+function mostrarRecientes() {
+  const rs = busqRecientes.list();
+  if (searchEl.value.trim() || !rs.length) return;
+  sitiosEnPantalla = [];
+  document.querySelectorAll('.view').forEach((v) => { v.hidden = v !== searchView; });
+  searchView.innerHTML = `<div class="stack"><div class="row-between"><h2 class="section-title" style="margin:0">Búsquedas recientes</h2><button class="btn ghost sm" type="button" id="rec-borrar">Borrar</button></div><div class="list">${rs.map((o) => {
+    if (o.tipo === 'parada') { const p = (window.BUSSEV_DATA?.paradas || []).find((x) => x.codigo === o.codigo); return p ? filaParada(p) : `<a class="row" href="#parada-${esc(o.codigo)}"${recAttr(o)}><span class="stop-num">${esc(o.codigo)}</span><div class="row-main"><b>${esc(o.nombre)}</b></div>${ICON.chev}</a>`; }
+    if (o.tipo === 'linea') { const l = lineaFor(o.numero); return l ? filaLinea(l) : ''; }
+    if (o.tipo === 'sitio' && Array.isArray(o.pos)) return filaSitio({ nombre: o.nombre, detalle: o.detalle, pos: o.pos });
+    return '';
+  }).join('')}</div></div>`;
+  $('#rec-borrar', searchView).onclick = () => { busqRecientes.borrar(); ocultarRecientes(); searchEl.focus(); };
+}
+function ocultarRecientes() {
+  if (searchEl.value.trim() || searchView.hidden) return;
+  searchView.hidden = true;
+  document.querySelectorAll('.view').forEach((v) => { if (v.dataset.active === '1') v.hidden = false; });
+}
+let sitiosSeq = 0;
 async function runSearch() {
   const q = searchEl.value.trim();
   $('#q-clear').hidden = !q;
-  if (!q) { searchView.hidden = true; document.querySelectorAll('.view').forEach((v) => { if (v.dataset.active === '1') v.hidden = false; }); return; }
+  if (!q) {
+    if (document.activeElement === searchEl && busqRecientes.list().length) { mostrarRecientes(); return; }
+    searchView.hidden = true; document.querySelectorAll('.view').forEach((v) => { if (v.dataset.active === '1') v.hidden = false; }); return;
+  }
   document.querySelectorAll('.view').forEach((v) => { v.hidden = v !== searchView; });
   const seq = ++searchSeq;
   try {
@@ -3349,15 +3526,44 @@ async function runSearch() {
     if (seq !== searchSeq) return;
     const nq = norm(q);
     const isNum = /^\d+$/.test(q);
-    let stops;
+    let stops, erratas = false;
     if (isNum) stops = paradas.filter((p) => p.codigo.startsWith(q)).sort((a, b) => (a.codigo === q ? -1 : b.codigo === q ? 1 : a.codigo.length - b.codigo.length || a.codigo.localeCompare(b.codigo)));
-    else { const words = nq.split(/\s+/); stops = paradas.filter((p) => { const h = textoBusqueda(p); return words.every((w) => h.includes(w)); }); }
+    else {
+      const words = nq.split(/\s+/);
+      // También por el nombre que le diste a tu favorita («Casa», «Trabajo»), y esas primero
+      stops = paradas.filter((p) => { const h = textoBusqueda(p), al = norm(favs.get(p.codigo)?.alias || ''); return words.every((w) => h.includes(w) || al.includes(w)); })
+        .sort((a, b) => Number(!!favs.get(b.codigo)) - Number(!!favs.get(a.codigo)));
+      if (!stops.length && !(window.pasaporte?.LUGARES || []).some((l) => norm(l[1]).includes(nq))) { stops = paradasConErratas(paradas, words); erratas = stops.length > 0; }
+    }
     const lines = lineas.filter((l) => norm(l.numero) === nq || norm(l.numero).startsWith(nq) || (!isNum && norm(l.nombre).includes(nq)));
-    const linesHTML = lines.slice(0, 8).map((l) => `<a class="row" href="#linea-${esc(l.numero)}">${badge(l.numero, l.color)}<div class="row-main"><b>${esc(l.nombre)}</b><span>Línea</span></div>${ICON.chev}</a>`).join('');
-    const stopsHTML = stops.slice(0, 40).map((p) => { const f = favs.get(p.codigo); return `<a class="row" href="#parada-${esc(p.codigo)}"><span class="stop-num">${esc(p.codigo)}</span><div class="row-main"><b>${f ? '★ ' : ''}${esc(f?.alias || p.nombre)}</b><span>${esc(f?.alias ? p.nombre : (p.direccion_completa || ''))}</span></div>${ICON.chev}</a>`; }).join('');
-    searchView.innerHTML = (!lines.length && !stops.length)
+    sitiosEnPantalla = [];
+    const conocidos = isNum ? [] : sitiosConocidos(nq);
+    const buscarFuera = !isNum && q.length >= 3 && navigator.onLine !== false && typeof window.buscarLugares === 'function' && !settings.modoSencillo;
+    const linesHTML = lines.slice(0, 8).map(filaLinea).join('');
+    const stopsHTML = stops.slice(0, 40).map(filaParada).join('');
+    const sitiosHTML = conocidos.map(filaSitio).join('');
+    const nada = !lines.length && !stops.length && !conocidos.length;
+    searchView.innerHTML = nada && !buscarFuera
       ? emptyHTML(ICON.bus, 'Sin resultados', `No hay paradas ni líneas que coincidan con «${esc(q)}». Prueba con el número del poste de la parada o con el nombre de la calle.`)
-      : `<div class="stack">${lines.length ? `<h2 class="section-title">Líneas</h2><div class="list">${linesHTML}</div>` : ''}${stops.length ? `<h2 class="section-title">Paradas${stops.length > 40 ? ` (40 de ${stops.length})` : ''}</h2><div class="list">${stopsHTML}</div>` : ''}</div>`;
+      : `<div class="stack">${lines.length ? `<h2 class="section-title">Líneas</h2><div class="list">${linesHTML}</div>` : ''}
+        ${stops.length ? `<h2 class="section-title">Paradas${stops.length > 40 ? ` (40 de ${stops.length})` : ''}</h2>${erratas ? `<p class="help" style="margin:-6px 0 0">No hay nada con «${esc(q)}»: te enseño lo que se le parece.</p>` : ''}<div class="list">${stopsHTML}</div>` : ''}
+        ${buscarFuera || conocidos.length ? `<h2 class="section-title">Sitios y calles</h2><div class="list" id="q-sitios">${sitiosHTML}${buscarFuera ? `<div class="row-flat q-buscando">${cargandoMini()} Buscando sitios y calles…</div>` : ''}</div>` : ''}</div>`;
+    if (!buscarFuera) return;
+    const my = ++sitiosSeq;
+    await new Promise((r) => setTimeout(r, 380));                 // mientras escribes no se pregunta a internet
+    if (my !== sitiosSeq || seq !== searchSeq) return;
+    let fuera = [];
+    try { fuera = await window.buscarLugares(q); } catch { fuera = []; }
+    if (my !== sitiosSeq || seq !== searchSeq) return;
+    const box = $('#q-sitios', searchView);
+    if (!box) return;
+    const nuevos = fuera.filter((x) => !conocidos.some((c) => (c.pos && x.pos && haversine(c.pos, x.pos) < 150) || norm(c.nombre) === norm(x.nombre)));
+    box.querySelector('.q-buscando')?.remove();
+    box.insertAdjacentHTML('beforeend', nuevos.map(filaSitio).join(''));
+    if (!box.children.length) {
+      if (nada) searchView.innerHTML = emptyHTML(ICON.bus, 'Sin resultados', `No encuentro paradas, líneas ni sitios con «${esc(q)}». Prueba con el número del poste o con el nombre de la calle.`);
+      else { box.previousElementSibling?.remove(); box.remove(); }
+    }
   } catch (e) {
     if (seq === searchSeq) { searchView.innerHTML = errorHTML(e, 'retry-q'); $('#retry-q').onclick = runSearch; }
   }
@@ -3365,9 +3571,18 @@ async function runSearch() {
 let searchDebounce;
 searchEl.addEventListener('input', () => { clearTimeout(searchDebounce); searchDebounce = setTimeout(runSearch, 120); });
 searchEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') searchEl.blur(); if (e.key === 'Escape') clearSearch(); });
+searchEl.addEventListener('focus', () => { if (!searchEl.value.trim()) mostrarRecientes(); });
+searchEl.addEventListener('blur', () => { setTimeout(() => { if (document.activeElement !== searchEl && !searchView.contains(document.activeElement)) ocultarRecientes(); }, 250); });
 $('#q-clear').onclick = () => { clearSearch(); searchEl.focus(); };
 function clearSearch() { searchEl.value = ''; runSearch(); }
-searchView.addEventListener('click', (e) => { if (e.target.closest('a[href^="#"]')) { searchEl.value = ''; $('#q-clear').hidden = true; searchView.hidden = true; } });
+searchView.addEventListener('pointerdown', () => { clearTimeout(searchDebounce); });
+searchView.addEventListener('click', (e) => {
+  const r = e.target.closest('[data-rec]');
+  if (r) { try { busqRecientes.add(JSON.parse(r.dataset.rec)); } catch { /* nada */ } }
+  const si = e.target.closest('[data-sitio]');
+  if (si) { const x = sitiosEnPantalla[Number(si.dataset.sitio)]; if (x) fichaSitio(x); return; }
+  if (e.target.closest('a[href^="#"]')) { searchEl.value = ''; $('#q-clear').hidden = true; searchView.hidden = true; }
+});
 
 /* ================================================================== */
 /* Router                                                              */
@@ -3435,6 +3650,7 @@ window.busSevBack = () => {
   const ov = document.querySelector('.scan-overlay');
   if (ov) { ov.querySelector('button')?.click(); ov.remove(); return true; }
   if (searchEl.value) { clearSearch(); return true; }
+  if (!searchView.hidden) { ocultarRecientes(); searchEl.blur(); return true; }
   if (active.back?.()) return true;
   if (navStack.length > 1) { history.back(); return true; }
   if (active.name !== 'favoritas') { location.hash = 'favoritas'; return true; }
