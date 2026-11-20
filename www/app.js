@@ -12,7 +12,7 @@ const store = {
 };
 const DEFAULTS = {
   theme: 'dark', color: 'rojo', refresh: 30, liveLines: true, mapStyle: 'oscuro',
-  tematicaAuto: true, tematica: 'normal', cieloSevilla: false,
+  tematicaAuto: true, tematica: 'normal', cieloSevilla: false, contarViajes: true,
   voz: false, vozAuto: false, letraGrande: false, escalaTexto: 1.22, altoContraste: false, menosAnimaciones: false, vibrar: true, botonesGrandes: false,
   modoSencillo: false,
   revisarCada: 3, avisosTussam: 'mias', avisosResumen: true, avisosTarjetas: true, avisosParada: true, avisosLinea: true, saldoURL: '', tiemposServidor: false, fondo: '', vehiculosFiesta: false, avisarVersion: true,
@@ -2143,6 +2143,7 @@ views.favoritas = (el) => {
     }
     const avs = window.avisos ? avisos.list() : [];
     window.anio?.favoritas?.(list.map((f) => f.codigo));
+    window.pasaporte?.auto?.quizas?.(list.map((f) => f.codigo));
     const tarjetaDe = (f) => {
         const p = cache.paradaByCode.get(f.codigo) || { codigo: f.codigo, nombre: f.nombre };
         const r = results?.get(f.codigo);
@@ -2735,6 +2736,7 @@ const lineasParada = {
   },
 };
 views.parada = (el, codigo) => {
+  setTimeout(() => window.pasaporte?.auto?.quizas?.([codigo]), 700);
   let stop = null, bm = null, markers = null, info = null, dead = false, first = true, ultimo = null, lineasAqui = [], completo = false, reintento = 0;
   /* Mapa a pantalla completa (el botón Atrás también lo cierra) */
   function pantallaCompleta(on) {
@@ -3039,6 +3041,7 @@ views.ajustes = (el) => {
       <div class="set-group"><h3>Color de la app</h3>
         <div class="swatches">${Object.entries(PALETTES).map(([k, p]) => `<button class="swatch" type="button" data-color="${k}" aria-pressed="${settings.color === k}" aria-label="${p.label}" style="background:${p[resolvedTheme][0]};color:${p[resolvedTheme][2]}">${settings.color === k ? ICON.check : ''}</button>`).join('')}</div>
         ${tem !== 'normal' ? '<p>Mientras haya una temática puesta, la app usa sus colores. Con la temática Normal vuelve tu color.</p>' : '<p>Los pasteles llevan el texto oscuro encima para que se lea bien.</p>'}</div>
+      <div class="set-group"><h3>Pasaporte de Sevilla</h3>${sw('contarViajes', settings.contarViajes !== false, 'Contar mis viajes', 'Al abrir una parada estando en ella (o yendo hacia ella), BusSev sigue tu viaje unos minutos con la ubicación: la notificación te enseña cuánto le falta a tu bus y si llegas andando, y si te subes, el viaje cuenta para el Pasaporte. Solo usa el permiso de ubicación «mientras usas la app» y todo se queda en tu móvil.')}</div>
       <div class="set-group"><h3>Cielo de Sevilla</h3>${sw('cieloSevilla', settings.cieloSevilla === true, 'El cielo de Sevilla arriba', 'La barra de arriba se pinta con el cielo real de Sevilla: amanecer, día, atardecer o noche con la luna, y nubes o lluvia si las hay. Con una temática (Feria, Navidad…) manda la temática.')}</div>
       <div class="set-group"><h3>Color de fondo</h3>
         <div class="fondos">
@@ -3131,6 +3134,7 @@ views.ajustes = (el) => {
       settings[b.dataset.sw] = b.checked;
       // Modo sencillo enciende «Reducir animaciones»; al quitarlo, se apaga.
       if (b.dataset.sw === 'modoSencillo') settings.menosAnimaciones = b.checked;
+      if (b.dataset.sw === 'contarViajes' && !b.checked) window.pasaporte?.auto?.parar?.();
       saveSettings(); applyTheme(); render(); aplicarCapasMapa(mapState.bm);
     }; });
     el.querySelectorAll('[data-tem]').forEach((b) => { b.onclick = () => { pruebaDia = null; settings.tematicaAuto = false; settings.tematica = b.dataset.tem; saveSettings(); applyTheme(); render(); }; });

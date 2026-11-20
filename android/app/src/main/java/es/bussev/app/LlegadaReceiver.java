@@ -29,6 +29,7 @@ public class LlegadaReceiver extends BroadcastReceiver {
     static final String PREFS = "bussev_viaje";
     static final String ACCION = "es.bussev.app.LLEGADA_REVISAR";
     static final String CANAL = "bussev_llegada";
+    static final String CANAL_CUENTA = "bussev_cuenta";
     private static final long MIN = 60_000L;
 
     // ---------- Lista de avisos pendientes (guardada en el móvil) ----------
@@ -132,7 +133,7 @@ public class LlegadaReceiver extends BroadcastReceiver {
                 long at = x.optLong("at"), revisar = x.optLong("revisar", at);
                 int antes = x.optInt("antes", 5);
                 // Caducado (el autobús hace rato que pasó): se olvida
-                if (ahora > at + 30 * MIN) continue;
+                if (ahora > at + 30 * MIN) { quitarCuenta(c, x.optInt("id")); continue; }
                 if (revisar > ahora + 8_000L) { quedan.put(x); continue; }
                 // Lejos todavía: se mira de nuevo cuando falten 15 minutos para avisar
                 if (at - ahora > 16 * MIN) { x.put("revisar", at - 15 * MIN); quedan.put(x); continue; }
@@ -142,7 +143,8 @@ public class LlegadaReceiver extends BroadcastReceiver {
                     if (token != null) min = minutos(TussamTiempos.tiempos(x.optString("codigo"), token), x.optString("linea"), x.optString("destino"));
                 } catch (Exception ignored) { /* sin red o TUSSAM no contesta */ }
                 if (min != null) {
-                    if (min <= antes) { avisar(c, x, min); continue; }
+                    if (min <= antes) { quitarCuenta(c, x.optInt("id")); avisar(c, x, min); continue; }
+                    cuentaAtras(c, x, min);
                     long nuevo = ahora + (long) (min - antes) * MIN;
                     x.put("at", nuevo);
                     // Cuanto más cerca, más a menudo (y nunca más tarde de la hora de avisar).
@@ -154,6 +156,7 @@ public class LlegadaReceiver extends BroadcastReceiver {
                     quedan.put(x);
                 } else if (ahora >= at - 20_000L) {
                     // Sin dato del autobús (o sin red) y ya es la hora calculada: se avisa como antes
+                    quitarCuenta(c, x.optInt("id"));
                     avisar(c, x, antes);
                 } else {
                     x.put("revisar", Math.min(at, ahora + 90_000L));
@@ -187,6 +190,48 @@ public class LlegadaReceiver extends BroadcastReceiver {
         nm.createNotificationChannel(ch);
     }
 
+    /* ---------- Cuenta atrás en la barra (Android 16: chip) mientras se acerca tu autobús ---------- */
+    static int idCuenta(int id) { return 0x40000000 | (id & 0x0FFFFFFF); }
+    static void quitarCuenta(Context c, int id) {
+        NotificationManager nm = (NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE);
+        if (nm != null) nm.cancel(idCuenta(id));
+    }
+    static void cuentaAtras(Context c, JSONObject x, int min) {
+        NotificationManager nm = (NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE);
+        if (nm == null) return;
+        if (Build.VERSION.SDK_INT >= 26 && nm.getNotificationChannel(CANAL_CUENTA) == null) {
+            NotificationChannel ch = new NotificationChannel(CANAL_CUENTA, "Cuenta atrás de tus avisos", NotificationManager.IMPORTANCE_LOW);
+            ch.setDescription("Los minutos que le faltan al autobús de tu aviso de llegada, en la barra de arriba.");
+            ch.setSound(null, null);
+            ch.enableVibration(false);
+            nm.createNotificationChannel(ch);
+        }
+        int id = x.optInt("id");
+        long llega = System.currentTimeMillis() + (long) min * MIN;
+        Notification.Builder b = Build.VERSION.SDK_INT >= 26 ? new Notification.Builder(c, CANAL_CUENTA) : new Notification.Builder(c);
+        b.setSmallIcon(icono(c))
+                .setContentTitle("Línea " + x.optString("linea") + " · llega en " + min + " min")
+                .setContentText(x.optString("parada") + " · te aviso cuando falten " + x.optInt("antes", 5) + " min")
+                .setOngoing(true).setOnlyAlertOnce(true)
+                .setCategory(Notification.CATEGORY_PROGRESS)
+                .setWhen(llega).setShowWhen(true)
+                .setContentIntent(abrirParada(c, x.optString("codigo"), idCuenta(id)));
+        if (Build.VERSION.SDK_INT >= 24) { b.setUsesChronometer(true); b.setChronometerCountDown(true); }
+        if (Build.VERSION.SDK_INT >= 21) b.setColor(0xFFD41C2B);
+        SensorService.promocionar(b, min + " min");
+        try { nm.notify(idCuenta(id), b.build()); } catch (SecurityException ignored) { }
+    }
+
+    /* «Me he subido»: abre BusSev en la parada y empieza a contar el viaje en esa línea */
+    static PendingIntent piSubido(Context c, String codigo, String linea, int notif) {
+        Intent open = new Intent(c, MainActivity.class).putExtra("bussev_parada", codigo).putExtra("bussev_subido", linea)
+                .putExtra("bussev_cancelar", notif)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        int f = PendingIntent.FLAG_UPDATE_CURRENT;
+        if (Build.VERSION.SDK_INT >= 23) f |= PendingIntent.FLAG_IMMUTABLE;
+        return PendingIntent.getActivity(c, 0x20000000 | (notif & 0x0FFFFFFF), open, f);
+    }
+
     static PendingIntent abrirParada(Context c, String codigo, int req) {
         Intent open = new Intent(c, MainActivity.class).putExtra("bussev_parada", codigo)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
@@ -210,6 +255,9 @@ public class LlegadaReceiver extends BroadcastReceiver {
                 .setCategory(Notification.CATEGORY_ALARM);
         if (Build.VERSION.SDK_INT < 26) { b.setPriority(Notification.PRIORITY_HIGH); b.setDefaults(Notification.DEFAULT_ALL); }
         if (Build.VERSION.SDK_INT >= 21) b.setColor(0xFFD41C2B);
+        b.addAction(0, "Me he subido", piSubido(c, x.optString("codigo"), x.optString("linea"), id));
+        // Para el Pasaporte: Android apunta a qué hora llega ese bus a esa parada (lo usa «Me he subido»)
+        ViajeAutoService.apuntarPrevisto(c, x.optString("codigo"), x.optString("linea"), System.currentTimeMillis() + (long) Math.max(0, min) * MIN);
         try { nm.notify(id, b.build()); } catch (SecurityException ignored) { /* sin permiso de notificaciones */ }
     }
 

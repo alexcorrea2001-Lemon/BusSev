@@ -1,6 +1,7 @@
 /* BusSev — Pasaporte de Sevilla: sellos de lugares y medallas por tus viajes en bus.
  *
- * Solo cuentan los viajes VERIFICADOS. Los verifica Android mientras usas «Me subo a este: avísame al bajar»
+ * Solo cuentan los viajes VERIFICADOS. Los verifica Android solo: al abrir una parada estando en ella (o yendo
+ * hacia ella), sigue el posible viaje en silencio (ViajeAutoService); también con «Me subo a este: avísame al bajar»
  * (BajadaService): que llegaba un autobús de esa línea a tu parada cuando saliste (según TUSSAM), que tu GPS
  * fue por el recorrido de la línea a velocidad de autobús, y que la ubicación no era falsa.
  * Todo se guarda en el móvil (localStorage 'pasaporte') y va en la copia de seguridad.
@@ -337,7 +338,9 @@ views.pasaporte = (el) => {
         <div><b>${r.sellos} de ${LUGARES.length} sellos · ${r.medallas} de ${MEDALLAS.length} medallas</b><small>${r.viajes} ${r.viajes === 1 ? 'viaje verificado' : 'viajes verificados'}</small>
         <span class="ps-barra"><i style="width:${Math.round(100 * (r.sellos + r.medallas) / total)}%"></i></span></div></section>
       ${window.anio?.entradaHTML?.() || ''}
-      <div class="alert ps-como">Para que un viaje cuente, en la parada toca tu autobús y elige <b>«Me subo a este: avísame al bajar»</b>. El móvil comprueba que de verdad vas en ese bus (llegaba a tu parada, vas por su recorrido y a su velocidad) y, al bajarte, te da los sellos y medallas que ganes.</div>
+      <div class="alert ps-como">${settings.contarViajes === false
+        ? 'Tienes apagado <b>«Contar mis viajes»</b> (Ajustes → Pasaporte). Así solo cuentan los viajes con «Me subo a este: avísame al bajar».'
+        : 'Tus viajes <b>cuentan solos</b>: abre BusSev en la parada para ver cuánto le falta a tu bus, como siempre, y súbete. El móvil comprueba que de verdad vas en ese autobús (llegaba a tu parada y vas por su recorrido, a la par que él) y, al bajarte, te da los sellos y medallas que ganes.'}</div>
       <h2 class="ps-h">Sellos de lugares</h2>
       <div class="ps-sellos">${LUGARES.map(([id, n]) => { const t = s.logros[`s:${id}`]; return `<button type="button" class="ps-item${t ? ' ok' : ''}" data-ps="s:${id}">${selloSVG(id, { apagado: !t, fecha: t ? fmtFecha(t) : '' })}<span>${esc(n)}</span><small>${t ? fmtFecha(t) : 'Sin sellar'}</small></button>`; }).join('')}</div>
       <h2 class="ps-h">Medallas</h2>
@@ -363,4 +366,100 @@ views.pasaporte = (el) => {
 setTimeout(() => pasaporte.sincronizar(), 2500);
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') setTimeout(() => pasaporte.sincronizar(), 600); });
 window.addEventListener('bussevViaje', () => pasaporte.sincronizar());
+
+/* ---------- Viajes automáticos ----------
+   Al abrir una parada (o tus favoritas) estando en ella o yendo hacia ella, Android sigue el posible viaje en
+   silencio: la notificación enseña tu autobús y si llegas andando, y si te subes cuenta para el Pasaporte.
+   Aquí solo se decide si toca empezar y se le pasan a Android los recorridos de las líneas de esa parada. */
+const CERCA_M = 450;
+let indice = null;
+function indiceRecorridos() {
+  if (indice) return indice;
+  const D = window.BUSSEV_DATA || { paradas: [], recorridos: [] };
+  const porParada = new Map(), porRuta = new Map();
+  for (const r of D.recorridos) {
+    const k = `${r[1]}|${r[2]}`;
+    if (!porRuta.has(k)) porRuta.set(k, []);
+    porRuta.get(k).push(r);
+    if (!porParada.has(r[0])) porParada.set(r[0], []);
+    porParada.get(r[0]).push(r);
+  }
+  for (const l of porRuta.values()) l.sort((a, b) => a[3] - b[3]);
+  indice = { porParada, porRuta, pos: new Map(D.paradas.map((p) => [p.codigo, p])) };
+  return indice;
+}
+const sinCeros = (l) => String(l || '').toUpperCase().replace(/^0+(?=\w)/, '');
+const metros = (a, b, c, d) => { const r = Math.PI / 180; return Math.hypot((d - b) * r * Math.cos(((a + c) / 2) * r), (c - a) * r) * 6371000; };
+
+const auto = {
+  ultimo: 0,
+  activo: () => settings.contarViajes !== false,
+  /* Las líneas que salen de esa parada, cada una con sus paradas siguientes (hasta 45) */
+  candidatas(codigo, soloLinea = '') {
+    const { porParada, porRuta, pos } = indiceRecorridos();
+    const out = [];
+    for (const [, linea, sentido, orden] of porParada.get(String(codigo)) || []) {
+      if (soloLinea && sinCeros(linea) !== sinCeros(soloLinea)) continue;
+      const ruta = porRuta.get(`${linea}|${sentido}`) || [];
+      const i = ruta.findIndex((r) => r[0] === String(codigo) && r[3] === orden);
+      const tramo = ruta.slice(i, i + 46).map((r) => pos.get(r[0])).filter(Boolean)
+        .map((p) => ({ codigo: p.codigo, nombre: p.nombre, lat: p.latitud, lon: p.longitud }));
+      if (i >= 0 && tramo.length >= 3) out.push({ linea, etq: (typeof lineaFor === 'function' && lineaFor(linea)?.etiqueta) || sinCeros(linea), paradas: tramo });
+    }
+    return out;
+  },
+  /* ¿Estás en alguna de estas paradas (o cerca)? Si sí, empieza a seguir el viaje. Nunca pide permisos. */
+  async quizas(codigos, { fija = '', forzar = false } = {}) {
+    try {
+      if ((!this.activo() && !fija) || !plugin('BusSevViaje') || !codigos?.length) return false;
+      if (!forzar && !fija && Date.now() - this.ultimo < 60_000) return false;
+      this.ultimo = Date.now();
+      const est = await native('BusSevViaje', 'estadoViajeAuto').catch(() => ({}));
+      if (est?.activo && !fija) return false;
+      const baj = await native('BusSevViaje', 'estadoBajada').catch(() => ({}));
+      if (baj?.activo) return false;          // «avísame al bajar» ya lo está comprobando
+      const { pos } = indiceRecorridos();
+      let codigo = String(codigos[0]);
+      if (!fija) {
+        const yo = await native('BusSevViaje', 'dondeEstoy').catch(() => ({}));
+        if (typeof yo?.lat !== 'number') return false;    // sin permiso o sin posición reciente: no se hace nada
+        let mejor = null, dm = Infinity;
+        for (const c of codigos) { const p = pos.get(String(c)); if (!p) continue; const d = metros(yo.lat, yo.lon, p.latitud, p.longitud); if (d < dm) { dm = d; mejor = String(c); } }
+        if (!mejor || dm > CERCA_M) return false;
+        codigo = mejor;
+      }
+      const p = pos.get(codigo);
+      const lineas = this.candidatas(codigo, fija);
+      if (!p || !lineas.length) return false;
+      await native('BusSevViaje', 'empezarViajeAuto', { codigo, nombre: p.nombre, lat: p.latitud, lon: p.longitud, fija: fija ? sinCeros(fija) : '', lineas });
+      return true;
+    } catch { return false; }
+  },
+  /* «Me he subido» desde el aviso de llegada o el modo sensor */
+  async subido(codigo, linea) {
+    let ok = await this.quizas([codigo], { fija: linea, forzar: true });
+    if (!ok) {
+      // Quizá falta el permiso de ubicación: lo has pedido tú con el botón, así que aquí sí se pregunta
+      try { await getPosition(true); ok = await this.quizas([codigo], { fija: linea, forzar: true }); } catch { /* sin permiso */ }
+    }
+    toast(ok ? `Contando tu viaje en el ${sinCeros(linea)} 🚌` : 'Para contar el viaje hace falta el permiso de ubicación.');
+    return ok;
+  },
+  parar: () => (plugin('BusSevViaje') ? native('BusSevViaje', 'pararViajeAuto').catch(() => {}) : Promise.resolve()),
+};
+pasaporte.auto = auto;
+window.busSevSubido = (codigo, linea) => {
+  const c = String(codigo || '').replace(/[^0-9]/g, ''), l = String(linea || '').replace(/[^A-Za-z0-9]/g, '');
+  if (!c || !l) return;
+  window.busSevAbrirParada?.(c);
+  setTimeout(() => auto.subido(c, l), 400);
+};
+/* Al volver a la app estando en una parada o en Favoritas */
+function revisarAuto() {
+  const h = location.hash.replace('#', '');
+  const m = /^parada-(\d+)/.exec(h);
+  if (m) auto.quizas([m[1]]);
+  else if (!h || h === 'favoritas') auto.quizas(favs.list().map((f) => f.codigo));
+}
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') setTimeout(revisarAuto, 900); });
 })();

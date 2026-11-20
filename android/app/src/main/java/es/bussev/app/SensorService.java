@@ -118,6 +118,7 @@ public class SensorService extends Service {
             // El bus ya ha pasado (iba a 0–1 min y ahora sale el siguiente, mucho más lejos)
             if (minAnterior >= 0 && minAnterior <= 1 && m >= 4) { llegado(); return; }
             minAnterior = m; minutos = m;
+            if (m <= 2) ViajeAutoService.apuntarPrevisto(this, codigo, linea, System.currentTimeMillis() + (long) m * 60_000L);
             if (m > minMax) minMax = m;
             int nivel = m <= 0 ? 0 : m <= 1 ? 0 : m;     // en el último minuto ya es «llegando»
             if (nivel <= 5 && nivel < ultimoNivel) {
@@ -146,9 +147,10 @@ public class SensorService extends Service {
 
     private void llegado() {
         terminado = true;
-        actualizar("Llegando", "Tu autobús está llegando a la parada");
+        ViajeAutoService.apuntarPrevisto(this, codigo, linea, System.currentTimeMillis());
+        actualizar("Llegando", "Tu autobús está llegando · si te subes, pulsa «Me he subido»");
         h.removeCallbacksAndMessages(null);
-        h.postDelayed(new Runnable() { public void run() { parar(); } }, 45_000L);
+        h.postDelayed(new Runnable() { public void run() { parar(); } }, 90_000L);
     }
 
     private void vibrar(long[] t, int[] a) {
@@ -189,6 +191,7 @@ public class SensorService extends Service {
                 .setCategory(Notification.CATEGORY_PROGRESS)
                 .setContentIntent(LlegadaReceiver.abrirParada(this, codigo, ID_FIJA))
                 .addAction(0, "Parar", piParar());
+        if (terminado || (minutos >= 0 && minutos <= 2)) b.addAction(0, "Me he subido", LlegadaReceiver.piSubido(this, codigo, linea, ID_FIJA));
         if (minutos >= 0) b.setProgress(Math.max(minMax, 1), Math.max(0, Math.max(minMax, 1) - minutos), false);
         else b.setProgress(0, 0, true);
         if (Build.VERSION.SDK_INT >= 21) b.setColor(0xFFD41C2B);

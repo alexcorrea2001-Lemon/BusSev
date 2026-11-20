@@ -182,6 +182,7 @@ const bajada = {
     try { await getPosition(true); } catch (e) { toast(geoErrorText(e)); return false; }   // pide el permiso de ubicación
     if (plugin('BusSevViaje')) {
       try { await avisos.permiso(); } catch (e) { toast(e.message); }
+      try { await window.pasaporte?.auto?.parar?.(); } catch { /* nada */ }
       try { await native('BusSevViaje', 'empezarBajada', { linea: lineaInfo(linea)?.etiqueta || etiquetaLinea(linea), paradas }); window.anio?.apuntar?.('bajada', { codigo: paradas[0]?.codigo, linea }); }
       catch (e) { toast(e?.message || 'No se ha podido empezar el aviso.'); return false; }
     } else this.empezarWeb(linea, paradas);
