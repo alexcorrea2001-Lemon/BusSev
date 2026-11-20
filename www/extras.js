@@ -9,6 +9,39 @@ const native = (name, method, opts = {}) => window.Capacitor.nativePromise(name,
 /* Se programa con el tiempo que da TUSSAM y se corrige cada vez que   */
 /* la app vuelve a consultar esa parada.                               */
 /* ================================================================== */
+/* Selector de hora de BusSev: la hora grande en el centro, − y + de 5 en 5 minutos, y al tocar la hora se abre el
+   reloj del móvil (el <input type="time"> va invisible encima). Con «dia», dice si es hoy o mañana. */
+function horaPickerHTML(id, valor, { dia = false } = {}) {
+  return `<div class="hora-pick" data-hora-pick="${id}">
+    <button type="button" class="hp-mas" data-hp="-5" aria-label="5 minutos antes">−</button>
+    <label class="hp-centro"><b class="hp-hora">${esc(valor)}</b>${dia ? '<small class="hp-dia"></small>' : ''}<input type="time" id="${id}" value="${esc(valor)}" aria-label="Hora"></label>
+    <button type="button" class="hp-mas" data-hp="5" aria-label="5 minutos después">+</button></div>`;
+}
+function horaPicker(raiz, id, alCambiar) {
+  const box = raiz.querySelector(`[data-hora-pick="${id}"]`);
+  if (!box) return;
+  const inp = box.querySelector('input'), txt = box.querySelector('.hp-hora'), dia = box.querySelector('.hp-dia');
+  const pintar = () => {
+    txt.textContent = inp.value || '--:--';
+    if (dia) {
+      const [h, m] = String(inp.value).split(':').map(Number);
+      const d = new Date(); d.setHours(h, m, 0, 0);
+      dia.textContent = Number.isFinite(h) ? (d.getTime() < Date.now() - 5 * 60000 ? 'mañana' : 'hoy') : '';
+    }
+  };
+  inp.addEventListener('change', () => { pintar(); alCambiar?.(inp.value); });
+  inp.addEventListener('input', pintar);
+  box.querySelectorAll('[data-hp]').forEach((b) => { b.onclick = () => {
+    const [h, m] = String(inp.value || '08:00').split(':').map(Number);
+    let t = ((h * 60 + m + Number(b.dataset.hp)) % 1440 + 1440) % 1440;
+    t = Math.round(t / 5) * 5 % 1440;
+    inp.value = `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`;
+    vibrar(8); pintar(); alCambiar?.(inp.value);
+  }; });
+  pintar();
+}
+window.horaPickerHTML = horaPickerHTML;
+
 const avisos = {
   list() { const now = Date.now(); return store.get('avisos', []).filter((a) => a.at > now - 60_000); },
   save(l) { store.set('avisos', l); },
@@ -113,10 +146,11 @@ const repetidos = {
     openModal(`<h2>Repetir el aviso</h2>
       <div class="row-flat">${badge(linea, color)}<div><b>${esc(destino)}</b><p class="help">${esc(parada)}</p></div></div>
       <section class="pz-sec"><h3>Qué días</h3><div class="rep-dias">${DIAS_CORTOS.map((x, i) => `<button type="button" class="chip" data-dia="${i}" aria-pressed="${d.dias[i]}">${x}</button>`).join('')}</div></section>
-      <section class="pz-sec"><h3>Desde qué hora</h3><input type="time" id="rep-hora" class="plan-hora" value="${hhmm(d.hora)}">
+      <section class="pz-sec"><h3>Desde qué hora</h3>${horaPickerHTML('rep-hora', hhmm(d.hora))}
         <p class="help" style="margin:0">A esa hora el móvil empieza a mirar a TUSSAM (aunque la app esté cerrada).</p></section>
       <section class="pz-sec"><h3>Avísame cuando falten</h3><div class="seg">${[2, 5, 10].map((n) => `<button type="button" data-rantes="${n}" aria-pressed="${n === d.antes}">${n} min</button>`).join('')}</div></section>
       <div class="actions"><button class="btn ghost" type="button" id="rep-x">Cancelar</button><button class="btn" type="button" id="rep-ok">Guardar</button></div>`, (m, close) => {
+      horaPicker(m, 'rep-hora');
       m.querySelectorAll('[data-dia]').forEach((b) => { b.onclick = () => { const i = Number(b.dataset.dia); d.dias[i] = !d.dias[i]; b.setAttribute('aria-pressed', d.dias[i]); vibrar(8); }; });
       m.querySelectorAll('[data-rantes]').forEach((b) => { b.onclick = () => { d.antes = Number(b.dataset.rantes); m.querySelectorAll('[data-rantes]').forEach((x) => x.setAttribute('aria-pressed', x === b)); vibrar(8); }; });
       $('#rep-x', m).onclick = close;
@@ -727,7 +761,7 @@ views.ruta = (el) => {
             <span class="medio-ic">${svg}</span><span class="medio-n">${nom}</span><span class="medio-s">${sub}</span><span class="medio-ok" aria-hidden="true"></span></button>`).join('')}</div></div>
         <div class="plan-cuando">
           <div class="seg" role="group" aria-label="Cuándo">${[['ahora', 'Salir ahora'], ['salir', 'Salir a las'], ['llegar', 'Llegar antes de']].map(([k, n]) => `<button type="button" data-modo="${k}" aria-pressed="${st.modo === k}">${n}</button>`).join('')}</div>
-          <input type="time" id="pl-hora" class="plan-hora" value="${esc(st.hora || horaPorDefecto())}" ${st.modo === 'ahora' ? 'hidden' : ''} aria-label="Hora"></div>
+          <div id="pl-hora-box" ${st.modo === 'ahora' ? 'hidden' : ''}>${horaPickerHTML('pl-hora', st.hora || horaPorDefecto(), { dia: true })}</div></div>
         <button class="btn" type="button" id="pl-go">Buscar cómo ir</button></div>
       <div id="pl-res"></div></div>`;
     $('.back-btn', el).onclick = goBack;
@@ -741,9 +775,9 @@ views.ruta = (el) => {
     el.querySelectorAll('[data-modo]').forEach((b) => { b.onclick = () => {
       st.modo = b.dataset.modo; vibrar(10);
       el.querySelectorAll('[data-modo]').forEach((x) => x.setAttribute('aria-pressed', x === b));
-      const h = $('#pl-hora', el); h.hidden = st.modo === 'ahora'; if (!h.hidden && !h.value) h.value = horaPorDefecto();
+      $('#pl-hora-box', el).hidden = st.modo === 'ahora';
     }; });
-    $('#pl-hora', el).onchange = (e) => { st.hora = e.target.value; };
+    horaPicker(el, 'pl-hora', (v) => { st.hora = v; });
     $('#pl-yo', el).onclick = async () => {
       try { const pos = await getPosition(); st.origen = { tipo: 'yo', nombre: 'Mi ubicación', pos }; $('#pl-o', el).value = 'Mi ubicación'; } catch (e) { toast(geoErrorText(e)); }
     };
