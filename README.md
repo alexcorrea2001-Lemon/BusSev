@@ -100,7 +100,13 @@ Las paradas que tienes cerca y cuánto le falta a cada autobús. Si tienes la ub
 
 #### 🎨 Personalizar cada tarjeta (con vista previa en directo, a pantalla completa)
 - **Tarjeta**: nombre, **icono** (tarjeta, autobús, persona, familia, casa, trabajo, estudios, compras, deporte, ocio,
-  favorita), **color**, **ocultar el número** (solo se ven los 4 últimos) y **efecto brillo** al mover el móvil.
+  favorita), **color** y **ocultar el número** (solo se ven los 4 últimos).
+- **Acabados**: **brillo holográfico** como el de las cartas coleccionables, en tres estilos — **Holo** (bandas de
+  arcoíris), **Cosmos** (el arcoíris dentro de burbujas y estrellas) y **Rayado** (rayitas finas) — con su
+  **intensidad**. La luz sigue tu dedo y se mueve al inclinar el móvil; quieta no gasta nada. Y **purpurina**:
+  destellos diminutos que se encienden de vez en cuando.
+- **Darle la vuelta**: toca la tarjeta abierta y gira en 3D. Por detrás, el **saldo**, los **viajes que te quedan**
+  y la **caducidad**, como el reverso de una tarjeta de verdad.
 - **Diseño**: 10 dibujos de Sevilla — La Giralda, Torre del Oro, Puente de Triana, Azulejo, Plaza de España,
   Las Setas, Farolillos, Caseta de Feria, Paso de palio y Nazarenos — o **una foto tuya** de fondo.
 - **Marco**: dorado, plateado, bronce, oro rosa, arcoíris, neón, doble blanco, azulejo, lunares, cordón morado

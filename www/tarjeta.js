@@ -196,6 +196,39 @@ function cardBackground(c, tipoId) {
   return `background:radial-gradient(120% 90% at 100% 0%, rgb(255 255 255 / .2), transparent 55%), linear-gradient(135deg, ${a}, ${b})`;
 }
 const ondas = '<svg class="tc-waves" viewBox="0 0 400 250" preserveAspectRatio="none" aria-hidden="true"><path d="M0 190 C 90 150, 170 230, 260 185 S 360 140, 400 165 V250 H0Z" fill="rgb(255 255 255 / .12)"/><path d="M0 215 C 110 185, 200 250, 300 210 S 380 190, 400 200 V250 H0Z" fill="rgb(255 255 255 / .12)"/><circle cx="350" cy="40" r="90" fill="none" stroke="rgb(255 255 255 / .10)" stroke-width="18"/></svg>';
+/* ---------- Acabados: brillo holográfico y purpurina ----------
+   El brillo son 2–3 capas de arcoíris ya pintadas entre el dibujo y las letras: al mover la luz (con el dedo o
+   inclinando el móvil) solo se DESLIZAN, que es lo que el móvil hace más rápido. Quieto, no gasta nada. */
+const HOLOS = [['', 'Ninguno'], ['holo', 'Holo'], ['cosmos', 'Cosmos'], ['rayado', 'Rayado']];
+const holoDe = (c) => (HOLOS.some(([k]) => k && k === c?.holo) ? c.holo : c?.brillo ? 'holo' : '');   // el brillo de antes pasa a Holo
+const fuerzaDe = (c) => Math.max(20, Math.min(90, Number(c?.holoFuerza) || 48));
+function holoHTML(k, fuerza) {
+  if (!k) return '';
+  return `<i class="tc-holo h-${k}" style="--fuerza:${(fuerza / 100).toFixed(2)}" aria-hidden="true"><i class="hf base"><i></i></i><i class="hf fuerte"><b class="foco"><i></i></b></i>${k === 'holo' ? '' : '<i class="hf patron"><b class="malla"><i></i></b></i>'}</i>`;
+}
+/* Purpurina: destellos diminutos repartidos siempre igual en cada tarjeta (según su número) */
+function purpurinaHTML(num) {
+  let h = 0;
+  for (const ch of String(num)) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  const rnd = () => { h = (h * 1103515245 + 12345) >>> 0; return (h >>> 8) / 16777216; };
+  let out = '';
+  for (let i = 0; i < 14; i++) {
+    const x = 4 + rnd() * 92, y = 6 + rnd() * 88, t = 3 + rnd() * 9, dur = 4 + rnd() * 5, del = -rnd() * dur;
+    out += `<svg class="pp" style="left:${x.toFixed(1)}%;top:${y.toFixed(1)}%;width:${t.toFixed(1)}px;height:${t.toFixed(1)}px;--dur:${dur.toFixed(1)}s;--del:${del.toFixed(1)}s" viewBox="0 0 10 10"><path d="M5 0Q5.6 4.4 10 5Q5.6 5.6 5 10Q4.4 5.6 0 5Q4.4 4.4 5 0z"/></svg>`;
+  }
+  return `<i class="tc-purp" aria-hidden="true">${out}</i>`;
+}
+/* Mueve la luz del brillo: x, y de -1 a 1 (dónde «da el sol» sobre la tarjeta).
+   En reposo (sin inclinar ni tocar) la luz está arriba a la derecha: brillo discreto que se aviva al moverla. */
+const LUZ_REPOSO = [0.95, -0.9];
+function luzHolo(raiz, x, y) {
+  raiz.querySelectorAll('.tc-holo').forEach((hh) => {
+    const w = hh.clientWidth || 320, alto = hh.clientHeight || 200;
+    hh.style.setProperty('--fx', `${(-x * w * 0.55).toFixed(1)}px`); hh.style.setProperty('--fy', `${(-y * alto * 0.45).toFixed(1)}px`);
+    hh.style.setProperty('--gx', `${(x * w * 0.6).toFixed(1)}px`); hh.style.setProperty('--gy', `${(y * alto * 0.8).toFixed(1)}px`);
+  });
+}
+
 function tcardHTML(num, c, res, { mini = false } = {}) {
   const tipoId = tipoDeTarjeta(c, res);
   const tipo = tipoPorId(tipoId);
@@ -213,10 +246,11 @@ function tcardHTML(num, c, res, { mini = false } = {}) {
   const marco = c?.marco && (window.MARCOS_TARJETA || []).some(([k]) => k === c.marco) ? c.marco : '';
   // Número tapado (•••• 1234) si lo has pedido, para enseñar el móvil sin que se vea entero
   const numTxt = c?.ocultarNum ? `•••• •••• ${String(num).slice(-4)}` : tarjeta.fmt(num);
-  return `<div class="tcard${mini ? ' mini' : ''}${marco ? ' con-marco' : ''}${c?.brillo ? ' brillo' : ''}${dis ? ` con-diseno${dis.claro ? ' dis-claro' : ''}` : ''}" style="${cardBackground(c || { num }, tipoId)}">
+  const holo = holoDe(c);
+  return `<div class="tcard${mini ? ' mini' : ''}${marco ? ' con-marco' : ''}${holo ? ' con-holo' : ''}${dis ? ` con-diseno${dis.claro ? ' dis-claro' : ''}` : ''}" style="${cardBackground(c || { num }, tipoId)}">
     ${foto ? '' : dis ? (dis.svg || '') : ondas}
+    ${holoHTML(holo, fuerzaDe(c))}${c?.purpurina ? purpurinaHTML(num) : ''}
     ${marco ? `<i class="tc-marco mk-${marco}" aria-hidden="true"></i>` : ''}
-    ${c?.brillo ? '<i class="tc-brillo" aria-hidden="true"></i>' : ''}
     <div class="tc-top"><span class="tc-brand">${iconoSitioSVG(c?.emoji, 'tc-emoji ico-sitio')}${esc(c?.name || titulo)}</span>${ICON.nfc}</div>
     <div class="tc-mid">${saldoHTML}
       <div class="tc-tipo">${esc(c?.name ? titulo : (res?.titulo || c?.ultimo?.titulo || titulo))}</div></div>
@@ -268,6 +302,7 @@ function aplicarConsulta(num, res) {
 
 /* ---------- Vista ---------- */
 views.tarjeta = (el) => {
+  let ultIncl = null;   // última inclinación del móvil (para el brillo holográfico)
   let detalle = null;   // { num, res, loading, err, code }
   let lectorActivo = false, dead = false;
   const alCambiarNfc = (e) => {
@@ -362,7 +397,8 @@ views.tarjeta = (el) => {
     const bajo = c?.avisoSaldo?.on && u?.saldo != null && u.saldo < Number(c.avisoSaldo.importe || 0);
     return `<div class="detail-head" style="margin-bottom:4px"><button class="back-btn" type="button" id="t-back" aria-label="Volver">${ICON.back}</button><div class="grow"><h2>${esc(c?.name || 'Tu tarjeta')}</h2><p>${u?.fecha ? `Actualizada ${haceCuanto(u.fecha)}${viaLegible(res?.diag?.via || u?.via) ? ` · ${viaLegible(res?.diag?.via || u?.via)}` : ''}` : 'Sin consultar todavía'}</p></div>
       ${c ? `<button class="btn-mas" type="button" id="t-menu" aria-label="Más opciones">${ICON.mas}</button>` : ''}</div>
-      ${tcardHTML(num, c, res?.ok ? res : null)}
+      <div class="tflip" id="t-flip"><div class="tgiro">${tcardHTML(num, c, res?.ok ? res : null)}${reversoHTML(num, c, u, tipoId, viajes)}</div></div>
+      <p class="tflip-pista small muted">Toca la tarjeta para darle la vuelta${holoDe(c) ? ' · pasa el dedo para mover el brillo' : ''}</p>
       ${loading ? cargandoHTML('Consultando tu tarjeta en TUSSAM…', 'Puede tardar unos segundos.') : ''}
       ${bajo ? `<div class="alert warn">Te queda poco saldo: menos de ${fmtEuro(Number(c.avisoSaldo.importe))}.</div>` : ''}
       ${viajes != null && viajes <= 2 && !u?.sinSaldoWeb ? `<div class="alert warn">${viajes === 0 ? 'Te has quedado sin viajes. Recarga antes de montar.' : viajes === 1 ? 'Te queda 1 viaje: con esto no llegas a la vuelta. Recarga pronto.' : 'Te quedan 2 viajes: justo para ir y volver una vez. Recarga pronto.'}</div>` : ''}
@@ -395,6 +431,17 @@ views.tarjeta = (el) => {
         ${c ? '<button class="btn ghost" type="button" id="t-edit">Personalizar</button>' : '<button class="btn" type="button" id="t-save">Guardar tarjeta</button>'}
       </div>
       ${c ? avisosHTML(c, u) : '<p class="small muted" style="margin:0">Guárdala para verla siempre aquí y activar avisos de saldo bajo y de caducidad.</p>'}`;
+  }
+  /* El reverso: banda magnética, saldo, viajes que quedan y caducidad (del color de la tarjeta, oscurecido) */
+  function reversoHTML(num, c, u, tipoId, viajes) {
+    const saldo = llevaSaldo(tipoId, u?.saldo) && u?.saldo != null ? fmtEuro(u.saldo) : u?.sinSaldoWeb ? 'No se ve en la web' : '—';
+    const cad = u?.sinCaducidad ? 'No caduca' : (u?.caducidad || '—');
+    const tipo = tipoPorId(tipoId)?.nombre || u?.titulo || 'Tarjeta TUSSAM';
+    return `<div class="tcard tc-reverso" style="${cardBackground(c || { num }, tipoId)}" aria-hidden="true">
+      <i class="rv-banda"></i>
+      <div class="rv-saldo"><small>SALDO</small><b>${esc(saldo)}</b></div>
+      <div class="rv-datos">${viajes != null ? `<div><small>VIAJES QUE TE QUEDAN</small><b>${viajes}</b></div>` : `<div><small>TIPO</small><b>${esc(tipo)}</b></div>`}<div><small>CADUCA</small><b>${esc(cad)}</b></div></div>
+      <div class="rv-pie"><span>${esc(tipo)}</span><span>${esc(c?.ocultarNum ? `•••• ${String(num).slice(-4)}` : tarjeta.fmt(num))}</span></div></div>`;
   }
   function avisosHTML(c, u) {
     const s = c.avisoSaldo || { on: false, importe: 3 };
@@ -439,6 +486,7 @@ views.tarjeta = (el) => {
   function pintar() {
     if (dead) return;
     el.innerHTML = `<div class="stack view-anim">${detalle ? detalleHTML() : inicioHTML()}</div>`;
+    requestAnimationFrame(() => luzHolo(el, ...(ultIncl || LUZ_REPOSO)));
     if (!detalle) {
       if (tarjeta.nfc()) { if (lectorActivo) $('#nfc-estado', el).innerHTML = nfcEstadoHTML('on'); else armarLector(); }
       bindNfc();
@@ -457,6 +505,7 @@ views.tarjeta = (el) => {
     $('#t-save', el)?.addEventListener('click', () => editCard(num, true));
     $('#t-edit', el)?.addEventListener('click', () => editCard(num));
     $('#t-menu', el)?.addEventListener('click', () => menuTarjeta(num));
+    girarConDedo($('#t-flip', el));
     // avisos
     const c = tarjeta.get(num);
     if (!c) return;
@@ -480,6 +529,33 @@ views.tarjeta = (el) => {
     }; });
   }
   function cerrarDetalle() { detalle = null; pintar(); }
+  /* Tocar: da la vuelta. Arrastrar: la tarjeta se inclina un poco y la luz del brillo sigue al dedo. */
+  let girada = false;
+  function girarConDedo(caja) {
+    if (!caja) return;
+    const giro = caja.firstElementChild;
+    girada = false;
+    let ini = null, raf = 0, pend = null;
+    const poner = (rx, ry) => { giro.style.transform = `rotateX(${rx.toFixed(2)}deg) rotateY(${(girada ? 180 : 0) + ry}deg)`; };
+    const pintarDedo = () => { raf = 0; if (!pend) return; const [x, y] = pend; poner(-y * 9, (girada ? -1 : 1) * x * 12); luzHolo(caja, girada ? -x : x, y); };
+    const pos = (e) => { const r = caja.getBoundingClientRect(); return [Math.max(-1, Math.min(1, ((e.clientX - r.left) / r.width) * 2 - 1)), Math.max(-1, Math.min(1, ((e.clientY - r.top) / r.height) * 2 - 1))]; };
+    caja.addEventListener('pointerdown', (e) => { ini = { x: e.clientX, y: e.clientY, t: Date.now(), mov: false }; });
+    caja.addEventListener('pointermove', (e) => {
+      if (!ini) return;
+      if (!ini.mov && Math.hypot(e.clientX - ini.x, e.clientY - ini.y) > 8) { ini.mov = true; giro.classList.add('viva'); try { caja.setPointerCapture(e.pointerId); } catch { /* nada */ } }
+      if (!ini.mov) return;
+      pend = pos(e); if (!raf) raf = requestAnimationFrame(pintarDedo);
+    });
+    const soltar = (e) => {
+      if (!ini) return;
+      const toque = !ini.mov && Date.now() - ini.t < 600 && e.type === 'pointerup';
+      ini = null; pend = null; giro.classList.remove('viva');
+      if (toque) { girada = !girada; vibrar(12); }
+      poner(0, 0);
+      luzHolo(caja, ...(ultIncl || LUZ_REPOSO));
+    };
+    caja.addEventListener('pointerup', soltar); caja.addEventListener('pointercancel', soltar);
+  }
   function anadirManual() {
     openModal(`<h2>Añadir tarjeta</h2><p class="help">Escribe el número que tiene la tarjeta en la parte de atrás (12 dígitos).</p>
       <form id="am-form" class="field" novalidate><label for="am-num">Número de tarjeta</label>
@@ -510,7 +586,8 @@ views.tarjeta = (el) => {
   function editCard(num, nueva = false) {
     const prev = tarjeta.get(num);
     const c = prev || { num, name: '', color: '', tipo: '' };
-    const d = { color: c.color || '', emoji: claveIcono(c.emoji), diseno: c.diseno || '', marco: c.marco || '', brillo: !!c.brillo, ocultarNum: !!c.ocultarNum };
+    const d = { color: c.color || '', emoji: claveIcono(c.emoji), diseno: c.diseno || '', marco: c.marco || '', ocultarNum: !!c.ocultarNum,
+      holo: holoDe(c), holoFuerza: fuerzaDe(c), purpurina: !!c.purpurina };
     const detect = tipoDetectado(c, detalle?.res?.ok ? detalle.res : null);   // si TUSSAM dice el tipo, no se puede cambiar
     const originalFondo = tarjeta.foto(num);
     const D = window.DISENOS_TARJETA || {}, MC = window.MARCOS_TARJETA || [];
@@ -534,7 +611,13 @@ views.tarjeta = (el) => {
         <section class="pz-sec"><h3>Color</h3>${swatchesHTML(d.color, 'data-cc')}<p class="help">Sin color, se usa el de su tipo de tarjeta.</p></section>
         <section class="pz-sec"><h3>Opciones</h3><div class="opt-tiles">
           <button type="button" class="opt-tile" data-opt="ocultarNum" aria-pressed="${d.ocultarNum}"><span class="opt-ic">${svgIco('<path d="M3 12s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6z"/><circle cx="12" cy="12" r="2.5"/><path d="M4 20L20 4"/>')}</span><span class="opt-tx"><b>Ocultar el número</b><small>Solo se ven los 4 últimos (•••• 1234)</small></span>${ok}</button>
-          <button type="button" class="opt-tile" data-opt="brillo" aria-pressed="${d.brillo}"><span class="opt-ic">${svgIco('<path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5L18 18M18 6l-2.5 2.5M8.5 15.5L6 18"/>')}</span><span class="opt-tx"><b>Efecto brillo</b><small>La tarjeta brilla al mover el móvil</small></span>${ok}</button>
+        </div></section>
+        <section class="pz-sec"><h3>Acabados</h3>
+          <p class="help">Brillo holográfico: se mueve al pasar el dedo por la tarjeta o al inclinar el móvil.</p>
+          <div class="hl-tiles">${HOLOS.map(([k, n]) => `<button type="button" class="hl-tile" data-hl="${k}" aria-pressed="${d.holo === k}"><span class="hl-mini">${k ? holoHTML(k, 60) : '<span class="hl-nada">Sin brillo</span>'}</span><span class="est-n">${n}</span>${ok}</button>`).join('')}</div>
+          <div class="hl-fuerza" id="c-fuerza" ${d.holo ? '' : 'hidden'}><label for="c-hf">Intensidad</label><input type="range" id="c-hf" min="20" max="90" step="2" value="${d.holoFuerza}"></div>
+          <div class="opt-tiles" style="margin-top:12px">
+          <button type="button" class="opt-tile" data-opt="purpurina" aria-pressed="${d.purpurina}"><span class="opt-ic">${svgIco('<path d="M12 2.5l1.6 5.4 5.4 1.6-5.4 1.6L12 16.5l-1.6-5.4L5 9.5l5.4-1.6zM18.5 15l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z"/>')}</span><span class="opt-tx"><b>Purpurina</b><small>Destellos diminutos que se encienden de vez en cuando</small></span>${ok}</button>
         </div></section>
         ${varias ? `<section class="pz-sec"><h3>Orden <span class="orden-pos" id="c-pos"></span></h3><div class="btn-row"><button class="btn ghost" type="button" data-cmv="primera">⭐ La primera</button><button class="btn ghost" type="button" data-cmv="-1">${ICON.arriba}Subir</button><button class="btn ghost" type="button" data-cmv="1">${ICON.abajo}Bajar</button></div></section>` : ''}
       </div>
@@ -558,7 +641,21 @@ views.tarjeta = (el) => {
         const arte = dis ? dis.svg.replace('class="tc-arte"', 'class="tc-arte mk-arte"') : '';
         m.querySelectorAll('.mk-mini').forEach((x) => { const k = x.parentElement.dataset.mc; x.style.cssText = fondoMini(); x.innerHTML = arte + (k ? `<i class="tc-marco mk-${k}"></i>` : ''); });
       };
-      minis(); preview(m);
+      const minisHolo = () => { const f = fondoMini(); m.querySelectorAll('.hl-mini').forEach((x) => { x.style.cssText = f; }); luzHolo(m.querySelector('.hl-tiles'), 0.3, -0.15); };
+      minis(); minisHolo(); preview(m);
+      // En la vista previa la luz se pasea sola, para que veas el brillo mientras eliges
+      const t0 = performance.now();
+      const paseo = (t) => {
+        if (!m.isConnected) return;
+        const sg = (t - t0) / 1000;
+        if (d.holo) luzHolo($('#c-prev', m), Math.sin(sg * 0.9) * 0.85, Math.sin(sg * 1.3 + 1) * 0.55);
+        requestAnimationFrame(paseo);
+      };
+      requestAnimationFrame(paseo);
+      m.querySelectorAll('[data-hl]').forEach((b) => { b.onclick = () => {
+        d.holo = b.dataset.hl; marcar('[data-hl]', 'hl', d.holo); $('#c-fuerza', m).hidden = !d.holo; vibrar(10); preview(m);
+      }; });
+      $('#c-hf', m).oninput = (e) => { d.holoFuerza = Number(e.target.value); preview(m); };
       $('#c-name', m).oninput = () => preview(m);
       const marcar = (sel, attr, val) => m.querySelectorAll(sel).forEach((x) => x.setAttribute('aria-pressed', x.dataset[attr] === val));
       m.querySelectorAll('[data-tab]').forEach((b) => { b.onclick = () => {
@@ -566,7 +663,7 @@ views.tarjeta = (el) => {
         m.querySelectorAll('[data-panel]').forEach((p) => { p.hidden = p.dataset.panel !== b.dataset.tab; });
       }; });
       m.querySelectorAll('[data-cem]').forEach((b) => { b.onclick = () => { d.emoji = b.dataset.cem; marcar('[data-cem]', 'cem', d.emoji); vibrar(10); preview(m); }; });
-      m.querySelectorAll('[data-dis]').forEach((b) => { b.onclick = () => { d.diseno = b.dataset.dis; marcar('[data-dis]', 'dis', d.diseno); vibrar(10); minis(); preview(m); }; });
+      m.querySelectorAll('[data-dis]').forEach((b) => { b.onclick = () => { d.diseno = b.dataset.dis; marcar('[data-dis]', 'dis', d.diseno); vibrar(10); minis(); minisHolo(); preview(m); }; });
       m.querySelectorAll('[data-mc]').forEach((b) => { b.onclick = () => { d.marco = b.dataset.mc; marcar('[data-mc]', 'mc', d.marco); vibrar(10); preview(m); }; });
       m.querySelectorAll('[data-opt]').forEach((b) => { b.onclick = () => { const k = b.dataset.opt; d[k] = !d[k]; b.setAttribute('aria-pressed', d[k]); vibrar(10); preview(m); }; });
       const posTxt = () => { const l = tarjeta.list(); const i = l.findIndex((x) => x.num === num); const p = $('#c-pos', m); if (p && i >= 0) p.textContent = `· ${i + 1} de ${l.length}`; };
@@ -575,7 +672,7 @@ views.tarjeta = (el) => {
       m.querySelectorAll('[data-cc]').forEach((b) => { b.onclick = () => {
         d.color = d.color === b.dataset.cc ? '' : b.dataset.cc;
         m.querySelectorAll('[data-cc]').forEach((x) => { const on = x.dataset.cc === d.color; x.setAttribute('aria-pressed', on); x.innerHTML = on ? ICON.check : ''; });
-        minis(); preview(m);
+        minis(); minisHolo(); preview(m);
       }; });
       $('#c-foto', m).onchange = async (e) => { try { tarjeta.setFoto(num, await leerFoto(e.target.files?.[0]), 'fondo'); minis(); preview(m); } catch (err) { toast(err.message); } };
       $('#c-sinfoto', m).onclick = () => { tarjeta.setFoto(num, ''); minis(); preview(m); };
@@ -584,12 +681,12 @@ views.tarjeta = (el) => {
       m.closest('.modal-bg').addEventListener('click', (e) => { if (e.target === e.currentTarget) deshacer(); });
       $('#c-ok', m).onclick = () => {
         const base = tarjeta.get(num) || {};
-        const { precio: _sinPrecio, pegatinas: _sinPegatinas, ...resto } = base;   // el precio sale de las tarifas de TUSSAM; las pegatinas ya no existen
+        const { precio: _sinPrecio, pegatinas: _sinPegatinas, brillo: _sinBrillo, ...resto } = base;   // el precio sale de las tarifas de TUSSAM; las pegatinas y el brillo de antes ya no existen
         tarjeta.save({ ...resto, num, name: $('#c-name', m).value.trim().slice(0, 24), color: d.color, tipo: detect ? '' : (c.tipo || ''),
-          emoji: d.emoji, diseno: d.diseno, marco: d.marco, ocultarNum: d.ocultarNum, brillo: d.brillo,
+          emoji: d.emoji, diseno: d.diseno, marco: d.marco, ocultarNum: d.ocultarNum, holo: d.holo, holoFuerza: d.holoFuerza, purpurina: d.purpurina,
           ultimo: base.ultimo || (res ? { saldo: res.saldo, tipo: res.tipo, titulo: res.titulo, caducidad: res.caducidad, caducaEl: res.caducaEl, sinCaducidad: res.sinCaducidad, sinSaldoWeb: res.sinSaldoWeb, fecha: res.fecha } : undefined) });
         close(); toast(nueva ? 'Tarjeta guardada' : 'Cambios guardados'); pintar();
-        if (d.brillo) window.addEventListener('deviceorientation', onIncl, { passive: true });
+        if (conHolo()) window.addEventListener('deviceorientation', onIncl, { passive: true });
       };
       m.scrollTop = 0;
     });
@@ -599,17 +696,17 @@ views.tarjeta = (el) => {
   window.addEventListener('bussevTarjeta', onNfc);
   const onResume = () => { if (!detalle) armarLector(); };
   resumeHandlers.add(onResume);
-  /* Efecto brillo: la luz sigue al móvil cuando lo inclinas (solo en esta pantalla, y solo si hay tarjetas con brillo) */
+  /* Brillo holográfico: la luz sigue al móvil cuando lo inclinas (solo en esta pantalla y si alguna tarjeta lo lleva) */
   let rafBrillo = 0;
   const onIncl = (e) => {
-    if (rafBrillo || e.gamma == null) return;
-    rafBrillo = requestAnimationFrame(() => {
-      rafBrillo = 0;
-      const x = Math.max(-1, Math.min(1, e.gamma / 35));
-      el.querySelectorAll('.tcard.brillo').forEach((t) => { t.classList.add('inclinada'); t.style.setProperty('--brillo-x', `${Math.round(x * 55)}%`); t.style.setProperty('--brillo-px', `${Math.round(50 + x * 40)}%`); });
-    });
+    if (rafBrillo || e.gamma == null || e.beta == null) return;
+    const x = Math.max(-1, Math.min(1, e.gamma / 25)), y = Math.max(-1, Math.min(1, (e.beta - 40) / 25));
+    if (ultIncl && Math.abs(ultIncl[0] - x) < 0.02 && Math.abs(ultIncl[1] - y) < 0.02) return;   // sin cambios: no se toca nada
+    ultIncl = [x, y];
+    rafBrillo = requestAnimationFrame(() => { rafBrillo = 0; luzHolo(el, x, y); });
   };
-  if (tarjeta.list().some((c) => c.brillo)) window.addEventListener('deviceorientation', onIncl, { passive: true });
+  const conHolo = () => tarjeta.list().some((c) => holoDe(c));
+  if (conHolo()) window.addEventListener('deviceorientation', onIncl, { passive: true });
   const inicioNum = window.__tarjetaPendiente; window.__tarjetaPendiente = null;
   if (inicioNum) abrir(inicioNum, { consultar: true }); else pintar();
   return {

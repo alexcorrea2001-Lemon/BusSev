@@ -845,6 +845,14 @@ const copia = {
     }));
     const cards = (Array.isArray(o.cards) ? o.cards : []).filter((c) => /^\d{12}$/.test(c?.num)).slice(0, 10).map((c) => ({
       num: c.num, name: txt(c.name, 24), color: hex(c.color), tipo: tipoPorId(c.tipo) ? c.tipo : '', precio: num(c.precio), aviso: num(c.aviso),
+      // Personalización (antes se perdía al restaurar): solo valores conocidos
+      emoji: /^[a-z]{1,12}$/.test(c.emoji || '') ? c.emoji : '',
+      diseno: window.DISENOS_TARJETA?.[c.diseno] ? c.diseno : '',
+      marco: (window.MARCOS_TARJETA || []).some(([k]) => k && k === c.marco) ? c.marco : '',
+      ocultarNum: c.ocultarNum === true,
+      holo: ['holo', 'cosmos', 'rayado'].includes(c.holo) ? c.holo : c.brillo === true ? 'holo' : '',
+      holoFuerza: Math.max(20, Math.min(90, Number(c.holoFuerza) || 48)),
+      purpurina: c.purpurina === true,
     }));
     const s = {};
     const S = o.settings || {};

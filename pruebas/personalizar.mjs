@@ -66,7 +66,7 @@ assert.deepEqual(JSON.parse(ev(`JSON.stringify(tarjeta.list().map((c) => c.name)
 const html = ev(`tcardHTML('12345678901234', { name: 'Mía', emoji: 'corazon', diseno: 'semanasantapalio', marco: 'oro', ocultarNum: true, brillo: true }, null)`);
 const d = a.w.document.createElement('div'); d.innerHTML = html;
 const tc = d.firstElementChild;
-assert.ok(tc.querySelector('.tc-marco.mk-oro') && tc.classList.contains('brillo') && tc.classList.contains('con-diseno'));
+assert.ok(tc.querySelector('.tc-marco.mk-oro') && tc.classList.contains('con-holo') && tc.querySelector('.tc-holo.h-holo') && tc.classList.contains('con-diseno'));
 assert.ok(tc.querySelector('.tc-arte'), 'dibujo de Semana Santa');
 assert.equal(tc.querySelector('.tc-num').textContent, '•••• •••• 1234', 'número tapado');
 assert.match(tc.querySelector('.tc-brand').textContent, /Mía/); assert.ok(tc.querySelector('.tc-brand .ico-sitio svg'));
