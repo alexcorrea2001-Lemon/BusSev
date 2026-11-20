@@ -138,6 +138,9 @@ Semana Santa, Feria, Navidad, Nochevieja, Reyes… Está en la pestaña **Tarjet
 - Cada viaje va **firmado** dentro de la app, así que no se pueden inventar viajes ni colarlos en una copia de
   seguridad: al restaurar solo entran los que tienen la firma buena.
 - Al ganar un sello o una medalla te llega una **notificación con su dibujo**, y la puedes **compartir** como imagen.
+- **Mapa de sellos**: los 30 sitios en el mapa, los que tienes en color y los que te faltan en gris. Toca uno y te
+  dice qué línea te lleva directa desde tu primera favorita, cuántas paradas son y cuánto andas al bajarte, con
+  un botón para abrir «Cómo llegar».
 
 ### ✨ Tu año en BusSev
 Del **1 de diciembre al 15 de enero**, Favoritas te enseña tu resumen del año en **historias a pantalla completa**
@@ -167,6 +170,12 @@ el horario oficial y la información de paradas y líneas, que va guardada dentr
 
 ### ⚙️ Ajustes y a tu gusto
 - Tema claro u oscuro, **color de la app** (incluidos pasteles) y **color de fondo**.
+- **Como mi móvil** (Android 12 o más): el color de la app sale de tu fondo de pantalla y cambia si lo cambias.
+- Fondo **Negro puro**: negro de verdad para pantallas OLED, que gasta menos batería.
+- Pasos más suaves: al abrir una parada o una línea la pantalla **se desliza**, mientras cargan los tiempos ves
+  su **silueta** en vez de un texto, y los botones dan una **vibración muy corta** al tocarlos (si la vibración está encendida).
+- **Consejos**: de vez en cuando (como mucho uno al día) sale en Favoritas una tarjetita con algo que la app hace y
+  quizá no sabes. «Entendido» y no vuelve; «No más consejos» los apaga (se pueden encender en Ajustes).
 - **Icono de la app** a elegir: Clásico, Noche, Azulejo, Feria, Semana Santa, Giralda y Verde.
   (Al cambiarlo, Android quita el acceso de la pantalla de inicio y hay que volver a ponerlo: te avisa antes.)
 - **Sonido del aviso de llegada**: campanas, ding-dong, marimba o estación (se repite 3 veces), con botón para probarlo.

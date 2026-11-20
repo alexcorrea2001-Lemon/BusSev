@@ -92,9 +92,12 @@ assert.equal(de('setConfig').at(-1)?.tarjetas[0].saldo, '1,25 €', 'el widget d
 // ---------- Cómo llegar: salir a una hora / llegar antes de ----------
 await a.ir('#ruta', 500);
 assert.equal(a.w.document.querySelectorAll('[data-modo]').length, 3);
-assert.ok(a.$('#pl-hora').hidden, 'con «Salir ahora» no hay hora');
+assert.ok(a.$('#pl-hora-box').hidden, 'con «Salir ahora» no hay hora');
 a.$('[data-modo="llegar"]').click();
-assert.ok(!a.$('#pl-hora').hidden && /^\d\d:\d\d$/.test(a.$('#pl-hora').value), 'con «Llegar antes de» sale la hora');
+assert.ok(!a.$('#pl-hora-box').hidden && /^\d\d:\d\d$/.test(a.$('#pl-hora').value), 'con «Llegar antes de» sale la hora');
+a.$('[data-hp="5"]').click();
+assert.match(a.$('.hp-hora').textContent, /^\d\d:\d[05]$/, '+5 minutos');
+assert.match(a.$('.hp-dia').textContent, /hoy|mañana/);
 assert.equal(a.errores.length, 0, a.errores.join('\n').slice(0, 2000));
 console.log('OK tanda 3: avisos que se repiten, favoritas por cercanía, widgets/atajos y Cómo llegar a una hora');
 a.cerrar(); process.exit(0);

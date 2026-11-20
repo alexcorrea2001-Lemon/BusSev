@@ -328,7 +328,44 @@ window.pasaporte = pasaporte;
 /* ---------- Pantalla del pasaporte ---------- */
 const fmtFecha = (t) => new Date(t).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }).replace('.', '');
 views.pasaporte = (el) => {
+  let bm = null, cajaMapa = null;
+  const pintarMapa = () => {
+    const hueco = el.querySelector('#ps-mapa-hueco');
+    if (!hueco) return;
+    if (cajaMapa) { hueco.replaceWith(cajaMapa); bm?.m.resize(); actualizarPines(); return; }
+    cajaMapa = document.createElement('div');
+    cajaMapa.className = 'ps-mapa';
+    hueco.replaceWith(cajaMapa);
+    const caja = cajaMapa;
+    cargarMapa().then(() => {
+      if (!caja.isConnected || bm || cajaMapa !== caja) return;
+      const b = createMap(caja, [37.389, -5.975], 11.4);
+      if (!b) return;
+      bm = b;
+      b.m.dragPan.disable();            // con un dedo se baja por la página; con dos se mueve y se acerca
+      b.m.scrollZoom.disable();
+      b.m.on('touchstart', (e) => { if (e.originalEvent.touches?.length >= 2) b.m.dragPan.enable(); });
+      b.m.on('touchend', () => b.m.dragPan.disable());
+      b.ready.then(() => { if (bm !== b) return; b.fit(LUGARES.map((l) => [l[2], l[3]]), { padding: 26 }); actualizarPines(); });
+    }).catch(() => { caja.innerHTML = '<div class="map-fallback">No se ha podido cargar el mapa.</div>'; });
+  };
+  let pines = [];
+  const actualizarPines = () => {
+    if (!bm || !window.maplibregl) return;
+    pines.forEach((p) => p.remove()); pines = [];
+    const logros = pasaporte.estado().logros;
+    for (const [id, nombre, lat, lon, , picto, tinta] of LUGARES) {
+      const ok = !!logros[`s:${id}`];
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = `ps-pin${ok ? ' ok' : ''}`; b.setAttribute('aria-label', `${nombre}${ok ? ' (sellado)' : ''}`);
+      b.style.setProperty('--tinta', tinta);
+      b.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true">${pic(picto, ok ? tinta : '#8b8e98', 1.9)}</svg>`;
+      b.onclick = (e) => { e.stopPropagation(); fichaLugar(id); };
+      pines.push(new maplibregl.Marker({ element: b }).setLngLat([lon, lat]).addTo(bm.m));
+    }
+  };
   const pintar = () => {
+    if (cajaMapa?.isConnected) cajaMapa.remove();   // el mapa se guarda y se vuelve a poner (no se crea otra vez)
     const s = pasaporte.estado(), r = pasaporte.resumen();
     const total = LUGARES.length + MEDALLAS.length;
     const viajes = s.viajes.slice(-8).reverse();
@@ -341,6 +378,9 @@ views.pasaporte = (el) => {
       <div class="alert ps-como">${settings.contarViajes === false
         ? 'Tienes apagado <b>«Contar mis viajes»</b> (Ajustes → Pasaporte). Así solo cuentan los viajes con «Me subo a este: avísame al bajar».'
         : 'Tus viajes <b>cuentan solos</b>: abre BusSev en la parada para ver cuánto le falta a tu bus, como siempre, y súbete. El móvil comprueba que de verdad vas en ese autobús (llegaba a tu parada y vas por su recorrido, a la par que él) y, al bajarte, te da los sellos y medallas que ganes.'}</div>
+      <h2 class="ps-h">Mapa de sellos</h2>
+      <div class="ps-mapa-hueco" id="ps-mapa-hueco"></div>
+      <p class="help ps-mapa-pie">Toca un sitio para ver qué línea te lleva. Acerca con dos dedos.</p>
       <h2 class="ps-h">Sellos de lugares</h2>
       <div class="ps-sellos">${LUGARES.map(([id, n]) => { const t = s.logros[`s:${id}`]; return `<button type="button" class="ps-item${t ? ' ok' : ''}" data-ps="s:${id}">${selloSVG(id, { apagado: !t, fecha: t ? fmtFecha(t) : '' })}<span>${esc(n)}</span><small>${t ? fmtFecha(t) : 'Sin sellar'}</small></button>`; }).join('')}</div>
       <h2 class="ps-h">Medallas</h2>
@@ -357,10 +397,50 @@ views.pasaporte = (el) => {
       });
     }; });
   };
-  pintar();
-  pasaporte.sincronizar().then((n) => { if (n.length) pintar(); });
-  el.__repintar = pintar;
+  const pintarTodo = () => { pintar(); pintarMapa(); };
+  pintarTodo();
+  pasaporte.sincronizar().then((n) => { if (n.length) pintarTodo(); });
+  el.__repintar = pintarTodo;
+  return { cleanup() { pines.forEach((p) => p.remove()); bm?.remove(); bm = null; cajaMapa = null; } };
 };
+
+/* Ficha de un lugar del mapa: su sello y qué línea te lleva directa desde tu primera favorita */
+function lineasHacia(origen, lugar) {
+  const { porParada, porRuta } = indiceRecorridos();
+  const [, , lat, lon, radio] = lugar;
+  const cerca = new Map((window.BUSSEV_DATA?.paradas || []).map((p) => [p.codigo, metros(lat, lon, p.latitud, p.longitud)]).filter(([, m]) => m <= Math.max(radio + 120, 500)));
+  const mejor = new Map();
+  for (const [, linea, sentido, orden] of porParada.get(String(origen)) || []) {
+    const ruta = porRuta.get(`${linea}|${sentido}`) || [];
+    const i = ruta.findIndex((r) => r[0] === String(origen) && r[3] === orden);
+    for (let j = i + 1; i >= 0 && j < ruta.length; j++) {
+      if (!cerca.has(ruta[j][0])) continue;
+      const andando = Math.max(1, Math.round(Math.max(0, cerca.get(ruta[j][0]) - radio * 0.5) / 75));   // ~4,5 km/h
+      if (!mejor.has(linea) || mejor.get(linea).paradas > j - i) mejor.set(linea, { linea, paradas: j - i, hasta: ruta[j][0], andando });
+      break;
+    }
+  }
+  return [...mejor.values()].sort((a, b) => (a.paradas + a.andando) - (b.paradas + b.andando)).slice(0, 3);
+}
+function fichaLugar(id) {
+  const lugar = LUGARES.find((l) => l[0] === id);
+  if (!lugar) return;
+  const t = pasaporte.estado().logros[`s:${id}`];
+  const fav = favs.list()[0];
+  const nombreFav = fav ? (fav.alias || window.BUSSEV_DATA?.paradas?.find((p) => p.codigo === fav.codigo)?.nombre || `Parada ${fav.codigo}`) : '';
+  const ls = fav ? lineasHacia(fav.codigo, lugar) : [];
+  const nomParada = (c) => window.BUSSEV_DATA?.paradas?.find((p) => p.codigo === c)?.nombre || `Parada ${c}`;
+  openModal(`<div class="ps-celebra">${pasaporte.arte(`s:${id}`, { apagado: !t, papel: !!t, fecha: t ? fmtFecha(t) : '' })}<h2>${esc(lugar[1])}</h2>
+      <p class="help">${t ? `Sellado el ${new Date(t).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}` : 'Aún sin sellar: bájate cerca de aquí en un viaje en bus.'}</p></div>
+    ${fav ? (ls.length ? `<div class="set-group"><h3>Desde ${esc(nombreFav)}</h3>${ls.map((x) => `<div class="row-flat">${badge(lineaFor(x.linea)?.etiqueta || x.linea, lineaFor(x.linea)?.color)}<div><b>Directo, ${x.paradas} ${x.paradas === 1 ? 'parada' : 'paradas'}</b><p class="help">Bájate en ${esc(nomParada(x.hasta))} · ${x.andando} min andando</p></div></div>`).join('')}</div>`
+      : `<p class="help">Desde ${esc(nombreFav)} no hay ninguna línea directa: mira «Cómo llegar».</p>`) : '<p class="help">Marca una parada como favorita y te digo qué línea te lleva desde allí.</p>'}
+    <div class="actions"><button class="btn ghost" type="button" id="lf-x">Cerrar</button><button class="btn" type="button" id="lf-ir">Cómo llegar</button></div>`, (m, close) => {
+    $('#lf-x', m).onclick = close;
+    $('#lf-ir', m).onclick = () => { close(); window.rutaPendiente = { destino: { tipo: 'lugar', nombre: lugar[1], pos: [lugar[2], lugar[3]] }, buscar: true }; location.hash = 'ruta'; };
+  });
+}
+pasaporte.lineasHacia = lineasHacia;
+pasaporte.fichaLugar = fichaLugar;
 
 /* Al abrir o volver a la app se recogen los viajes que ha verificado Android */
 setTimeout(() => pasaporte.sincronizar(), 2500);

@@ -12,7 +12,7 @@ const store = {
 };
 const DEFAULTS = {
   theme: 'dark', color: 'rojo', refresh: 30, liveLines: true, mapStyle: 'oscuro',
-  tematicaAuto: true, tematica: 'normal', cieloSevilla: false, contarViajes: true, favsCerca: false,
+  tematicaAuto: true, tematica: 'normal', cieloSevilla: false, contarViajes: true, favsCerca: false, consejos: true,
   voz: false, vozAuto: false, letraGrande: false, escalaTexto: 1.22, altoContraste: false, menosAnimaciones: false, vibrar: true, botonesGrandes: false,
   modoSencillo: false,
   revisarCada: 3, avisosTussam: 'mias', avisosResumen: true, avisosTarjetas: true, avisosParada: true, avisosLinea: true, saldoURL: '', tiemposServidor: false, fondo: '', vehiculosFiesta: false, avisarVersion: true,
@@ -52,7 +52,23 @@ const FONDOS = {
   bosque:  { label: 'Bosque',       base: 'dark',  bg: '#0f1712', surface: '#18241c', s2: '#213027', line: '#2c3e33', muted: '#98ab9e' },
   vino:    { label: 'Vino',         base: 'dark',  bg: '#1a0f13', surface: '#26171d', s2: '#322028', line: '#432b35', muted: '#b79aa6' },
   cafe:    { label: 'Café',         base: 'dark',  bg: '#17120e', surface: '#231b15', s2: '#2e241c', line: '#3d3026', muted: '#b0a091' },
+  negro:   { label: 'Negro puro',   base: 'dark',  bg: '#000000', surface: '#0e0e10', s2: '#18181b', line: '#26262b', muted: '#9a9aa3' },
 };
+/* «Como mi móvil»: Android 12+ da los colores de tu fondo de pantalla. Se guardan para que al abrir no parpadee. */
+async function colorDelMovil() {
+  try {
+    if (!window.Capacitor?.isPluginAvailable?.('BusSevApariencia')) return;
+    const r = await window.Capacitor.nativePromise('BusSevApariencia', 'colorSistema', {});
+    if (!/^#[0-9A-F]{6}$/i.test(r?.a600 || '')) return;
+    const nuevo = { label: 'Como mi móvil', movil: true, light: [r.a600, r.a100, '#ffffff'], dark: [r.a200, r.a800, r.a900] };
+    const antes = JSON.stringify(PALETTES.movil || null);
+    PALETTES.movil = nuevo;
+    store.set('colorMovil', nuevo);
+    if (antes !== JSON.stringify(nuevo)) { applyTheme(); if (active?.name === 'ajustes') active.rerender?.(); }
+  } catch { /* móvil sin colores del sistema */ }
+}
+setTimeout(colorDelMovil, 600);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') setTimeout(colorDelMovil, 800); });   // por si has cambiado el fondo de pantalla
 // Temáticas: colores de la app y autobús del mapa (dibujos del usuario en /img/buses)
 const TEMATICAS = {
   normal:      { nombre: 'Normal', bus: 'normal' },
@@ -389,6 +405,7 @@ const darkMQ = matchMedia('(prefers-color-scheme: dark)');
 const quieto = () => !!settings.menosAnimaciones;
 let resolvedTheme = 'dark';
 function applyTheme() {
+  if (!PALETTES.movil) { const cm = store.get('colorMovil', null); if (cm?.light && cm?.dark) PALETTES.movil = cm; }
   resolvedTheme = settings.theme === 'auto' ? (darkMQ.matches ? 'dark' : 'light') : settings.theme;
   const F = FONDOS[settings.fondo];
   if (F) resolvedTheme = F.base;          // un fondo de color fija si es claro u oscuro
@@ -625,6 +642,10 @@ function saludoFiestaHTML() {
 darkMQ.addEventListener?.('change', () => { if (settings.theme === 'auto') applyTheme(); });
 const animMs = (ms) => (quieto() ? 0 : ms);
 const vibrar = (ms) => { if (settings.vibrar) navigator.vibrate?.(ms); };
+/* Un toque muy suave al pulsar pestañas y botones (solo con «Vibración» activada en Ajustes) */
+document.addEventListener('click', (e) => {
+  if (e.target.closest('.tabbar a, .btn, .seg button, .chip, .back-btn, .icon-btn')) vibrar(6);
+}, true);
 /* Cambia el contenido solo si ha cambiado (evita parpadeos y trabajo de más) */
 function setHTML(el, html) { if (el && el.__h !== html) { el.innerHTML = html; el.__h = html; } }
 
@@ -1148,12 +1169,15 @@ function stopCardHTML(p, { tiempos, status, distancia, limit = 4, fav = null }) 
       ${fav ? '' : ICON.chev}
     </a>${fav ? editar : ''}
     ${fav && settings.avisosTarjetas !== false ? (window.avisosTussam?.favAvisoHTML?.(p.codigo, fav.lineas) || '') : ''}
-    ${tiempos === undefined ? '<div class="board-empty">Cargando tiempos…</div>' : boardHTML(filtered, status, { limit, filtrado: !!fav?.lineas?.length, codigo: p.codigo })}
+    ${tiempos === undefined ? esqueletoTiempos() : boardHTML(filtered, status, { limit, filtrado: !!fav?.lineas?.length, codigo: p.codigo })}
     ${fav && settings.voz ? `<div class="card-tools"><button type="button" data-speak="${esc(p.codigo)}">🔊 Escuchar</button></div>` : ''}
   </article>`;
 }
 const emptyHTML = (icon, title, text, actions = '') => `<div class="empty">${icon}<h2>${title}</h2><p>${text}</p>${actions}</div>`;
-const skeletons = (n = 3) => `<div class="stack">${'<div class="skeleton"></div>'.repeat(n)}</div>`;
+/* Esqueletos mientras carga: la forma de lo que va a salir, con un brillo que pasa (en vez de «Cargando…») */
+const FILA_ESQ = '<div class="sk-fila"><i class="sk-badge"></i><i class="sk-txt"></i><i class="sk-min"></i></div>';
+const skeletons = (n = 3) => `<div class="stack" aria-busy="true" aria-label="Cargando">${`<div class="skeleton"><i class="sk-t"></i>${FILA_ESQ.repeat(3)}</div>`.repeat(n)}</div>`;
+const esqueletoTiempos = (n = 3) => `<div class="board-skel" aria-busy="true" aria-label="Cargando tiempos">${FILA_ESQ.repeat(n)}</div>`;
 const errorHTML = (e, retryId) => emptyHTML(ICON.off, 'No se han podido cargar los datos', esc(e.message || 'Error desconocido.'), `<button class="btn" type="button" id="${retryId}">Reintentar</button>`);
 const backHead = (inner = '') => `<div class="detail-head"><button class="back-btn" type="button" aria-label="Volver">${ICON.back}</button>${inner}</div>`;
 const swatchesHTML = (cur, attr) => `<div class="swatches">${TAGS.map((c) => `<button class="swatch" type="button" ${attr}="${c}" aria-pressed="${cur === c}" aria-label="Color" style="background:${c};color:${textOn(c)}">${cur === c ? ICON.check : ''}</button>`).join('')}</div>`;
@@ -2166,6 +2190,48 @@ const cercania = {
 };
 window.cercaniaFavs = cercania;
 
+/* Consejos: como mucho uno al día en Favoritas, de lo que la app hace y quizá no sabes. «Entendido» y no vuelve. */
+const CONSEJOS = [
+  ['sensor', '📳', 'Modo sensor', 'En una parada, toca un autobús y elige «Modo sensor»: te guardas el móvil y vibra cada minuto según se acerca.', ''],
+  ['pasaporte', '🛂', 'Tus viajes cuentan solos', 'Abre BusSev en la parada y súbete: el viaje cuenta para tu Pasaporte de Sevilla, con sellos y medallas.', 'pasaporte'],
+  ['repetir', '🔁', 'Avisos que se repiten', 'Al poner un aviso de llegada, toca «Repetir este aviso»: cada día a la misma hora, sin tener que ponerlo.', ''],
+  ['llegar', '⏰', 'Llegar antes de una hora', 'En «Cómo llegar» elige «Llegar antes de» y te digo a qué hora salir de casa (y te aviso).', 'ruta'],
+  ['brillo', '✨', 'Brillo holográfico', 'Personaliza tu tarjeta con brillo de carta coleccionable, purpurina, o tócala para darle la vuelta.', 'tarjeta'],
+  ['estilo', '🎨', 'Cada parada, a tu gusto', 'Toca el lápiz de una favorita: nombre, icono, color y 11 estilos (Azulejo, Panel de parada, Neón…).', ''],
+  ['widget', '📲', 'Widget «Mis favoritas»', 'Añade el widget de BusSev en la pantalla de inicio y elige «Mis favoritas»: tus paradas sin abrir la app.', ''],
+  ['atajos', '👆', 'Accesos directos', 'Mantén pulsado el icono de BusSev y abre al momento tus paradas favoritas.', ''],
+  ['tile', '🔽', 'En la cortina', 'Edita los botones al bajar la cortina y añade «Próximo bus»: verás cuánto le falta a tu autobús.', ''],
+  ['cerca', '📍', 'La más cercana, arriba', 'En Ajustes → Favoritas, haz que se ordenen solas: en casa sale primero «Casa» y en el trabajo, «Trabajo».', 'ajustes'],
+];
+const consejos = {
+  hoy() {
+    if (settings.consejos === false) return null;
+    const st = store.get('consejos', { vistos: {}, actual: null });
+    const dia = new Date().toDateString();
+    if (st.actual?.dia === dia) return CONSEJOS.find((c) => c[0] === st.actual.id && !st.vistos[c[0]]) || null;
+    if (st.actual && Date.now() - (st.actual.t || 0) < 20 * 3600_000) return null;   // como mucho uno al día
+    const c = CONSEJOS.find((x) => !st.vistos[x[0]]);
+    if (!c) return null;
+    store.set('consejos', { ...st, actual: { id: c[0], dia, t: Date.now() } });
+    return c;
+  },
+  html() {
+    const c = this.hoy();
+    if (!c) return '';
+    const [id, emoji, titulo, texto, ir] = c;
+    return `<div class="consejo" data-consejo="${id}"><span class="consejo-e" aria-hidden="true">${emoji}</span><div><small>¿Sabías que…?</small><b>${esc(titulo)}</b><p>${esc(texto)}</p>
+      <div class="consejo-acc">${ir ? `<a class="btn sm" href="#${ir}" data-consejo-ok>Probar</a>` : ''}<button class="btn ghost sm" type="button" data-consejo-ok>Entendido</button><button class="consejo-no" type="button" data-consejo-no>No más consejos</button></div></div></div>`;
+  },
+  visto(id) { const st = store.get('consejos', { vistos: {}, actual: null }); st.vistos[id] = Date.now(); store.set('consejos', st); },
+};
+document.addEventListener('click', (e) => {
+  const caja = e.target.closest('[data-consejo]');
+  if (!caja) return;
+  if (e.target.closest('[data-consejo-ok]')) { consejos.visto(caja.dataset.consejo); caja.remove(); }
+  else if (e.target.closest('[data-consejo-no]')) { settings.consejos = false; saveSettings(); caja.remove(); toast('Vale, sin consejos. Puedes volver a activarlos en Ajustes.'); }
+});
+window.consejos = consejos;
+
 views.favoritas = (el) => {
   let stop = null, loading = false, results = null, dead = false;
   // Últimos tiempos guardados (< 10 min) para enseñarlos al instante al abrir, en vez de «Cargando…»
@@ -2203,12 +2269,14 @@ views.favoritas = (el) => {
       const sb = $('#fav-saldo', el); if (sb) setHTML(sb, tarjetasBajasHTML());
       const cd = $('#fav-caduca', el); if (cd) setHTML(cd, tarjetasCaducanHTML());
       const ob = $('#fav-offline', el); if (ob) setHTML(ob, offlineHTML());
+      const cb = $('#fav-consejo', el); if (cb && !cb.firstElementChild) setHTML(cb, consejos.html());
       $('#fav-upd', el).textContent = results ? `Actualizado a las ${fmtClock()} · ${refreshNote()}` : '';
       return true;
     }
     el.__marco = marco;
     el.innerHTML = `<div class="stack view-anim"><div class="page-head row-between"><div><h1>Favoritas</h1><p>${porCerca ? '📍 Primero la que tienes más cerca' : 'Tus paradas con los tiempos en directo.'}</p></div><a class="btn ghost sm" href="#ruta">${ICON.route}Cómo llegar</a></div>
       ${window.anio?.bannerHTML?.() || ''}
+      <div id="fav-consejo">${consejos.html()}</div>
       <div id="fav-bajada">${window.bajadaHTML?.() || ''}</div>
       <div id="fav-offline">${offlineHTML()}</div>
       ${servicioHoyHTML()}
@@ -2335,7 +2403,7 @@ function selectStop(p) {
       <button class="back-btn" type="button" id="sh-close" aria-label="Cerrar">${ICON.close}</button>
     </div>
     <div class="chips-wrap" id="sh-lines" style="margin-top:6px"></div>
-    <div id="sh-board"><div class="board-empty" style="border:0">Cargando tiempos…</div></div><p class="updated" id="sh-upd" style="text-align:left"></p>
+    <div id="sh-board">${esqueletoTiempos(2)}</div><p class="updated" id="sh-upd" style="text-align:left"></p>
     <div class="sheet-actions">${settings.voz ? `<button class="btn ghost" type="button" data-speak="${esc(p.codigo)}">🔊 Escuchar</button>` : ''}<a class="btn ghost" href="#parada-${esc(p.codigo)}">Ver parada</a></div>`;
   fb.bind(sheet);
   bindSheetGestures(sheet);
@@ -2851,7 +2919,7 @@ views.parada = (el, codigo) => {
       <section id="p-filtro" class="p-lin" aria-label="Líneas de esta parada"></section>
       <div id="p-sensor">${window.sensorBus?.bannerHTML?.(codigo) || ''}</div>
       <div id="p-avisos">${settings.avisosParada !== false ? (window.avisosTussam?.paradaBannerHTML?.(codigo) || '') : ''}</div>
-      <article class="card" id="p-board"><div class="board-empty">Cargando tiempos…</div></article>
+      <article class="card" id="p-board">${esqueletoTiempos(4)}</article>
       <div id="p-horario"></div>
       <div><div class="map-wrap" id="p-mapwrap"><div class="map-box" id="p-map"></div>
           <button class="map-full-btn" type="button" id="p-full" aria-label="Ver el mapa en pantalla completa">${ICON.expand}</button></div>
@@ -3076,10 +3144,11 @@ views.ajustes = (el) => {
           <div class="chips">${[['papanoel', '🎅 Navidad'], ['nochevieja', '🍇 Nochevieja'], ['anonuevo', '🎆 Año Nuevo'], ['reyes', '👑 Reyes']].map(([k, t]) => `<button type="button" class="chip${pruebaDia === k ? ' on' : ''}" data-dia="${k}" aria-pressed="${pruebaDia === k}">${t}</button>`).join('')}${pruebaDia ? '<button type="button" class="chip" data-dia="">Quitar</button>' : ''}</div></div>
         ${sw('vehiculosFiesta', settings.vehiculosFiesta, 'Vehículos de fiesta en el mapa', `Cambia los autobuses del mapa según la temática: pasos en Semana Santa, coches de caballos en la Feria, coches de miedo en Halloween, carrozas en Navidad y, el resto del año, el «Butano», el autobús naranja de TUSSAM de toda la vida. Cada autobús lleva uno al azar.${VEHICULOS_FIESTA[tem] ? ` Ahora: <b>${esc(VEHICULOS_FIESTA[tem].nombre)}</b>.` : ''}`)}</div>
       <div class="set-group"><h3>Color de la app</h3>
-        <div class="swatches">${Object.entries(PALETTES).map(([k, p]) => `<button class="swatch" type="button" data-color="${k}" aria-pressed="${settings.color === k}" aria-label="${p.label}" style="background:${p[resolvedTheme][0]};color:${p[resolvedTheme][2]}">${settings.color === k ? ICON.check : ''}</button>`).join('')}</div>
+        <div class="swatches">${Object.entries(PALETTES).sort(([a], [b]) => (b === 'movil') - (a === 'movil')).map(([k, p]) => `<button class="swatch${p.movil ? ' swatch-movil' : ''}" type="button" data-color="${k}" aria-pressed="${settings.color === k}" aria-label="${p.label}" style="background:${p[resolvedTheme][0]};color:${p[resolvedTheme][2]}">${settings.color === k ? ICON.check : ''}</button>`).join('')}</div>
+        ${PALETTES.movil ? '<p>El primero (📱) es <b>«Como mi móvil»</b>: el color sale de tu fondo de pantalla y cambia si lo cambias.</p>' : ''}
         ${tem !== 'normal' ? '<p>Mientras haya una temática puesta, la app usa sus colores. Con la temática Normal vuelve tu color.</p>' : '<p>Los pasteles llevan el texto oscuro encima para que se lea bien.</p>'}</div>
       ${(window.repetidos?.list() || []).length ? `<div class="set-group"><h3>Avisos que se repiten</h3>${window.repetidos.list().map((r) => `<div class="row-flat rep-fila">${badge(r.linea, lineaFor(r.linea)?.color, { sm: true })}<div><b>${esc(r.parada)}</b><p class="help">${esc(window.repetidos.texto(r))}</p></div><button class="btn ghost sm" type="button" data-rep-quitar="${r.id}">Quitar</button></div>`).join('')}</div>` : ''}
-      <div class="set-group"><h3>Favoritas</h3>${sw('favsCerca', settings.favsCerca === true, 'La más cercana, arriba', 'Tus favoritas se ordenan solas según dónde estés: en casa sale primero «Casa» y en el trabajo, «Trabajo». Si una está en un grupo, sube el grupo entero. Usa la última ubicación del móvil, sin preguntar; si no la hay, se queda tu orden.')}</div>
+      <div class="set-group"><h3>Favoritas</h3>${sw('consejos', settings.consejos !== false, 'Consejos', 'De vez en cuando (como mucho uno al día) una tarjetita en Favoritas con algo que la app hace y quizá no sabes.')}${sw('favsCerca', settings.favsCerca === true, 'La más cercana, arriba', 'Tus favoritas se ordenan solas según dónde estés: en casa sale primero «Casa» y en el trabajo, «Trabajo». Si una está en un grupo, sube el grupo entero. Usa la última ubicación del móvil, sin preguntar; si no la hay, se queda tu orden.')}</div>
       <div class="set-group"><h3>Pasaporte de Sevilla</h3>${sw('contarViajes', settings.contarViajes !== false, 'Contar mis viajes', 'Al abrir una parada estando en ella (o yendo hacia ella), BusSev sigue tu viaje unos minutos con la ubicación: la notificación te enseña cuánto le falta a tu bus y si llegas andando, y si te subes, el viaje cuenta para el Pasaporte. Solo usa el permiso de ubicación «mientras usas la app» y todo se queda en tu móvil.')}</div>
       <div class="set-group"><h3>Cielo de Sevilla</h3>${sw('cieloSevilla', settings.cieloSevilla === true, 'El cielo de Sevilla arriba', 'La barra de arriba se pinta con el cielo real de Sevilla: amanecer, día, atardecer o noche con la luna, y nubes o lluvia si las hay. Con una temática (Feria, Navidad…) manda la temática.')}</div>
       <div class="set-group"><h3>Color de fondo</h3>
@@ -3303,7 +3372,31 @@ searchView.addEventListener('click', (e) => { if (e.target.closest('a[href^="#"]
 /* ================================================================== */
 /* Router                                                              */
 /* ================================================================== */
+/* Transición al abrir una parada o una línea (y al volver): la pantalla entra deslizándose y el nombre de la parada
+   «vuela» de la tarjeta al título. La hace el navegador (View Transitions); si no la tiene, se cambia sin más. */
+const VT_DETALLE = new Set(['parada', 'linea']);
+let conTransicion = false;
 function show(name, arg) {
+  const usar = typeof document.startViewTransition === 'function' && !settings.menosAnimaciones && !quieto()
+    && (VT_DETALLE.has(name) || VT_DETALLE.has(active?.name)) && name !== active?.name;
+  if (!usar) { mostrar(name, arg); return; }
+  const raiz = document.documentElement;
+  raiz.dataset.vt = volviendo ? 'atras' : 'adelante';
+  conTransicion = true;
+  try {
+    const t = document.startViewTransition(() => mostrar(name, arg));
+    t.finished.finally(() => { delete raiz.dataset.vt; conTransicion = false; });
+  } catch { conTransicion = false; mostrar(name, arg); }
+}
+/* El nombre de la tarjeta que tocas es el que «vuela» hasta el título de la parada */
+document.addEventListener('click', (e) => {
+  const a = e.target.closest('a.card-head[href^="#parada-"]');
+  if (!a) return;
+  document.querySelectorAll('[style*="view-transition-name"]').forEach((x) => { x.style.viewTransitionName = ''; });
+  const h = a.querySelector('h3, .card-title');
+  if (h) h.style.viewTransitionName = 'vt-parada';
+}, true);
+function mostrar(name, arg) {
   active.cleanup?.();
   const el = $(`#view-${name}`);
   document.querySelectorAll('.view').forEach((v) => { v.hidden = true; v.dataset.active = ''; });
@@ -3321,7 +3414,7 @@ function show(name, arg) {
   active = { name, cleanup: null, refresh: null, rerender: null, back: null };
   const r = views[name](el, arg) || {};
   active.cleanup = r.cleanup; active.refresh = active.refresh || r.refresh; active.back = r.back || null;
-  if (!settings.menosAnimaciones) { el.classList.remove('entrando'); void el.offsetWidth; el.classList.add('entrando'); }
+  if (!settings.menosAnimaciones && !conTransicion) { el.classList.remove('entrando'); void el.offsetWidth; el.classList.add('entrando'); }
   if (name !== 'mapa' && yVuelta > 0) {
     // Algunas pantallas terminan de pintarse un poco después (favoritas, parada): se reintenta un momento.
     let tocado = false;   // si la persona ya está moviendo la pantalla, no se le corrige

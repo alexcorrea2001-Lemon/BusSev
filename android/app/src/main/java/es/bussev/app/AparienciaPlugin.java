@@ -104,6 +104,20 @@ public class AparienciaPlugin extends Plugin {
         return id;
     }
 
+    /** «Como mi móvil»: los colores que Android 12+ saca de tu fondo de pantalla (Material You). Vacío en móviles anteriores. */
+    @PluginMethod
+    public void colorSistema(PluginCall call) {
+        JSObject r = new JSObject();
+        if (Build.VERSION.SDK_INT >= 31) {
+            Context c = getContext();
+            int[] ids = { android.R.color.system_accent1_100, android.R.color.system_accent1_200, android.R.color.system_accent1_600,
+                    android.R.color.system_accent1_800, android.R.color.system_accent1_900 };
+            String[] nombres = { "a100", "a200", "a600", "a800", "a900" };
+            for (int i = 0; i < ids.length; i++) r.put(nombres[i], String.format("#%06X", 0xFFFFFF & c.getColor(ids[i])));
+        }
+        call.resolve(r);
+    }
+
     @PluginMethod
     public void canalAviso(PluginCall call) {
         JSObject r = new JSObject();

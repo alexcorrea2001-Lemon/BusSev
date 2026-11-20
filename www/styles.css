@@ -162,7 +162,7 @@ main { position: relative; overflow: hidden; min-height: 0; }
 .btn.ghost { background: var(--surface-2); color: var(--ink); }
 .btn.block { width: 100%; }
 .btn svg { width: 20px; height: 20px; }
-.skeleton { height: 150px; border-radius: var(--radius); background: var(--surface); opacity: .7; }
+.skeleton { position: relative; overflow: hidden; display: grid; gap: 12px; padding: 16px; border-radius: var(--radius); background: var(--surface); }
 .updated { font-size: 13px; color: var(--muted); text-align: center; margin: 4px 0 0; font-variant-numeric: tabular-nums; }
 
 /* ---------- listas ---------- */
@@ -1600,10 +1600,70 @@ body[data-view="tuano"] .topbar, body[data-view="tuano"] .tabbar { visibility: h
 
 /* Cómo llegar: salir ahora / a una hora / llegar antes de */
 .plan-cuando { display: grid; gap: 8px; margin: 4px 0 2px; }
-.plan-hora { height: 46px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); padding: 0 14px; font: 700 18px/1 inherit; font-variant-numeric: tabular-nums; color-scheme: light dark; }
 
 /* Avisos que se repiten */
 .rep-dias { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
 .rep-dias .chip { min-height: 42px; padding: 0; justify-content: center; font-weight: 800; }
 .rep-on { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 14px; background: var(--surface-2); }
 .rep-on p { flex: 1; margin: 0; font-size: 13.5px; }
+
+/* Selector de hora: la hora grande en el centro, − y + a los lados (el reloj del móvil se abre al tocar la hora) */
+.hora-pick { display: grid; grid-template-columns: 56px 1fr 56px; align-items: center; gap: 4px; padding: 4px; border-radius: 14px; background: var(--surface-2); }
+.hp-mas { height: 52px; border: 0; border-radius: 11px; background: transparent; color: var(--ink); font: 700 26px/1 var(--font-board, inherit); cursor: pointer; }
+.hp-mas:active { background: var(--surface); }
+.hp-centro { position: relative; display: grid; justify-items: center; align-content: center; gap: 1px; height: 52px; border-radius: 11px; background: var(--surface); box-shadow: var(--shadow); cursor: pointer; }
+.hp-hora { font: 700 28px/1 var(--font-board, inherit); letter-spacing: .02em; font-variant-numeric: tabular-nums; }
+.hp-dia { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+.hp-centro input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; border: 0; cursor: pointer; }
+
+/* «Como mi móvil»: el color del fondo de pantalla, con un móvil pequeñito */
+.swatch-movil { position: relative; }
+.swatch-movil::after { content: "📱"; position: absolute; right: -4px; bottom: -4px; font-size: 13px; line-height: 1; filter: drop-shadow(0 1px 1px rgb(0 0 0 / .35)); }
+
+/* Esqueletos: formas de lo que viene, con un brillo que pasa (capa que se desliza: no repinta) */
+.skeleton i, .board-skel i { display: block; border-radius: 8px; background: var(--surface-2); }
+.skeleton .sk-t { width: 55%; height: 18px; margin-bottom: 4px; }
+.sk-fila { display: grid; grid-template-columns: 44px 1fr 52px; align-items: center; gap: 12px; }
+.sk-badge { height: 26px; border-radius: 8px !important; }
+.sk-txt { height: 13px; width: 80%; }
+.sk-min { height: 18px; }
+.board-skel { position: relative; overflow: hidden; display: grid; gap: 14px; padding: 14px 16px; }
+.skeleton::after, .board-skel::after { content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(100deg, transparent 25%, rgb(255 255 255 / .07) 50%, transparent 75%); transform: translateX(-100%); animation: sk-brillo 1.3s ease-in-out infinite; }
+:root[data-theme="light"] .skeleton::after, :root[data-theme="light"] .board-skel::after { background: linear-gradient(100deg, transparent 25%, rgb(255 255 255 / .75) 50%, transparent 75%); }
+@keyframes sk-brillo { to { transform: translateX(100%); } }
+:root.a-quieto .skeleton::after, :root.a-quieto .board-skel::after { animation: none; display: none; }
+
+/* Transiciones entre pantallas (View Transitions): la barra de arriba y la de abajo se quedan quietas */
+.topbar { view-transition-name: vt-top; }
+.tabbar { view-transition-name: vt-tab; }
+#view-parada .detail-head h2 { view-transition-name: vt-parada; }
+::view-transition-group(vt-parada) { animation-duration: .38s; animation-timing-function: cubic-bezier(.2,.8,.2,1); }
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: .32s; animation-timing-function: cubic-bezier(.2,.8,.2,1); }
+html[data-vt="adelante"]::view-transition-old(root) { animation-name: vt-sale-izq; }
+html[data-vt="adelante"]::view-transition-new(root) { animation-name: vt-entra-der; }
+html[data-vt="atras"]::view-transition-old(root) { animation-name: vt-sale-der; }
+html[data-vt="atras"]::view-transition-new(root) { animation-name: vt-entra-izq; }
+@keyframes vt-sale-izq { to { opacity: 0; transform: translateX(-24px); } }
+@keyframes vt-entra-der { from { opacity: 0; transform: translateX(36px); } }
+@keyframes vt-sale-der { to { opacity: 0; transform: translateX(36px); } }
+@keyframes vt-entra-izq { from { opacity: 0; transform: translateX(-24px); } }
+@media (prefers-reduced-motion: reduce) { ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; } }
+
+/* Mapa del Pasaporte */
+.ps-mapa { position: relative; height: 340px; border-radius: 18px; overflow: hidden; box-shadow: inset 0 0 0 1px var(--line); background: var(--surface-2); }
+.ps-mapa-pie { margin: -4px 2px 0; font-size: 13px; color: var(--muted); }
+.ps-pin { width: 24px; height: 24px; padding: 4px; border: 0; border-radius: 50%; background: var(--surface); box-shadow: 0 0 0 1.5px #8b8e98, 0 2px 6px rgb(0 0 0 / .35); cursor: pointer; opacity: .85; }
+.ps-pin svg { width: 100%; height: 100%; display: block; }
+.ps-pin.ok { background: #f6eedc; box-shadow: 0 0 0 2.5px var(--tinta), 0 3px 10px rgb(0 0 0 / .4); opacity: 1; width: 32px; height: 32px; padding: 5px; z-index: 2; }
+
+/* Consejos («¿Sabías que…?») */
+.consejo { display: flex; gap: 12px; padding: 14px 14px 12px; border-radius: 18px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--line), 0 2px 10px rgb(0 0 0 / .08); }
+.consejo-e { font-size: 26px; line-height: 1.1; }
+.consejo > div { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.consejo small { font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+.consejo b { font-size: 15.5px; }
+.consejo p { margin: 0; font-size: 13.5px; line-height: 1.4; color: var(--muted); }
+.consejo-acc { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 8px; }
+.consejo-no { border: 0; background: none; color: var(--muted); font: inherit; font-size: 12.5px; text-decoration: underline; padding: 4px; margin-left: auto; cursor: pointer; }
+#fav-consejo:empty { display: none; }
