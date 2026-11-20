@@ -105,6 +105,21 @@ public class AparienciaPlugin extends Plugin {
     }
 
     /** «Como mi móvil»: los colores que Android 12+ saca de tu fondo de pantalla (Material You). Vacío en móviles anteriores. */
+    /** Batería y datos, para que la app gaste menos cuando hace falta */
+    @PluginMethod
+    public void energia(PluginCall call) {
+        Context c = getContext();
+        JSObject r = new JSObject();
+        r.put("ahorroSistema", Energia.ahorroSistema(c));
+        r.put("bateria", Energia.bateria(c));
+        r.put("cargando", Energia.cargando(c));
+        r.put("datosRestringidos", Energia.datosRestringidos(c));
+        r.put("medida", Energia.medida(c));
+        r.put("bytes", (double) Energia.bytes(c));
+        r.put("arranque", (double) (System.currentTimeMillis() - android.os.SystemClock.elapsedRealtime()));
+        call.resolve(r);
+    }
+
     @PluginMethod
     public void colorSistema(PluginCall call) {
         JSObject r = new JSObject();

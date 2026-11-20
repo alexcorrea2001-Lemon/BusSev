@@ -12,7 +12,7 @@ const store = {
 };
 const DEFAULTS = {
   theme: 'dark', color: 'rojo', refresh: 30, liveLines: true, mapStyle: 'oscuro',
-  tematicaAuto: true, tematica: 'normal', cieloSevilla: false, contarViajes: true, favsCerca: false, consejos: true,
+  tematicaAuto: true, tematica: 'normal', cieloSevilla: false, contarViajes: true, favsCerca: false, consejos: true, ahorroBateria: 'auto', ahorroDatos: 'auto',
   voz: false, vozAuto: false, letraGrande: false, escalaTexto: 1.22, altoContraste: false, menosAnimaciones: false, vibrar: true, botonesGrandes: false,
   modoSencillo: false,
   revisarCada: 3, avisosTussam: 'mias', avisosSilencio: true, silencioDesde: '23:00', silencioHasta: '08:00', avisosResumen: true, avisosTarjetas: true, avisosParada: true, avisosLinea: true, saldoURL: '', tiemposServidor: false, fondo: '', vehiculosFiesta: false, avisarVersion: true,
@@ -397,6 +397,64 @@ const busIco = () => `<img class="lg-busimg" src="${busImg()}" alt="autobús" st
 // Colores para personalizar favoritas y tarjetas
 const TAGS = ['#e5303c', '#f08c00', '#f2c400', '#2fb36d', '#1fa3c9', '#3d6bff', '#8a5cf6', '#e0479e', '#7a7f8a'];
 
+/* ================================================================== */
+/* Batería y datos. «Automático» sigue al móvil: ahorro de batería de Android (o un 15 % o menos sin cargar) y
+   ahorro de datos de Android. Mientras se ahorra: los tiempos como mucho cada minuto (45 s con datos), el cielo
+   de la barra y el brillo que se mueve al inclinar la tarjeta se quedan quietos, el tiempo del cielo y Sevici
+   se piden menos, y la búsqueda de versión nueva espera al wifi. Las animaciones normales NO se quitan.
+   También se cuenta lo que gasta la app al mes (Android lo sabe por app, incluidos el widget y los avisos). */
+const energia = {
+  est: store.get('energia', { ahorroSistema: false, bateria: -1, cargando: false, datosRestringidos: false, medida: false }),
+  bajaBateria() { const e = this.est; return e.bateria >= 0 && e.bateria <= 15 && !e.cargando; },
+  bateria() { const m = settings.ahorroBateria || 'auto'; return m === 'siempre' || (m === 'auto' && (!!this.est.ahorroSistema || this.bajaBateria())); },
+  datos() { const m = settings.ahorroDatos || 'auto'; return m === 'siempre' || (m === 'auto' && (!!this.est.datosRestringidos || !!navigator.connection?.saveData)); },
+  motivo() {
+    if ((settings.ahorroBateria || 'auto') === 'siempre') return 'lo tienes siempre puesto';
+    if (this.est.ahorroSistema) return 'el móvil está en ahorro de batería';
+    if (this.bajaBateria()) return `queda un ${this.est.bateria} % de batería`;
+    return '';
+  },
+  async leer() {
+    try {
+      if (!window.Capacitor?.isPluginAvailable?.('BusSevApariencia')) { this.aplicar(); return; }
+      const r = await window.Capacitor.nativePromise('BusSevApariencia', 'energia', {});
+      if (!r || typeof r !== 'object') return;
+      const antes = JSON.stringify([this.bateria(), this.datos()]);
+      this.est = { ahorroSistema: !!r.ahorroSistema, bateria: Number.isFinite(r.bateria) ? r.bateria : -1, cargando: !!r.cargando, datosRestringidos: !!r.datosRestringidos, medida: !!r.medida };
+      store.set('energia', this.est);
+      if (Number(r.bytes) >= 0) this.contar(Number(r.bytes), Number(r.arranque) || 0);
+      this.aplicar();
+      if (antes !== JSON.stringify([this.bateria(), this.datos()]) && active?.name === 'ajustes') active.rerender?.();
+    } catch { /* sin plugin: navegador o versión vieja */ }
+  },
+  aplicar() { document.documentElement.classList.toggle('ahorro', this.bateria()); },
+  /* Datos del mes: Android da lo que ha movido la app desde que se encendió el móvil; se suma la diferencia */
+  contar(bytes, arranque, ahora = new Date()) {
+    const mes = `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, '0')}`;
+    const d = store.get('datosMes', { mes, bytes: 0, previos: {}, ult: null });
+    const mismo = d.ult && Math.abs(arranque - d.ult.arranque) < 120_000 && bytes >= d.ult.bytes;
+    const delta = !d.ult ? 0 : mismo ? bytes - d.ult.bytes : bytes;   // reiniciado: todo lo de este arranque es nuevo
+    if (d.mes !== mes) { d.previos = { ...(d.previos || {}), [d.mes]: d.bytes }; d.mes = mes; d.bytes = 0; const ks = Object.keys(d.previos).sort(); for (const k of ks.slice(0, -6)) delete d.previos[k]; }
+    d.bytes += delta; d.ult = { arranque, bytes };
+    store.set('datosMes', d);
+    return d;
+  },
+  mb(b) { return b < 1e6 ? `${Math.max(1, Math.round(b / 1e3))} kB` : `${(b / 1e6).toLocaleString('es-ES', { maximumFractionDigits: b < 1e7 ? 1 : 0 })} MB`; },
+  resumenDatos() {
+    const d = store.get('datosMes', null);
+    if (!d?.ult) return '';
+    const meses = Object.keys(d.previos || {}).sort();
+    const pasado = meses.length ? d.previos[meses.at(-1)] : null;
+    return `Este mes, BusSev ha gastado unos <b>${this.mb(d.bytes)}</b>${pasado != null ? ` (el mes pasado, ${this.mb(pasado)})` : ''}. Cuenta todo: la app, el widget, los avisos y el mapa.`;
+  },
+};
+window.energia = energia;
+window.ahorrando = () => energia.bateria();
+window.ahorrandoDatos = () => energia.datos();
+setTimeout(() => energia.leer(), 1200);
+setInterval(() => { if (document.visibilityState === 'visible') energia.leer(); }, 3 * 60_000);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') setTimeout(() => energia.leer(), 300); });
+
 const darkMQ = matchMedia('(prefers-color-scheme: dark)');
 /* ¿Sin animaciones? Lo decide SOLO el interruptor «Reducir animaciones» de Ajustes (o el Modo sencillo).
    Antes también se apagaban solas, sin avisar, si el móvil tenía quitadas las animaciones del sistema (pasa
@@ -427,6 +485,7 @@ function applyTheme() {
   root.style.setProperty('--escala-texto', settings.escalaTexto || 1.22);
   root.classList.toggle('a-contraste', !!settings.altoContraste);
   root.classList.toggle('a-quieto', quieto());
+  root.classList.toggle('ahorro', energia.bateria());
   root.classList.toggle('a-botones', !!settings.botonesGrandes);
   root.classList.toggle('a-sencillo', !!settings.modoSencillo);
   const v = vehiculoFiesta();
@@ -497,7 +556,7 @@ const cielo = {
   },
   faseLuna(t) { const s = 29.530588853; return (((t / 86400000 - 10962.2625) % s) + s) % s / s; },   // 0 nueva · 0,5 llena
   async pedirTiempo() {
-    if (!navigator.onLine || Date.now() - this.pedido < 30 * 60000) return;
+    if (!navigator.onLine || Date.now() - this.pedido < (energia.datos() || energia.bateria() ? 2 * 3600000 : 30 * 60000)) return;
     this.pedido = Date.now();
     try {
       const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${this.LAT}&longitude=${this.LON}&current=cloud_cover,precipitation,weather_code&timezone=Europe%2FMadrid`, { signal: AbortSignal.timeout?.(8000) });
@@ -1004,6 +1063,7 @@ const actualizaciones = {
     if (!settings.avisarVersion || !this.version().build || this.mirando) return;
     if (document.querySelector('.modal-bg')) return;   // hay otra ventana abierta: no se pisa
     if (Date.now() - store.get('ultimaRevisionAuto', 0) < 15 * 60_000) return;
+    if (energia.datos() && energia.est.medida) return;   // ahorro de datos: se mira cuando haya wifi
     this.mirando = true;
     let r = null;
     try { r = await this.buscar(); } catch { /* sin conexión: se reintenta al volver a la app */ } finally { this.mirando = false; }
@@ -1416,7 +1476,11 @@ const REPOSO_MS = 3 * 60_000;
 let ultimoToque = Date.now();
 const despertarHandlers = new Set();
 const enReposo = () => Date.now() - ultimoToque > REPOSO_MS;
-const ritmoReposo = (ms) => { const q = Date.now() - ultimoToque; return q > 15 * 60_000 ? Math.max(ms, 5 * 60_000) : q > REPOSO_MS ? Math.max(ms, 2 * 60_000) : ms; };
+const ritmoReposo = (ms) => {
+  const q = Date.now() - ultimoToque;
+  const r = q > 15 * 60_000 ? Math.max(ms, 5 * 60_000) : q > REPOSO_MS ? Math.max(ms, 2 * 60_000) : ms;
+  return energia.bateria() ? Math.max(r, 60_000) : energia.datos() ? Math.max(r, 45_000) : r;   // ahorro: como mucho cada minuto (o 45 s)
+};
 for (const ev of ['pointerdown', 'keydown', 'wheel', 'touchstart']) {
   addEventListener(ev, () => {
     const dormida = enReposo();
@@ -1435,7 +1499,10 @@ function autoRefresh(fn, { min = 0 } = {}) {
   resumeHandlers.add(onResume); despertarHandlers.add(onDespertar);
   return () => { if (id) clearInterval(id); resumeHandlers.delete(onResume); despertarHandlers.delete(onDespertar); };
 }
-const refreshNote = () => (settings.refresh ? `se actualiza cada ${settings.refresh === 60 ? 'minuto' : settings.refresh + ' s'}` : 'pulsa ⟳ para actualizar');
+const refreshNote = () => (!settings.refresh ? 'pulsa ⟳ para actualizar'
+  : energia.bateria() && settings.refresh < 60 ? 'se actualiza cada minuto · 🔋 ahorro'
+  : energia.datos() && settings.refresh < 45 ? 'se actualiza cada 45 s · ahorro de datos'
+  : `se actualiza cada ${settings.refresh === 60 ? 'minuto' : settings.refresh + ' s'}`);
 
 /* ================================================================== */
 /* Ubicación                                                           */
@@ -1640,7 +1707,7 @@ const sevici = {
   datos: null, at: 0, red: 'sevici', _p: null,
   /* Como mucho una consulta cada 90 s (CityBikes permite 300 por hora y así se gasta poca batería y datos) */
   async cargar(forzar = false) {
-    if (!forzar && this.datos && Date.now() - this.at < 90_000) return this.datos;
+    if (!forzar && this.datos && Date.now() - this.at < (energia.datos() ? 300_000 : 90_000)) return this.datos;
     if (this._p) return this._p;
     this._p = (async () => {
       const pedir = async (id) => { const r = await fetch(`https://api.citybik.es/v2/networks/${id}?fields=stations`, { credentials: 'omit' }); if (!r.ok) throw new Error(String(r.status)); return r.json(); };
@@ -1824,7 +1891,7 @@ class MarkerSet {
     for (const it of this.items.values()) if (it.st) this.colocar(it, true);
   }
   /* Cada 4 segundos (no hace falta más: ahorra batería y se ve más tranquilo) */
-  startAnim() { if (this.timer || settings.menosAnimaciones) return; this.timer = setInterval(() => this.tick(), 4000); }
+  startAnim() { if (this.timer || settings.menosAnimaciones) return; this.timer = setInterval(() => this.tick(), energia.bateria() ? 8000 : 4000); }
   stopAnim() { clearInterval(this.timer); this.timer = null; if (this.raf) cancelAnimationFrame(this.raf); this.raf = 0; }
 }
 
@@ -3271,6 +3338,11 @@ views.ajustes = (el) => {
       <h2 class="section-title">Tiempos y avisos</h2>
       <div class="set-group"><h3>Actualizar los tiempos</h3>${segBtns('refresh', [[30, 'Cada 30 s'], [60, 'Cada minuto'], [0, 'Al pulsar ⟳']], settings.refresh)}
         <p>Cuanto menos a menudo, menos batería y datos. Con la app en segundo plano nunca se actualiza, y si la dejas abierta sin tocarla va más despacio (cada 2 min, y pasado un cuarto de hora cada 5): en cuanto la tocas, se actualiza al momento.</p></div>
+      <div class="set-group"><h3>Ahorro de batería</h3>${segBtns('ahorroBateria', [['auto', 'Automático'], ['siempre', 'Siempre'], ['nunca', 'Nunca']], settings.ahorroBateria || 'auto')}
+        <p>${energia.bateria() ? `<b>🔋 Ahorrando ahora${energia.motivo() ? ` (${esc(energia.motivo())})` : ''}.</b> ` : ''}En automático se pone solo cuando el móvil está en ahorro de batería o le queda un 15 % o menos sin cargar. Los tiempos se piden como mucho cada minuto, el cielo de la barra y el brillo de la tarjeta al inclinarla se quedan quietos, y el widget y el GPS de los viajes gastan menos. El resto de animaciones siguen igual.</p></div>
+      <div class="set-group"><h3>Ahorro de datos</h3>${segBtns('ahorroDatos', [['auto', 'Automático'], ['siempre', 'Siempre'], ['nunca', 'Nunca']], settings.ahorroDatos || 'auto')}
+        <p>${energia.datos() ? '<b>📶 Ahorrando datos ahora.</b> ' : ''}En automático sigue al «Ahorro de datos» de Android. Los tiempos se piden como mucho cada 45 s, el cielo y Sevici se consultan menos, y la versión nueva se busca solo con wifi.</p>
+        ${energia.resumenDatos() ? `<p class="datos-mes">📊 ${energia.resumenDatos()}</p>` : ''}</div>
       <div class="set-group">${sw('liveLines', settings.liveLines, 'Autobuses en directo en el mapa', 'Muestra dónde va cada autobús (en las líneas y en la zona del mapa que miras). También se activa con el botón ' + busIco() + ' del mapa.')}</div>
       <div class="set-group"><h3>Revisar al abrir la app</h3>${segBtns('revisarCada', [[0, 'Nunca'], [1, 'Cada hora'], [3, 'Cada 3 h'], [6, 'Cada 6 h']], settings.revisarCada)}
         <p>Comprueba el saldo y la caducidad de tus tarjetas guardadas al abrir la app, como mucho con esta frecuencia, y te avisa si el saldo está bajo.</p></div>
@@ -3317,7 +3389,7 @@ views.ajustes = (el) => {
       if (k === 'escalaTexto') settings.letraGrande = Number(b.dataset.v) > 1;
       saveSettings();
       if (k === 'sonidoAviso' && isNative()) window.Capacitor?.nativePromise?.('BusSevApariencia', 'probarSonido', { sonido: b.dataset.v }).catch(() => null);
-      if (k === 'theme' || k === 'mapStyle' || k === 'escalaTexto') applyTheme();
+      if (k === 'theme' || k === 'mapStyle' || k === 'escalaTexto' || k === 'ahorroBateria') applyTheme();
       if (k === 'escalaTexto') requestAnimationFrame(ajustarPestanas);
       if (k === 'avisosTussam' && b.dataset.v !== 'no' && isNative()) window.avisos?.permisoOk?.();
       render();
@@ -3409,6 +3481,7 @@ views.ajustes = (el) => {
     };
   }
   render();
+  active.rerender = render;   // al cambiar la batería o el color del móvil con Ajustes abierto, se repinta
   return {};
 };
 
@@ -3612,6 +3685,8 @@ document.addEventListener('click', (e) => {
   if (h) h.style.viewTransitionName = 'vt-parada';
 }, true);
 function mostrar(name, arg) {
+  // Al arrancar en #pasaporte o #tuano (desde una notificación) su archivo aún no ha cargado: se espera un momento
+  if (typeof views[name] !== 'function') { setTimeout(route, 0); return; }
   active.cleanup?.();
   const el = $(`#view-${name}`);
   document.querySelectorAll('.view').forEach((v) => { v.hidden = true; v.dataset.active = ''; });

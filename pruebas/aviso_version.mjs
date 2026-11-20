@@ -7,7 +7,7 @@ function entorno({ build = 164, remota = 165, falla = false } = {}) {
   const datos = {}; const e = { modales: 0, fetchs: 0, remota, falla, ahora: 1_800_000_000_000, vis: [] };
   const ctx = {
     window: { BUSSEV_VERSION: { version: '1.3.6', build, fecha: '2026-11-13', repo: 'a/b' } },
-    settings: { avisarVersion: true }, saveSettings() {}, toast() {}, esc: (s) => String(s), openWeb() {},
+    settings: { avisarVersion: true }, saveSettings() {}, toast() {}, esc: (s) => String(s), openWeb() {}, energia: { datos: () => false, est: {} },
     store: { get: (k, d) => (k in datos ? datos[k] : d), set: (k, v) => { datos[k] = v; } },
     document: { querySelector: () => null, visibilityState: 'visible', addEventListener: (t, f) => { if (t === 'visibilitychange') e.vis.push(f); } },
     $: () => ({ addEventListener() {}, set onclick(v) {} }),

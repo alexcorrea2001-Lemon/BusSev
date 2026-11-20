@@ -31,6 +31,7 @@ const PRUEBAS = [
   ['Avisos que se repiten, cercanía, widgets y hora en Cómo llegar', 'node', ['tanda3.mjs']],
   ['Saldo con gráfica, desvíos, silencio de noche y buscador', 'node', ['tarjeta-avisos.mjs']],
   ['Colores del móvil, esqueletos, mapa de sellos y consejos', 'node', ['tanda4.mjs']],
+  ['Ahorro de batería y de datos, datos del mes', 'node', ['tanda5.mjs']],
   ['Todas las pantallas sin errores', 'node', ['pantallas.mjs']],
 ];
 let fallos = 0;

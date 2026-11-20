@@ -822,7 +822,7 @@ views.tarjeta = (el) => {
     ultIncl = [x, y];
     rafBrillo = requestAnimationFrame(() => { rafBrillo = 0; luzHolo(el, x, y); });
   };
-  const conHolo = () => tarjeta.list().some((c) => holoDe(c));
+  const conHolo = () => !window.ahorrando?.() && tarjeta.list().some((c) => holoDe(c));   // en ahorro de batería, sin sensor
   if (conHolo()) window.addEventListener('deviceorientation', onIncl, { passive: true });
   const inicioNum = window.__tarjetaPendiente; window.__tarjetaPendiente = null;
   if (inicioNum) abrir(inicioNum, { consultar: true }); else pintar();
