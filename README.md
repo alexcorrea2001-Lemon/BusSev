@@ -103,7 +103,7 @@ Las paradas que tienes cerca y cuánto le falta a cada autobús. Si tienes la ub
   favorita), **color** y **ocultar el número** (solo se ven los 4 últimos).
 - **Acabados**: **brillo holográfico** como el de las cartas coleccionables, en tres estilos — **Holo** (bandas de
   arcoíris), **Cosmos** (el arcoíris dentro de burbujas y estrellas) y **Rayado** (rayitas finas) — con su
-  **intensidad**. La luz sigue tu dedo y se mueve al inclinar el móvil; quieta no gasta nada. Y **purpurina**:
+  **intensidad** (suave, media o fuerte), en su propia pestaña «Brillo». La luz sigue tu dedo y se mueve al inclinar el móvil; quieta no gasta nada. Y **purpurina**:
   destellos diminutos que se encienden de vez en cuando.
 - **Darle la vuelta**: toca la tarjeta abierta y gira en 3D. Por detrás, el **saldo**, los **viajes que te quedan**
   y la **caducidad**, como el reverso de una tarjeta de verdad.
