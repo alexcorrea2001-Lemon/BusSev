@@ -124,6 +124,20 @@ window.avisosTussam = (() => {
     return pidiendo;
   }
 
+  /* Silencio de noche: lo que llegue entre «desde» y «hasta» se avisa al acabar el silencio (no se pierde) */
+  const hm = (v, d) => { const m = String(v || '').match(/^(\d{1,2}):(\d{2})$/); return m ? Number(m[1]) * 60 + Number(m[2]) : d; };
+  function finSilencio(ahora = new Date()) {
+    if (settings.avisosSilencio === false) return null;
+    const desde = hm(settings.silencioDesde, 23 * 60), hasta = hm(settings.silencioHasta, 8 * 60);
+    if (desde === hasta) return null;
+    const min = ahora.getHours() * 60 + ahora.getMinutes();
+    const dentro = desde < hasta ? min >= desde && min < hasta : min >= desde || min < hasta;
+    if (!dentro) return null;
+    const fin = new Date(ahora); fin.setHours(Math.floor(hasta / 60), hasta % 60, 0, 0);
+    if (fin <= ahora) fin.setDate(fin.getDate() + 1);
+    return fin;
+  }
+
   async function notificarNuevos(nuevos) {
     const modo = settings.avisosTussam || 'mias';
     if (!nuevos.length || modo === 'no' || !plugin('LocalNotifications')) return;
@@ -140,7 +154,7 @@ window.avisosTussam = (() => {
     await native('LocalNotifications', 'schedule', { notifications: [{
       id: idAviso('tussam-avisos' + Date.now()), ...n,
       largeBody: n.body, extra: { abrir: 'avisos' },
-      schedule: { at: new Date(Date.now() + 1500).toISOString(), allowWhileIdle: true }, smallIcon: 'ic_stat_bus', iconColor: '#D41C2B',
+      schedule: { at: (finSilencio() || new Date(Date.now() + 1500)).toISOString(), allowWhileIdle: true }, smallIcon: 'ic_stat_bus', iconColor: '#D41C2B',
     }] }).catch(() => null);
   }
 
@@ -237,6 +251,54 @@ window.avisosTussam = (() => {
     });
   }
 
+  /* ---------- Desvíos: qué paradas no se usan y cuál es la provisional ----------
+     TUSSAM no publica el dibujo del desvío, solo el texto. De él se sacan las paradas anuladas y las
+     provisionales: por número («parada 194») o por nombre de calle, que luego se busca en el mapa. */
+  const RE_PROV = /provisional|habilit|alternativ|nueva parada|se traslada|trasladad|se establece|se ubica/i;
+  const RE_ANUL = /anulad|suprimid|sin servicio|sin parada|no (?:se )?(?:efectu|realiz|prest|atender|atiende|dar|pasar|para)|dejar[aá]n? de|fuera de servicio|cerrad|sin uso|inutiliz/i;
+  function categoria(t) { const p = RE_PROV.test(t), a = RE_ANUL.test(t); return p && !a ? 'prov' : a && !p ? 'anul' : p && a ? 'ambas' : null; }
+  function numerosDe(t) {
+    const out = new Set(paradasDe(t));
+    for (const m of String(t).matchAll(/\bn[º°o]\.?\s*(\d{1,4})\b/gi)) out.add(String(Number(m[1])));
+    return [...out];
+  }
+  function leerDesvio(d) {
+    const r = { anul: { codigos: new Set(), textos: [] }, prov: { codigos: new Set(), textos: [] } };
+    const meter = (cat, t) => {
+      if (!cat || cat === 'ambas') return;
+      numerosDe(t).forEach((c) => r[cat].codigos.add(c));
+      r[cat].textos.push(t);
+    };
+    for (const campo of d?.campos || []) {
+      let ctx = categoria(campo.lab || '');
+      for (const b of campo.b || []) {
+        const t = b.fila ? b.fila.join(' · ') : String(b.t || '');
+        if (!t) continue;
+        const cat = categoria(t);
+        const cabecera = b.h || b.b || /:\s*$/.test(t) || (t.length < 60 && t === t.toLocaleUpperCase('es'));
+        if (cabecera && cat && cat !== 'ambas') { ctx = cat; if (!numerosDe(t).length) continue; }
+        else if (cabecera && !cat) { ctx = null; continue; }
+        if (cat === 'ambas') {
+          // «La parada 194 queda anulada, habilitándose una provisional en …»: se parte por trozos
+          for (const trozo of t.split(/[;,.]\s+|\s+(?=habilit|se habilita|se establece|se traslada|y una provisional)/i)) meter(categoria(trozo), trozo);
+        } else meter(cat || ((b.li || b.fila) ? ctx : null), t);
+      }
+    }
+    return { anul: { codigos: [...r.anul.codigos], textos: r.anul.textos.slice(0, 30) }, prov: { codigos: [...r.prov.codigos], textos: r.prov.textos.slice(0, 10) } };
+  }
+  /* Juntos los avisos de una línea (solo desvíos y obras, no horarios) */
+  async function desvioDeLinea(numero) {
+    const avs = avisosDeLinea([numero]).filter((a) => a.seccion !== 'horarios');
+    const res = { ids: avs.map((a) => a.id), anul: { codigos: [], textos: [] }, prov: { codigos: [], textos: [] } };
+    for (const a of avs.slice(0, 4)) {
+      let d = null;
+      try { d = await detalle(a.id); } catch { /* sin conexión: solo el título */ }
+      const x = leerDesvio(d || { campos: [{ lab: '', b: [{ t: a.titulo }] }] });
+      for (const k of ['anul', 'prov']) { res[k].codigos.push(...x[k].codigos); res[k].textos.push(...x[k].textos); }
+    }
+    return res;
+  }
+
   /* ---------- Piezas para otras pantallas ---------- */
   function filaHTML(a, nuevo, aqui = false) {
     const chips = a.lineas.length ? a.lineas.slice(0, 6).map((n) => badge(et(n), lineaFor(n)?.color, { sm: true })).join('') : `<span class="av-ico">${a.seccion === 'horarios' ? '🕒' : '⚠️'}</span>`;
@@ -324,7 +386,7 @@ window.avisosTussam = (() => {
     abrir(b.dataset.aviso);
   });
 
-  return { revisar, abrir, bannerHTML, avisosDeLinea, avisosDeParada, paradaBannerHTML, favAvisoHTML, paradasDe, favoritasHTML, filaHTML, misLineas, meAfecta, titulo, lineasDe, leerLista, leerDetalle, get datos() { return st.datos; }, get vistos() { return st.vistos; }, marcarVistos(ids) { const v = st.vistos; ids.forEach((i) => v.add(i)); st.vistos = v; } };
+  return { revisar, abrir, finSilencio, leerDesvio, desvioDeLinea, bannerHTML, avisosDeLinea, avisosDeParada, paradaBannerHTML, favAvisoHTML, paradasDe, favoritasHTML, filaHTML, misLineas, meAfecta, titulo, lineasDe, leerLista, leerDetalle, get datos() { return st.datos; }, get vistos() { return st.vistos; }, marcarVistos(ids) { const v = st.vistos; ids.forEach((i) => v.add(i)); st.vistos = v; } };
 })();
 
 /* ---------- Pantalla «Avisos de TUSSAM» ---------- */

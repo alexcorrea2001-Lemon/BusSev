@@ -29,6 +29,7 @@ const PRUEBAS = [
   ['Viajes automáticos del Pasaporte', 'node', ['viajes-auto.mjs']],
   ['Acabados de la tarjeta (holográfico, purpurina, girar)', 'node', ['acabados.mjs']],
   ['Avisos que se repiten, cercanía, widgets y hora en Cómo llegar', 'node', ['tanda3.mjs']],
+  ['Saldo con gráfica, desvíos, silencio de noche y buscador', 'node', ['tarjeta-avisos.mjs']],
   ['Colores del móvil, esqueletos, mapa de sellos y consejos', 'node', ['tanda4.mjs']],
   ['Todas las pantallas sin errores', 'node', ['pantallas.mjs']],
 ];

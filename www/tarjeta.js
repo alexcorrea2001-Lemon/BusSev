@@ -302,12 +302,96 @@ const viaLegible = (v) => {
   return '';
 };
 
+/* ---------- Historial del saldo ----------
+   Cada consulta con saldo deja un punto [fecha, saldo] (solo si ha cambiado: entre medias el saldo es el mismo).
+   Con lo que baja (las subidas son recargas) se calcula cuánto gastas al día y cuándo te quedarías a cero. */
+const HIST_MAX = 200;
+function historialDe(c) {
+  const h = Array.isArray(c?.historial) ? c.historial.filter((x) => Array.isArray(x) && Number.isFinite(x[0]) && Number.isFinite(x[1])) : [];
+  if (!h.length && Number.isFinite(c?.ultimo?.saldo) && Number(c?.ultimo?.fecha) > 0) h.push([Number(c.ultimo.fecha), c.ultimo.saldo]);
+  return h.sort((a, b) => a[0] - b[0]);
+}
+function conPunto(c, t, saldo) {
+  const h = historialDe(c);
+  if (!Number.isFinite(saldo)) return h;
+  const ult = h.at(-1);
+  if (ult && Math.abs(ult[1] - saldo) < 0.005) return h;             // igual que antes: no hace falta otro punto
+  if (ult && t - ult[0] < 60_000) h.pop();                           // dos consultas seguidas: vale la última
+  h.push([t, Math.round(saldo * 100) / 100]);
+  return h.slice(-HIST_MAX);
+}
+/* Gasto medio al día (últimas 6 semanas) y día en que te quedas sin saldo */
+function previsionSaldo(h, ahora = Date.now()) {
+  if (!h.length) return null;
+  const saldo = h.at(-1)[1];
+  const desde = ahora - 42 * 86400_000;
+  const pts = h.filter((x) => x[0] >= desde);
+  const base = pts.length && pts[0] !== h[0] ? [h[h.indexOf(pts[0]) - 1], ...pts] : pts;   // con el punto de antes, para no perder la primera bajada
+  let gasto = 0, recargas = 0;
+  for (let i = 1; i < base.length; i++) { const d = base[i - 1][1] - base[i][1]; if (d > 0) gasto += d; else recargas += -d; }
+  const inicio = Math.max(base[0]?.[0] ?? ahora, desde);
+  const dias = (ahora - inicio) / 86400_000;
+  if (gasto <= 0 || dias < 2) return { saldo, gasto, recargas, alDia: null };
+  const alDia = gasto / dias;
+  const quedan = saldo / alDia;
+  return { saldo, gasto, recargas, alDia, quedan, fecha: saldo > 0 ? ahora + quedan * 86400_000 : ahora };
+}
+function previsionHTML(p) {
+  if (!p) return '';
+  if (p.alDia == null) return '<p class="sg-prev">Cuando hayas consultado la tarjeta unos días, aquí verás cuánto gastas y cuándo te quedarías sin saldo.</p>';
+  const semana = fmtEuro(p.alDia * 7);
+  if (p.saldo <= 0) return `<p class="sg-prev mal">Ya no te queda saldo. Gastas unos <b>${semana} a la semana</b>.</p>`;
+  if (p.quedan > 120) return `<p class="sg-prev">Gastas unos <b>${semana} a la semana</b>: tienes saldo para más de 4 meses.</p>`;
+  const f = new Date(p.fecha);
+  const dia = f.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
+  const pronto = p.quedan < 4;
+  return `<p class="sg-prev${pronto ? ' mal' : ''}">A tu ritmo (unos <b>${semana} a la semana</b>), te quedas sin saldo ${p.quedan < 1 ? '<b>hoy o mañana</b>' : `hacia el <b>${dia}</b>`}.${pronto ? ' Recarga antes.' : ''}</p>`;
+}
+/* Gráfica: escalones (el saldo no cambia entre consultas), recargas en verde */
+function graficaSaldoHTML(h, color) {
+  if (h.length < 2) return '';
+  const ahora = Date.now();
+  const t0 = Math.max(h[0][0], ahora - 90 * 86400_000);
+  const vis = h.filter((x) => x[0] >= t0);
+  const antes = h.filter((x) => x[0] < t0).at(-1);
+  const pts = antes ? [[t0, antes[1]], ...vis] : vis;
+  if (pts.length < 2 && !antes) return '';
+  const W = 320, H = 130, L = 34, R = 8, T = 12, B = 22;
+  const max = Math.max(1, ...pts.map((x) => x[1])) * 1.12;
+  const X = (t) => L + ((t - t0) / Math.max(1, ahora - t0)) * (W - L - R);
+  const Y = (v) => T + (1 - v / max) * (H - T - B);
+  let d = `M${X(pts[0][0]).toFixed(1)} ${Y(pts[0][1]).toFixed(1)}`;
+  for (let i = 1; i < pts.length; i++) d += ` H${X(pts[i][0]).toFixed(1)} V${Y(pts[i][1]).toFixed(1)}`;
+  d += ` H${X(ahora).toFixed(1)}`;
+  const area = `${d} V${Y(0)} H${X(pts[0][0]).toFixed(1)} Z`;
+  const subidas = pts.slice(1).map((x, i) => [x, x[1] - pts[i][1]]).filter(([, dif]) => dif > 0.005);
+  const fecha = (t) => new Date(t).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }).replace('.', '');
+  const marcas = [0, max / 1.12 / 2, max / 1.12].map((v) => `<text x="${L - 5}" y="${(Y(v) + 3.5).toFixed(1)}" text-anchor="end">${Math.round(v)} €</text><line x1="${L}" x2="${W - R}" y1="${Y(v).toFixed(1)}" y2="${Y(v).toFixed(1)}"/>`).join('');
+  return `<figure class="saldo-graf" style="--c:${color}"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Saldo en los últimos ${Math.round((ahora - t0) / 86400_000)} días">
+      <g class="sg-ejes">${marcas}<text x="${L}" y="${H - 6}">${fecha(t0)}</text><text x="${W - R}" y="${H - 6}" text-anchor="end">Hoy</text></g>
+      <path class="sg-area" d="${area}"/><path class="sg-linea" d="${d}"/>
+      ${subidas.map(([x, dif]) => `<g class="sg-recarga"><circle cx="${X(x[0]).toFixed(1)}" cy="${Y(x[1]).toFixed(1)}" r="3.6"/><text x="${X(x[0]).toFixed(1)}" y="${(Y(x[1]) - 7).toFixed(1)}" text-anchor="middle">+${Math.round(dif)} €</text></g>`).join('')}
+      <circle class="sg-hoy" cx="${X(ahora).toFixed(1)}" cy="${Y(pts.at(-1)[1]).toFixed(1)}" r="4"/></svg></figure>`;
+}
+function historialSaldoHTML(c) {
+  const h = historialDe(c);
+  if (!h.length) return '';
+  const color = /^#[0-9a-f]{6}$/i.test(c.color || '') ? c.color : 'var(--accent)';
+  const p = previsionSaldo(h);
+  const recargas = h.slice(1).map((x, i) => [x[0], x[1] - h[i][1]]).filter(([, d]) => d > 0.005).slice(-3).reverse();
+  return `<div class="set-group saldo-hist"><h3>Tu saldo</h3>${graficaSaldoHTML(h, color)}${previsionHTML(p)}
+    ${recargas.length ? `<p class="sg-rec">Recargas: ${recargas.map(([t, d]) => `<b>+${fmtEuro(d)}</b> el ${new Date(t).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }).replace('.', '')}`).join(' · ')}</p>` : ''}
+    <p class="small muted" style="margin:6px 0 0">Se apunta cada vez que consultas la tarjeta. TUSSAM tarda hasta 24 h en descontar los viajes.</p></div>`;
+}
+window.saldoHist = { historialDe, conPunto, previsionSaldo, graficaSaldoHTML, historialSaldoHTML };
+
 /* Guarda el resultado de una consulta en la tarjeta y lanza los avisos */
 function aplicarConsulta(num, res) {
   const c = tarjeta.get(num);
   if (!c || !res?.ok) return;
   try { window.anio?.apuntar?.('tarjeta'); window.anio?.saldo?.(c.ultimo?.saldo, res.saldo); } catch { /* nada */ }
   tarjeta.update(num, {
+    historial: conPunto(c, Number(res.fecha) || Date.now(), typeof res.saldo === 'number' ? res.saldo : NaN),
     ultimo: { saldo: res.saldo, tipo: res.tipo, titulo: res.titulo, caducidad: res.caducidad, caducaEl: res.caducaEl, sinCaducidad: res.sinCaducidad, sinSaldoWeb: !!res.sinSaldoWeb, fecha: res.fecha, via: res.manual ? 'manual' : (res.diag?.via || null) },
     // si TUSSAM dice el tipo, se quita el que se hubiera elegido a mano
     ...(res.tipo ? { tipo: '' } : {}),
@@ -438,7 +522,7 @@ views.tarjeta = (el) => {
       <div class="kv">${filas.map(([k, v]) => `<div><span>${esc(k)}</span><b>${esc(v)}</b></div>`).join('')}
         ${precio ? `<div><span>Cada viaje cuesta</span><b>${fmtEuro(precio)}${infoViaje.conDescuento ? ` <small class="muted">(con descuento; sin él ${fmtEuro(infoViaje.normal)})</small>` : ''}</b></div>` : ''}
         ${viajes != null ? `<div><span>Viajes que te quedan</span><b>${viajes} ${viajes === 1 ? 'viaje' : 'viajes'}</b></div>` : ''}</div>
-      <p class="small muted" style="margin:0">TUSSAM tarda hasta 24 h en descontar viajes y sumar recargas.</p>
+      ${c && llevaSaldo(tipoId, u?.saldo) && !u?.sinSaldoWeb ? historialSaldoHTML(c) : '<p class="small muted" style="margin:0">TUSSAM tarda hasta 24 h en descontar viajes y sumar recargas.</p>'}
       <button class="btn block" type="button" id="t-oficial">🌐 Ver el saldo en la web de TUSSAM</button>
       <p class="small muted" style="margin:-6px 0 0">Se abre la web de recargas de TUSSAM con tu tarjeta, por si quieres recargar o ver el saldo oficial.</p>
       <div class="btn-row">
