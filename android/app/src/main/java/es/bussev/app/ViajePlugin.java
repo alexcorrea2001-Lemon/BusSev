@@ -51,6 +51,26 @@ public class ViajePlugin extends Plugin {
         } catch (Exception e) { call.reject(e.getMessage()); }
     }
 
+    /* Avisos que se repiten */
+    @PluginMethod
+    public void repetirLlegada(PluginCall call) {
+        try {
+            JSONObject r = new JSONObject();
+            r.put("id", call.getData().optInt("id", 0));
+            r.put("codigo", call.getString("codigo", "")); r.put("parada", call.getString("parada", ""));
+            r.put("linea", call.getString("linea", "")); r.put("destino", call.getString("destino", ""));
+            r.put("antes", call.getData().optInt("antes", 5)); r.put("hora", call.getData().optInt("hora", 480));
+            r.put("dias", call.getArray("dias")); r.put("sonido", call.getString("sonido", "sistema"));
+            LlegadaReceiver.ponerRegla(getContext(), r);
+            call.resolve();
+        } catch (Exception e) { call.reject(e.getMessage()); }
+    }
+    @PluginMethod
+    public void quitarRepetido(PluginCall call) {
+        LlegadaReceiver.quitarRegla(getContext(), call.getData().optInt("id", 0));
+        call.resolve();
+    }
+
     @PluginMethod
     public void quitarLlegada(PluginCall call) {
         int id = call.getData().optInt("id", 0);

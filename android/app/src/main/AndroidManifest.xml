@@ -135,6 +135,7 @@
         <!-- Widget de pantalla de inicio: una parada favorita con sus próximos autobuses -->
         <receiver
             android:name=".BusSevWidgetProvider"
+            android:label="@string/widget_paradas"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
@@ -145,12 +146,38 @@
                 android:resource="@xml/bussev_widget_info" />
         </receiver>
 
+        <!-- Widget de saldo: tu primera tarjeta con el saldo de la última consulta -->
+        <receiver
+            android:name=".SaldoWidgetProvider"
+            android:label="@string/widget_saldo"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/bussev_saldo_info" />
+        </receiver>
+
+        <!-- Botón de ajustes rápidos: el próximo autobús de tu primera favorita -->
+        <service
+            android:name=".ParadaTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_stat_bus"
+            android:label="@string/tile_bus"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+
         <!-- Aviso de llegada que se corrige solo con la app cerrada (vuelve a preguntar a TUSSAM) -->
         <receiver
             android:name=".LlegadaReceiver"
             android:exported="false">
             <intent-filter>
                 <action android:name="es.bussev.app.LLEGADA_REVISAR" />
+                <action android:name="es.bussev.app.LLEGADA_REPETIR" />
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
             </intent-filter>
         </receiver>

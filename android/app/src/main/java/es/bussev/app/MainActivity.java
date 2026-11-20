@@ -79,6 +79,7 @@ public class MainActivity extends BridgeActivity {
     private void handleIntent(Intent intent) {
         if (intent == null) return;
         if ("pasaporte".equals(intent.getStringExtra("bussev_abrir"))) { pendingParada = "P"; return; }   // notificación de un logro
+        if ("tarjeta".equals(intent.getStringExtra("bussev_abrir"))) { pendingParada = "T"; pendingSubido = null; return; }   // widget de saldo
         String cod = intent.getStringExtra("bussev_parada");
         if (cod != null) {
             cod = cod.replaceAll("[^0-9]", "");
@@ -103,6 +104,7 @@ public class MainActivity extends BridgeActivity {
         final String cod = pendingParada, sub = pendingSubido;
         wv.evaluateJavascript(
             "P".equals(cod) ? "(window.busSevAbrirParada?(location.hash='pasaporte',true):false)"
+                : "T".equals(cod) ? "(window.busSevAbrirParada?(location.hash='tarjeta',true):false)"
                 : sub != null ? "(window.busSevSubido?(window.busSevSubido('" + cod + "','" + sub + "'),true):false)"
                 : "(window.busSevAbrirParada?(window.busSevAbrirParada('" + cod + "'),true):false)",
             new ValueCallback<String>() {

@@ -28,6 +28,7 @@ import java.util.List;
 public class LlegadaReceiver extends BroadcastReceiver {
     static final String PREFS = "bussev_viaje";
     static final String ACCION = "es.bussev.app.LLEGADA_REVISAR";
+    static final String ACCION_REP = "es.bussev.app.LLEGADA_REPETIR";
     static final String CANAL = "bussev_llegada";
     static final String CANAL_CUENTA = "bussev_cuenta";
     private static final long MIN = 60_000L;
@@ -97,10 +98,103 @@ public class LlegadaReceiver extends BroadcastReceiver {
         }
     }
 
+    /* ---------- Avisos que se repiten ----------
+       Cada regla: {id, codigo, parada, linea, destino, antes, hora (minutos desde las 0:00), dias [7 × bool, lunes primero], sonido}.
+       A la hora de la regla se crea un aviso de llegada normal, que pregunta a TUSSAM y avisa cuando falten «antes» minutos. */
+    static synchronized JSONArray reglas(Context c) {
+        try { return new JSONArray(c.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString("repetidos", "[]")); }
+        catch (Exception e) { return new JSONArray(); }
+    }
+    static synchronized void guardarReglas(Context c, JSONArray a) {
+        c.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString("repetidos", a.toString()).apply();
+        programarRepetidos(c);
+    }
+    static void ponerRegla(Context c, JSONObject r) {
+        JSONArray a = reglas(c), b = new JSONArray();
+        for (int i = 0; i < a.length(); i++) { JSONObject x = a.optJSONObject(i); if (x != null && x.optInt("id") != r.optInt("id")) b.put(x); }
+        b.put(r);
+        guardarReglas(c, b);
+    }
+    static void quitarRegla(Context c, int id) {
+        JSONArray a = reglas(c), b = new JSONArray();
+        for (int i = 0; i < a.length(); i++) { JSONObject x = a.optJSONObject(i); if (x != null && x.optInt("id") != id) b.put(x); }
+        guardarReglas(c, b);
+        quitar(c, id);          // y el aviso de hoy, si ya estaba en marcha
+        quitarCuenta(c, id);
+    }
+    /* Próxima vez que toca una regla (en ms), o -1 */
+    static long proxima(JSONObject r, long desde) {
+        JSONArray d = r.optJSONArray("dias");
+        int hora = r.optInt("hora", -1);
+        if (d == null || hora < 0) return -1;
+        java.util.Calendar k = java.util.Calendar.getInstance();
+        k.setTimeInMillis(desde);
+        k.set(java.util.Calendar.SECOND, 0); k.set(java.util.Calendar.MILLISECOND, 0);
+        for (int n = 0; n < 8; n++) {
+            java.util.Calendar x = (java.util.Calendar) k.clone();
+            x.add(java.util.Calendar.DAY_OF_YEAR, n);
+            x.set(java.util.Calendar.HOUR_OF_DAY, hora / 60); x.set(java.util.Calendar.MINUTE, hora % 60);
+            int i = (x.get(java.util.Calendar.DAY_OF_WEEK) + 5) % 7;    // lunes = 0 … domingo = 6
+            if (d.optBoolean(i, false) && x.getTimeInMillis() > desde) return x.getTimeInMillis();
+        }
+        return -1;
+    }
+    static PendingIntent piRep(Context c) {
+        Intent i = new Intent(c, LlegadaReceiver.class).setAction(ACCION_REP);
+        int f = PendingIntent.FLAG_UPDATE_CURRENT;
+        if (Build.VERSION.SDK_INT >= 23) f |= PendingIntent.FLAG_IMMUTABLE;
+        return PendingIntent.getBroadcast(c, 7310, i, f);
+    }
+    static void programarRepetidos(Context c) {
+        AlarmManager am = (AlarmManager) c.getSystemService(Context.ALARM_SERVICE);
+        if (am == null) return;
+        JSONArray a = reglas(c);
+        long prox = Long.MAX_VALUE, ahora = System.currentTimeMillis();
+        for (int i = 0; i < a.length(); i++) { JSONObject r = a.optJSONObject(i); if (r == null) continue; long t = proxima(r, ahora); if (t > 0) prox = Math.min(prox, t); }
+        PendingIntent p = piRep(c);
+        if (prox == Long.MAX_VALUE) { am.cancel(p); return; }
+        try {
+            if (Build.VERSION.SDK_INT >= 31 && !am.canScheduleExactAlarms()) am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, prox, p);
+            else if (Build.VERSION.SDK_INT >= 23) am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, prox, p);
+            else am.setExact(AlarmManager.RTC_WAKEUP, prox, p);
+        } catch (SecurityException e) {
+            if (Build.VERSION.SDK_INT >= 23) am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, prox, p); else am.set(AlarmManager.RTC_WAKEUP, prox, p);
+        }
+    }
+    /* Toca alguna regla: se crea su aviso de llegada de hoy (una vez por día) */
+    static void dispararRepetidos(Context c) {
+        JSONArray a = reglas(c);
+        long ahora = System.currentTimeMillis();
+        java.util.Calendar hoy = java.util.Calendar.getInstance();
+        String clave = hoy.get(java.util.Calendar.YEAR) + "-" + hoy.get(java.util.Calendar.DAY_OF_YEAR);
+        boolean cambio = false;
+        for (int i = 0; i < a.length(); i++) {
+            JSONObject r = a.optJSONObject(i);
+            if (r == null || clave.equals(r.optString("hecho"))) continue;
+            // ¿Le tocaba en los últimos 10 minutos? (la alarma puede llegar un poco tarde)
+            long t = proxima(r, ahora - 10 * MIN);
+            if (t < 0 || t > ahora + 30_000L) continue;
+            try {
+                JSONObject x = new JSONObject();
+                x.put("id", r.optInt("id"));
+                x.put("codigo", r.optString("codigo")); x.put("parada", r.optString("parada"));
+                x.put("linea", r.optString("linea")); x.put("destino", r.optString("destino"));
+                x.put("antes", r.optInt("antes", 5)); x.put("sonido", r.optString("sonido", "sistema"));
+                x.put("at", ahora); x.put("revisar", ahora); x.put("rep", true); x.put("creado", ahora);
+                poner(c, x);
+                r.put("hecho", clave);
+                cambio = true;
+            } catch (Exception ignored) { }
+        }
+        if (cambio) c.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString("repetidos", a.toString()).apply();
+        programarRepetidos(c);
+    }
+
     @Override
     public void onReceive(final Context context, Intent intent) {
         final Context c = context.getApplicationContext();
-        if (Intent.ACTION_BOOT_COMPLETED.equals(intent.getAction())) { programar(c); return; }
+        if (Intent.ACTION_BOOT_COMPLETED.equals(intent.getAction())) { programar(c); programarRepetidos(c); return; }
+        if (ACCION_REP.equals(intent.getAction())) { dispararRepetidos(c); return; }
         final PendingResult pr = goAsync();
         new Thread(new Runnable() {
             public void run() {
@@ -153,6 +247,11 @@ public class LlegadaReceiver extends BroadcastReceiver {
                     int falta = min - antes;
                     long paso = falta <= 1 ? 20_000L : falta <= 3 ? 40_000L : falta <= 6 ? MIN : 2 * MIN;
                     x.put("revisar", Math.min(nuevo, ahora + paso));
+                    quedan.put(x);
+                } else if (x.optBoolean("rep", false)) {
+                    // Aviso que se repite: sin datos no se avisa a ciegas; se reintenta durante 20 minutos
+                    if (ahora - x.optLong("creado", ahora) > 20 * MIN) { quitarCuenta(c, x.optInt("id")); continue; }
+                    x.put("revisar", ahora + 90_000L);
                     quedan.put(x);
                 } else if (ahora >= at - 20_000L) {
                     // Sin dato del autobús (o sin red) y ya es la hora calculada: se avisa como antes

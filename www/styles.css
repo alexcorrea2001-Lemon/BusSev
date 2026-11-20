@@ -1350,7 +1350,7 @@ html.oculta #fiesta-cielo .f-cruza, html.oculta #fiesta-cielo .f-cruza svg, html
 .p-dir { margin: 2px 0 0; color: var(--muted); font-size: 14px; }
 .prog li .badge { flex: 0 0 auto; }
 /* Botón del modo sensor en el aviso de llegada */
-.sensor-btn { display: grid; justify-items: start; gap: 2px; text-align: left; padding: 12px 14px; height: auto; }
+.sensor-btn { display: grid; grid-template-columns: 1fr; justify-content: stretch; justify-items: start; gap: 2px; text-align: left; padding: 12px 14px; height: auto; }
 .sensor-btn small { font-size: 12.5px; font-weight: 400; color: var(--muted); line-height: 1.3; }
 /* ---------- El cielo de Sevilla en la barra de arriba ---------- */
 .cielo { display: none; }
@@ -1597,3 +1597,13 @@ body[data-view="tuano"] .topbar, body[data-view="tuano"] .tabbar { visibility: h
 .hl-mini .tc-holo { position: absolute; inset: 0; overflow: hidden; border-radius: inherit;
   --arco: repeating-linear-gradient(118deg, hsl(0 100% 62%) 0px, hsl(38 100% 58%) 10px, hsl(58 100% 55%) 18px, hsl(125 90% 50%) 28px, hsl(188 100% 52%) 38px, hsl(228 100% 64%) 47px, hsl(278 100% 64%) 57px, hsl(328 100% 62%) 66px, hsl(360 100% 62%) 76px); }
 .hl-mini .h-cosmos .malla { -webkit-mask-size: 110px 110px; mask-size: 110px 110px; }
+
+/* Cómo llegar: salir ahora / a una hora / llegar antes de */
+.plan-cuando { display: grid; gap: 8px; margin: 4px 0 2px; }
+.plan-hora { height: 46px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); padding: 0 14px; font: 700 18px/1 inherit; font-variant-numeric: tabular-nums; color-scheme: light dark; }
+
+/* Avisos que se repiten */
+.rep-dias { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+.rep-dias .chip { min-height: 42px; padding: 0; justify-content: center; font-weight: 800; }
+.rep-on { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 14px; background: var(--surface-2); }
+.rep-on p { flex: 1; margin: 0; font-size: 13.5px; }

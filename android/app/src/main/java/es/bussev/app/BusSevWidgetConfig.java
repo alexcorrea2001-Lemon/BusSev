@@ -52,7 +52,7 @@ public class BusSevWidgetConfig extends Activity {
         root.addView(title);
 
         TextView sub = new TextView(this);
-        sub.setText("Elige la parada del widget");
+        sub.setText("Elige qué quieres ver en el widget");
         sub.setTextColor(SUB);
         sub.setTextSize(14);
         sub.setPadding(0, dp(4), 0, dp(14));
@@ -74,6 +74,11 @@ public class BusSevWidgetConfig extends Activity {
         ScrollView sc = new ScrollView(this);
         LinearLayout list = new LinearLayout(this);
         list.setOrientation(LinearLayout.VERTICAL);
+        // Primera opción: varias favoritas a la vez
+        LinearLayout varias = fila("★ Mis favoritas", "", "[]");
+        ((TextView) varias.getChildAt(1)).setText("Tus " + Math.min(3, favs.length()) + " primeras paradas, cada una con sus dos próximos autobuses");
+        varias.setOnClickListener(new View.OnClickListener() { public void onClick(View v) { elegirVarias(); } });
+        list.addView(varias);
         for (int i = 0; i < favs.length(); i++) {
             JSONObject f = favs.optJSONObject(i);
             if (f == null) continue;
@@ -135,6 +140,14 @@ public class BusSevWidgetConfig extends Activity {
         BusSevWidgetProvider.actualizar(this, AppWidgetManager.getInstance(this), widgetId);
         Intent res = new Intent().putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId);
         setResult(RESULT_OK, res);
+        finish();
+    }
+
+    void elegirVarias() {
+        SharedPreferences p = getSharedPreferences(BusSevWidgetProvider.PREFS, Context.MODE_PRIVATE);
+        p.edit().putString("stop_" + widgetId, "{\"modo\":\"varias\"}").remove("stops_" + widgetId).apply();
+        BusSevWidgetProvider.actualizar(this, AppWidgetManager.getInstance(this), widgetId);
+        setResult(RESULT_OK, new Intent().putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId));
         finish();
     }
 

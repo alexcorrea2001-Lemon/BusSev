@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Widget «Mis favoritas»: hasta 3 paradas, cada una con sus dos próximos autobuses -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/wv_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@drawable/bussev_widget_bg"
+    android:padding="12dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+        <TextView
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:textColor="#FFFFFF"
+            android:textStyle="bold"
+            android:textSize="15sp"
+            android:text="★ Mis favoritas" />
+        <TextView
+            android:id="@+id/wv_refresh"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="↻"
+            android:textColor="#FFFFFF"
+            android:textSize="20sp"
+            android:paddingLeft="10dp"
+            android:paddingRight="4dp"
+            android:paddingTop="2dp"
+            android:paddingBottom="2dp" />
+    </LinearLayout>
+
+    <LinearLayout android:id="@+id/wv_box0" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:paddingTop="8dp">
+        <TextView android:id="@+id/wv_nom0" android:layout_width="match_parent" android:layout_height="wrap_content" android:maxLines="1" android:ellipsize="end" android:textColor="#D6D7DC" android:textSize="12sp" android:text="" />
+        <TextView android:id="@+id/wv_bus0" android:layout_width="match_parent" android:layout_height="wrap_content" android:maxLines="1" android:ellipsize="end" android:textColor="#FFFFFF" android:textSize="14sp" android:text="" />
+    </LinearLayout>
+    <LinearLayout android:id="@+id/wv_box1" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:paddingTop="7dp">
+        <TextView android:id="@+id/wv_nom1" android:layout_width="match_parent" android:layout_height="wrap_content" android:maxLines="1" android:ellipsize="end" android:textColor="#D6D7DC" android:textSize="12sp" android:text="" />
+        <TextView android:id="@+id/wv_bus1" android:layout_width="match_parent" android:layout_height="wrap_content" android:maxLines="1" android:ellipsize="end" android:textColor="#FFFFFF" android:textSize="14sp" android:text="" />
+    </LinearLayout>
+    <LinearLayout android:id="@+id/wv_box2" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:paddingTop="7dp">
+        <TextView android:id="@+id/wv_nom2" android:layout_width="match_parent" android:layout_height="wrap_content" android:maxLines="1" android:ellipsize="end" android:textColor="#D6D7DC" android:textSize="12sp" android:text="" />
+        <TextView android:id="@+id/wv_bus2" android:layout_width="match_parent" android:layout_height="wrap_content" android:maxLines="1" android:ellipsize="end" android:textColor="#FFFFFF" android:textSize="14sp" android:text="" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/wv_updated"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingTop="8dp"
+        android:textColor="#8A8C95"
+        android:textSize="11sp"
+        android:text="" />
+</LinearLayout>

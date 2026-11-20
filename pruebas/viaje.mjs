@@ -121,6 +121,15 @@ assert.deepEqual(pm[0].prox, [610, 620, 630]); assert.equal(pm[0].destino, 'Esta
 // A las 03:00 (sin Búho en este horario inventado) no circula nada
 const noche = JSON.parse(ev(`(() => { const r = planner.buscar(${JSON.stringify(o)}, ${JSON.stringify(d)}, new Date(2026, 10, 18, 3, 0)); return JSON.stringify({ n: r.length, sin: r.sinServicio }); })()`));
 assert.equal(noche.n, 0, 'de madrugada no propone líneas que no circulan'); assert.ok(noche.sin > 0);
+// «Llegar antes de las 11:00»: todas llegan a tiempo y la primera es la que más tarde te deja salir
+const ll = JSON.parse(ev(`JSON.stringify(planner.llegarAntes(${JSON.stringify(o)}, ${JSON.stringify(d)}, new Date(2026, 10, 18, 11, 0)))`));
+assert.ok(ll.length, 'hay opciones para llegar antes de las 11');
+assert.ok(ll.every((x) => x.llega <= 660), 'todas llegan antes de las 11:00');
+assert.ok(ll.every((x, i) => i === 0 || (ll[0].llega - ll[0].min) >= (x.llega - x.min)), 'la primera es la que más tarde sale');
+assert.ok(ll[0].llega > 630, 'no te hace salir mucho antes de lo necesario');
+// «Salir a las 10:00»: nadie sale antes de esa hora
+const sl = JSON.parse(ev(`JSON.stringify(planner.buscar(${JSON.stringify(o)}, ${JSON.stringify(d)}, new Date(2026, 10, 18, 10, 0)))`));
+assert.ok(sl.every((x) => x.sale == null || x.sale >= 600), 'saliendo a las 10, ningún bus antes de las 10');
 
 // Buscar un sitio (Photon) y llegar desde el mapa / parada con el destino puesto
 await a.ir('#ruta', 500);

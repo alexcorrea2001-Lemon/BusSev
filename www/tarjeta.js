@@ -27,6 +27,19 @@ const TIPO_GENERICO = { colores: ['#3a3f4b', '#16181d'] };
 /* Solo los bonobús de saldo (con/sin transbordo) llevan saldo monedero.
    Si no sabemos el tipo pero hay saldo real (>0), también lo tratamos como de saldo. */
 const TIPOS_SALDO = new Set(['con-transbordo', 'sin-transbordo']);
+/* Widget de saldo: lo que enseña de tus primeras tarjetas (el saldo de la última consulta) */
+function datosWidgetTarjetas() {
+  return tarjeta.list().slice(0, 3).map((c) => {
+    const u = c.ultimo || {}, tipoId = tipoDeTarjeta(c, u), tipo = tipoPorId(tipoId)?.nombre || u.titulo || '';
+    const con = llevaSaldo(tipoId, u.saldo) && u.saldo != null;
+    const precio = window.tarifas?.viaje?.(tipoId)?.precio || 0;
+    return { nombre: c.name || tipo || 'Mi tarjeta', saldo: con ? fmtEuro(u.saldo) : u.sinSaldoWeb ? 'Sin saldo web' : '—',
+      viajes: con && precio ? Math.max(0, Math.floor(u.saldo / precio + 1e-9)) : -1, tipo, fecha: Number(u.fecha) || 0, color: /^#[0-9a-f]{6}$/i.test(c.color || '') ? c.color : '#D41C2B' };
+  });
+}
+window.datosWidgetTarjetas = datosWidgetTarjetas;
+let avisoWidgetT = 0;
+function avisarWidgetSaldo() { clearTimeout(avisoWidgetT); avisoWidgetT = setTimeout(() => window.actualizarWidget?.(), 300); }
 const llevaSaldo = (tipoId, saldo) => TIPOS_SALDO.has(tipoId) || (!tipoId && saldo != null && saldo > 0);
 /* Fechas centinela que TUSSAM usa para «no caduca» / «sin fin» */
 const fechaCentinela = (x) => !!x && /(^|\D)31[/-]12[/-]20(63|99)\b/.test(String(x));
@@ -59,10 +72,10 @@ const tarjeta = {
   list: () => store.get('cards', []),
   get(num) { return this.list().find((c) => c.num === num) || null; },
   // Si ya estaba, se queda en su sitio (antes subía la primera al guardar); si es nueva, va la primera
-  save(card) { const l = this.list(); const i = l.findIndex((c) => c.num === card.num); if (i >= 0) l[i] = card; else l.unshift(card); store.set('cards', l.slice(0, 10)); },
+  save(card) { const l = this.list(); const i = l.findIndex((c) => c.num === card.num); if (i >= 0) l[i] = card; else l.unshift(card); store.set('cards', l.slice(0, 10)); avisarWidgetSaldo(); },
   move(num, d) { const l = this.list(); const i = l.findIndex((c) => c.num === num); const j = d === 'primera' ? 0 : i + d; if (i < 0 || j < 0 || j >= l.length || i === j) return; const [x] = l.splice(i, 1); l.splice(j, 0, x); store.set('cards', l); },
-  update(num, patch) { store.set('cards', this.list().map((c) => (c.num === num ? { ...c, ...patch } : c))); },
-  remove(num) { store.set('cards', this.list().filter((c) => c.num !== num)); this.setFoto(num, ''); this.setFoto(num, '', 'retrato'); },
+  update(num, patch) { store.set('cards', this.list().map((c) => (c.num === num ? { ...c, ...patch } : c))); avisarWidgetSaldo(); },
+  remove(num) { store.set('cards', this.list().filter((c) => c.num !== num)); this.setFoto(num, ''); this.setFoto(num, '', 'retrato'); avisarWidgetSaldo(); },
   foto(num, cual = 'fondo') {
     try { const f = localStorage.getItem(`bussev.${cual === 'fondo' ? 'foto' : 'retrato'}.${num}`) || ''; return /^data:image\/(jpeg|png);base64,[A-Za-z0-9+/=]+$/.test(f) ? f : ''; } catch { return ''; }
   },
