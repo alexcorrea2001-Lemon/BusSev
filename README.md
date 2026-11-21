@@ -8,9 +8,8 @@ cuánto saldo tiene tu tarjeta y los avisos de desvíos y obras. Es gratis, no t
 > Los datos los saca de las webs y los datos abiertos públicos de TUSSAM y del Ayuntamiento de Sevilla,
 > igual que harías tú con el navegador.
 
-<!-- 📸 CAPTURAS: ponlas en la carpeta docs/capturas/ del repositorio. Donde veas una línea
-     ![texto](docs/capturas/algo.png), sube tu imagen con ese mismo nombre y aparecerá sola.
-     Puedes cambiar los nombres o quitar las que no quieras. -->
+<sub>Las capturas de este README están hechas con datos de ejemplo (paradas reales de Sevilla, tiempos y saldo inventados) y el mapa de fondo simplificado.</sub>
+
 
 
 ## BusSev en pocas palabras
@@ -60,7 +59,7 @@ Guarda las paradas que más usas y ve de un vistazo cuánto le falta a cada auto
   **«Llegando» animado**, y elegir **qué líneas** ver en esa parada.
 - **Orden**: grupo y posición en la lista.
 
-<p align="center"><img src="docs/capturas/favoritas.png" alt="Pantalla de Favoritas" width="280"></p>
+<p align="center"><img src="docs/capturas/favoritas.jpg" alt="Pantalla de Favoritas" width="240"> <img src="docs/capturas/personalizar.jpg" alt="Personalizar una parada" width="240"></p>
 
 <a id="parada"></a>
 
@@ -74,7 +73,7 @@ Guarda las paradas que más usas y ve de un vistazo cuánto le falta a cada auto
 - Avisos de TUSSAM que afectan a la parada y si es **accesible** para silla de ruedas (♿).
 - **Lectura en voz alta** de los tiempos (si la activas, también al abrir la parada).
 
-<p align="center"><img src="docs/capturas/parada.png" alt="Ficha de una parada" width="280"></p>
+<p align="center"><img src="docs/capturas/parada.jpg" alt="Ficha de una parada" width="260"></p>
 
 <a id="avisos-llegada"></a>
 
@@ -92,6 +91,8 @@ Desde una parada, toca un autobús y elige cómo quieres que te avise:
   faltan 5 minutos y da un aviso por minuto cada vez más fuerte (un toque suave, dos, tres, uno largo y, al llegar,
   uno muy fuerte). En Android 16 los minutos salen también como un chip en la barra de arriba.
 
+<p align="center"><img src="docs/capturas/avisos-llegada.jpg" alt="Crear un aviso de llegada" width="260"></p>
+
 <a id="como-llegar"></a>
 
 ### 🧭 Cómo llegar
@@ -105,12 +106,16 @@ Te dice qué coger para ir de un sitio a otro: **directo o con transbordo**, ord
   **bici Sevici** (con las bicis y los huecos libres en ese momento).
 - Cada opción explica los tramos andando, en bus, metro o tren, con horas de salida y llegada.
 
+<p align="center"><img src="docs/capturas/como-llegar.jpg" alt="Cómo llegar" width="260"></p>
+
 <a id="avisame-bajar"></a>
 
 ### 🛎️ Avísame al bajar
 Dile a BusSev en qué parada te bajas y sigue tu viaje con el GPS: ves cuántas paradas te quedan y a qué hora llegas,
 y te avisa **una parada antes de la tuya**. Con **«Compartir mi viaje»** mandas por WhatsApp (o lo que quieras)
 «Voy en el 27, me bajo en … sobre las 9:40».
+
+<p align="center"><img src="docs/capturas/avisame-bajar.jpg" alt="Viaje en curso con Avísame al bajar" width="260"></p>
 
 <a id="mapa"></a>
 
@@ -129,7 +134,7 @@ y te avisa **una parada antes de la tuya**. Con **«Compartir mi viaje»** manda
 > TUSSAM no publica el GPS de sus autobuses: BusSev calcula dónde está cada uno a partir de la distancia
 > que da TUSSAM. Es una posición **aproximada**, pero muy cercana a la real.
 
-<p align="center"><img src="docs/capturas/mapa-linea.png" alt="El recorrido de una línea en el mapa" width="280"></p>
+<p align="center"><img src="docs/capturas/mapa-linea.jpg" alt="Una línea con sus autobuses en el mapa" width="260"></p>
 
 <a id="buscador"></a>
 
@@ -141,6 +146,8 @@ En la barra de arriba, en cualquier pantalla, busca **por número de poste**, **
 - **Perdona las erratas**: «macarnea» encuentra la Macarena.
 - **Búsquedas recientes**: al tocar el buscador vacío salen las paradas, líneas y sitios que abriste.
 
+<p align="center"><img src="docs/capturas/buscador.jpg" alt="Buscador con paradas y sitios" width="260"></p>
+
 <a id="lineas"></a>
 
 ### 🛣️ Líneas
@@ -151,10 +158,14 @@ En la barra de arriba, en cualquier pantalla, busca **por número de poste**, **
   en rojo, sus **paradas sin servicio** tachadas (también en la lista) y la **parada provisional** (P naranja). Se lee
   del aviso de TUSSAM; si el aviso no dice qué paradas son, la línea sale discontinua con el enlace al aviso.
 
+<p align="center"><img src="docs/capturas/desvio.jpg" alt="Desvío dibujado en el mapa de una línea" width="260"></p>
+
 <a id="cerca"></a>
 
 ### 📍 Cerca
 Las paradas que tienes cerca y cuánto le falta a cada autobús. Si tienes la ubicación apagada, te avisa al momento.
+
+<p align="center"><img src="docs/capturas/cerca.jpg" alt="Paradas cerca de ti" width="260"></p>
 
 <a id="tarjeta"></a>
 
@@ -182,7 +193,7 @@ Las paradas que tienes cerca y cuánto le falta a cada autobús. Si tienes la ub
 - **Marco**: dorado, plateado, bronce, oro rosa, arcoíris, neón, doble blanco, azulejo, lunares, cordón morado
   y madera. Cada marco se ve ya puesto sobre tu tarjeta con su dibujo o su foto.
 
-<p align="center"><img src="docs/capturas/tarjeta.png" alt="Tarjeta TUSSAM leída por NFC" width="280"></p>
+<p align="center"><img src="docs/capturas/tarjeta.jpg" alt="Tarjeta TUSSAM" width="240"> <img src="docs/capturas/saldo.jpg" alt="Historial del saldo y previsión" width="240"></p>
 
 <a id="pasaporte"></a>
 
@@ -208,6 +219,8 @@ Semana Santa, Feria, Navidad, Nochevieja, Reyes… Está en la pestaña **Tarjet
   un botón para abrir «Cómo llegar». Se mueve con un dedo y se acerca con dos.
 - Al ganar un sello o una medalla te llega una **notificación con su dibujo**, y la puedes **compartir** como imagen.
 
+<p align="center"><img src="docs/capturas/pasaporte.jpg" alt="Sellos del Pasaporte de Sevilla" width="260"></p>
+
 <a id="tu-anio"></a>
 
 ### ✨ Tu año en BusSev
@@ -228,6 +241,8 @@ ninguna, a tu elección.
 - Elige **dónde verlos**: en Favoritas, en cada parada favorita, al abrir una parada o al abrir una línea.
 - **Silencio de noche** (de 23:00 a 8:00, o las horas que elijas): los avisos que salgan de noche no suenan y te
   llegan por la mañana.
+
+<p align="center"><img src="docs/capturas/avisos-tussam.jpg" alt="Avisos de TUSSAM" width="260"></p>
 
 <a id="widgets"></a>
 
@@ -260,6 +275,8 @@ el horario oficial y la información de paradas y líneas, que va guardada dentr
 - Siempre: los tiempos solo se piden mientras miras la pantalla, se piden menos si llevas un rato sin tocar el móvil,
   y todo se para cuando la app está en segundo plano.
 
+<p align="center"><img src="docs/capturas/bateria.jpg" alt="Ahorro de batería y de datos" width="260"></p>
+
 <a id="ajustes"></a>
 
 ### ⚙️ Ajustes y a tu gusto
@@ -281,6 +298,9 @@ el horario oficial y la información de paradas y líneas, que va guardada dentr
 - **Tus datos**: **copia de seguridad** de favoritas, tarjetas, ajustes y Pasaporte en un archivo, para pasarlo a
   otro móvil, y la fecha hasta la que valen los datos de líneas y paradas que lleva la app.
 - **Actualizaciones**: busca, descarga e instala la versión nueva desde la propia app, y te enseña sus novedades.
+
+
+<p align="center"><img src="docs/capturas/ajustes.jpg" alt="Ajustes: tema y temáticas" width="260"></p>
 
 ---
 

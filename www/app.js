@@ -3377,8 +3377,18 @@ views.ajustes = (el) => {
         ${sw('avisarVersion', settings.avisarVersion, 'Avisarme si hay una versión nueva', 'Lo mira al abrir la app y cada vez que vuelves a ella.')}
       </div>
       <div class="set-group"><h3>Privacidad y seguridad</h3>
-        <p>BusSev solo se conecta con TUSSAM (tiempos, saldo y avisos), con OpenFreeMap (mapa) y, si lo configuras, con tu propio servidor del saldo. No tiene anuncios ni seguimiento. Tus favoritas y tarjetas se guardan solo en este móvil.</p>
-        <p>Permisos: internet, ubicación (opcional), NFC (solo con la pestaña Tarjeta abierta) y notificaciones (solo si activas algún aviso).</p></div>
+        <p>BusSev solo se conecta con:</p>
+        <ul class="priv-lista">
+          <li><b>TUSSAM</b>: tiempos, saldo de la tarjeta, tarifas y avisos.</li>
+          <li><b>OpenFreeMap</b> (el mapa) y, si eliges el mapa satélite, las fotos aéreas del <b>IGN</b>.</li>
+          <li><b>CartoCiudad</b> y <b>Photon</b>: para encontrar calles y sitios en el buscador y en Cómo llegar.</li>
+          <li><b>Open-Meteo</b>: el tiempo de Sevilla, solo si tienes encendido el Cielo de Sevilla.</li>
+          <li><b>CityBikes</b>: las bicis de Sevici, solo si las activas.</li>
+          <li><b>GitHub</b>: para buscar e instalar las versiones nuevas.</li>
+          <li>Tu propio servidor del saldo, solo si lo configuras.</li>
+        </ul>
+        <p>No tiene anuncios ni seguimiento, y no envía a nadie tu ubicación ni tus viajes. Tus favoritas, tarjetas, viajes y medallas se guardan solo en este móvil (y en la copia de seguridad si la haces).</p>
+        <p>Permisos: internet; ubicación (opcional, solo mientras usas la app); NFC (solo con la pestaña Tarjeta abierta); notificaciones (solo si activas algún aviso); alarmas exactas (para que los avisos suenen a su hora) e instalar apps (solo para actualizar BusSev).</p></div>
       <div class="set-group"><h3>Datos de líneas y paradas</h3><p>Datos oficiales de TUSSAM ${dc ? `válidos hasta el ${dc.toLocaleDateString('es-ES')}` : ''}. ${window.BusSevBackend?.caducados?.() ? 'Ya han caducado: la app pide los recorridos a TUSSAM en directo.' : 'Cuando caduquen, la app pedirá los recorridos a TUSSAM en directo.'} Recorridos por calle: ${Object.keys(window.BUSSEV_RECORRIDOS || {}).length ? 'sí' : 'en línea recta'}. Mapas: © OpenStreetMap, OpenFreeMap, OpenMapTiles.</p>
         <p>BusSev es una app personal, sin relación con TUSSAM.</p></div>
     </div>`;
