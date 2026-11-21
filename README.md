@@ -13,19 +13,44 @@ cuánto saldo tiene tu tarjeta y los avisos de desvíos y obras. Es gratis, no t
      Puedes cambiar los nombres o quitar las que no quieras. -->
 
 
+## BusSev en pocas palabras
+
+- ⏱️ **Cuánto le falta a tu autobús**, en directo, en tus paradas favoritas, en el widget y en la cortina del móvil.
+- 🔔 **Te avisa** cuando llega tu bus (también cada día a la misma hora), te dice si **llegas o no llegas** andando
+  y te avisa **una parada antes de bajarte**.
+- 🗺️ **Dónde va cada autobús** en el mapa, por las calles de verdad, y los **desvíos** dibujados.
+- 🧭 **Cómo llegar** a cualquier sitio, ahora o a una hora, combinando bus, Metro, Cercanías y Sevici.
+- 💳 El **saldo de tu tarjeta** acercándola al móvil, con su **historial** y cuándo te quedarás sin saldo.
+- 🛂 El **Pasaporte de Sevilla**: sellos y medallas por moverte en bus, y **Tu año en BusSev**.
+- ⚠️ Los **avisos de TUSSAM** (desvíos, obras, horarios especiales) de tus líneas.
+- 🎨 Todo **a tu gusto**: colores, estilos, iconos, temáticas de Sevilla… y pensada para **gastar poca batería y datos**.
+
+### Índice
+[Favoritas](#favoritas) · [Parada](#parada) · [Avisos de llegada](#avisos-llegada) · [Cómo llegar](#como-llegar) ·
+[Avísame al bajar](#avisame-bajar) · [Mapa](#mapa) · [Buscador](#buscador) · [Líneas](#lineas) · [Cerca](#cerca) ·
+[Tarjeta](#tarjeta) · [Pasaporte de Sevilla](#pasaporte) · [Tu año](#tu-anio) · [Avisos de TUSSAM](#avisos-tussam) ·
+[Widgets](#widgets) · [Sin conexión](#sin-conexion) · [Batería y datos](#bateria-datos) · [Ajustes](#ajustes) ·
+[Instalar](#instalar) · [Preguntas](#preguntas)
+
 ---
 
 ## ¿Qué puedo hacer con BusSev?
 
+<a id="favoritas"></a>
+
 ### ⭐ Favoritas
 Guarda las paradas que más usas y ve de un vistazo cuánto le falta a cada autobús.
-- **Tiempos en directo** de cada línea, con el siguiente autobús y a qué distancia va.
+- **Tiempos en directo** de cada línea, con el siguiente autobús y a qué distancia va. Se actualizan solos (cada
+  30 s, 1 min… o solo al tocar ⟳, a tu elección) y dejan de pedirse cuando no miras la pantalla.
 - Ordénalas como quieras (ves al momento en qué puesto queda la parada) y **agrúpalas** por títulos («Casa», «Trabajo»…).
 - **La más cercana, arriba** (opcional, en Ajustes): se ordenan solas según dónde estés; en casa sale primero «Casa»
   y en el trabajo, «Trabajo». Usa la última ubicación del móvil, sin preguntar.
 - Arriba te avisa de lo que importa hoy: **buses nocturnos**, **servicios especiales** (Feria, Semana Santa),
   **festivos**, **saldo bajo** o **tarjeta a punto de caducar**, y si estás **sin conexión**.
+- Los **avisos de llegada** que tienes puestos, con su hora, para quitarlos de un toque.
 - Botón de **avisos de TUSSAM** que afectan a tus líneas, y el aviso dentro de cada parada a la que le toca.
+- **Consejos**: de vez en cuando (como mucho uno al día) una tarjetita con algo que la app hace y quizá no sabes.
+  «Entendido» y no vuelve; «No más consejos» los apaga (se vuelven a encender en Ajustes).
 
 #### 🎨 Personalizar cada parada (con vista previa en directo, a pantalla completa)
 - **Aspecto**: nombre propio, **icono** (casa, trabajo, cole, universidad, médico, compras, deporte, café, comer, ocio,
@@ -37,44 +62,66 @@ Guarda las paradas que más usas y ve de un vistazo cuánto le falta a cada auto
 
 <p align="center"><img src="docs/capturas/favoritas.png" alt="Pantalla de Favoritas" width="280"></p>
 
+<a id="parada"></a>
+
 ### 🚏 Parada
 - Arriba: el nombre, tu nombre para ella, el **número de poste** y las **líneas que paran** (tócalas para ver su recorrido).
 - Botones **Personalizar** (o Guardar) · **Cómo llegar** · **Avisar**.
-- **Filtro de líneas** para ver solo la que te interesa.
-- **Minutos** que le faltan a cada línea y **avísame cuando llegue**: elige el autobús y te avisa con una
-  notificación (con el sonido que elijas), aunque tengas la app cerrada. En los últimos 15 minutos verás la
-  **cuenta atrás** en la barra de arriba (chip en Android 16), y el aviso trae el botón **«Me he subido»**.
+- **Minutos** que le faltan a cada línea, con **filtro de líneas** para ver solo la que te interesa.
+- Si TUSSAM no da tiempos, te enseña los **próximos según el horario oficial**.
+- **Horario en esta parada**: todos los pasos del día de cada línea, según el horario oficial (GTFS).
+- **Mapa** con la parada, los autobuses que vienen y el camino que les queda (también en pantalla completa).
+- Avisos de TUSSAM que afectan a la parada y si es **accesible** para silla de ruedas (♿).
+- **Lectura en voz alta** de los tiempos (si la activas, también al abrir la parada).
+
+<p align="center"><img src="docs/capturas/parada.png" alt="Ficha de una parada" width="280"></p>
+
+<a id="avisos-llegada"></a>
+
+### 🔔 Avisos de llegada
+Desde una parada, toca un autobús y elige cómo quieres que te avise:
+- **Avísame cuando llegue**: una notificación cuando le falten los minutos que digas, con el **sonido** que elijas
+  (campanas, ding-dong, marimba o estación), aunque tengas la app cerrada. En los últimos 15 minutos verás la
+  **cuenta atrás** en la barra de arriba (como chip en Android 16), y el aviso trae el botón **«Me he subido»**.
 - **Avisos que se repiten**: «de lunes a viernes, desde las 7:40, avísame cuando al 27 le falten 5 min». Lo pones
-  una vez y cada día el móvil lo vigila solo con TUSSAM, aunque no abras la app. Los ves y los quitas en Ajustes.
+  una vez y cada día el móvil lo vigila solo con TUSSAM, aunque no abras la app (y aunque reinicies el móvil).
+  Los ves y los quitas en Ajustes.
 - **¿Llego o no llego?**: si abres la parada estando en ella o yendo hacia ella, la notificación te dice cuánto le
   falta a tu bus y si llegas andando: 🟢 con margen, 🟡 aligera o 🔴 no llegas (y cuándo pasa el siguiente).
 - **📳 Modo sensor**: te guardas el móvil y vibra según se acerca tu autobús, sin mirar la pantalla. Empieza cuando
   faltan 5 minutos y da un aviso por minuto cada vez más fuerte (un toque suave, dos, tres, uno largo y, al llegar,
   uno muy fuerte). En Android 16 los minutos salen también como un chip en la barra de arriba.
-- Si TUSSAM no da tiempos, te enseña los **próximos según el horario oficial**.
-- **Horario en esta parada**: todos los pasos del día de cada línea, según el horario oficial (GTFS).
-- **Mapa** con la parada, los autobuses que vienen y el camino que les queda (también en pantalla completa).
-- Avisos de TUSSAM que afectan a la parada y si es **accesible** para silla de ruedas (♿).
 
-<p align="center"><img src="docs/capturas/parada.png" alt="Ficha de una parada" width="280"></p>
+<a id="como-llegar"></a>
 
 ### 🧭 Cómo llegar
 Te dice qué coger para ir de un sitio a otro: **directo o con transbordo**, ordenado por la hora a la que llegas.
 - **Salir ahora**, **salir a las…** o **llegar antes de las…** (te propone la que más tarde te deja salir de casa),
-  con el botón **«Avísame para salir»**: una notificación 5 minutos antes de tu hora de salida.
+  con el botón **«Avísame para salir»**: una notificación 5 minutos antes de tu hora de salida. La hora se elige
+  con botones **− y +** (de 5 en 5 minutos) y te dice si es hoy o mañana.
 - Busca **calles con número de portal**, **sitios** (hospitales, centros comerciales, estaciones…), **paradas** o
   tu ubicación. Guarda los **sitios recientes**.
 - **Combinar con** (se activa en casillas, apagado de serie): **Metro** (Línea 1), **Cercanías Renfe** (C1 a C5) y
   **bici Sevici** (con las bicis y los huecos libres en ese momento).
 - Cada opción explica los tramos andando, en bus, metro o tren, con horas de salida y llegada.
-- **Avísame al bajar**: sigue tu viaje con el GPS y te avisa una parada antes de la tuya.
+
+<a id="avisame-bajar"></a>
+
+### 🛎️ Avísame al bajar
+Dile a BusSev en qué parada te bajas y sigue tu viaje con el GPS: ves cuántas paradas te quedan y a qué hora llegas,
+y te avisa **una parada antes de la tuya**. Con **«Compartir mi viaje»** mandas por WhatsApp (o lo que quieras)
+«Voy en el 27, me bajo en … sobre las 9:40».
+
+<a id="mapa"></a>
 
 ### 🗺️ Mapa
 - Todas las paradas de Sevilla. Toca una línea y verás su **recorrido real por las calles** y
   **los autobuses que van por ella ahora mismo**, moviéndose solos y mirando hacia donde van.
+- **Estilo del mapa**: oscuro, claro, como el tema de la app o **satélite** (fotos aéreas oficiales del IGN con los
+  nombres de las calles encima).
 - Capas opcionales (apagadas de serie, en *Ajustes → Mapa*): **Metro de Sevilla**, **Cercanías Renfe** con sus
   estaciones y próximos trenes, y **estaciones Sevici** con bicis y huecos libres en directo.
-- Estilo de mapa, nombres de calles, paradas y recorridos se pueden encender o apagar.
+- Nombres de calles, paradas y recorridos se pueden encender o apagar.
 
 > El recorrido de cada línea es el **trazado oficial** que publica el Ayuntamiento de Sevilla en datos abiertos,
 > así que el autobús va por su calle de verdad, no en línea recta entre paradas.
@@ -84,6 +131,8 @@ Te dice qué coger para ir de un sitio a otro: **directo o con transbordo**, ord
 
 <p align="center"><img src="docs/capturas/mapa-linea.png" alt="El recorrido de una línea en el mapa" width="280"></p>
 
+<a id="buscador"></a>
+
 ### 🔎 Buscador
 En la barra de arriba, en cualquier pantalla, busca **por número de poste**, **por nombre de la parada o la calle**,
 **por línea** o por el **nombre que le diste a tu favorita** («Casa»). Los resultados salen al momento mientras escribes.
@@ -92,24 +141,31 @@ En la barra de arriba, en cualquier pantalla, busca **por número de poste**, **
 - **Perdona las erratas**: «macarnea» encuentra la Macarena.
 - **Búsquedas recientes**: al tocar el buscador vacío salen las paradas, líneas y sitios que abriste.
 
+<a id="lineas"></a>
+
 ### 🛣️ Líneas
 - Todas las líneas, con filtro de nocturnas.
-- Lista de paradas de cada línea con el **tiempo de llegada** de los autobuses al lado de cada parada
-  y las demás líneas que paran en ella.
-- Si una línea tiene un **desvío** por obras o un evento, se dibuja en su mapa: el **tramo que no hace** en rojo,
-  sus **paradas sin servicio** tachadas (también en la lista) y la **parada provisional** (P naranja). Se lee del
-  aviso de TUSSAM; si el aviso no dice qué paradas son, la línea sale discontinua con el enlace al aviso.
+- Lista de paradas de cada línea, en los dos sentidos, con el **tiempo de llegada** de los autobuses al lado de cada
+  parada y las demás líneas que paran en ella.
+- **Desvíos dibujados**: si una línea tiene un desvío por obras o un evento, en su mapa sale el **tramo que no hace**
+  en rojo, sus **paradas sin servicio** tachadas (también en la lista) y la **parada provisional** (P naranja). Se lee
+  del aviso de TUSSAM; si el aviso no dice qué paradas son, la línea sale discontinua con el enlace al aviso.
+
+<a id="cerca"></a>
 
 ### 📍 Cerca
 Las paradas que tienes cerca y cuánto le falta a cada autobús. Si tienes la ubicación apagada, te avisa al momento.
+
+<a id="tarjeta"></a>
 
 ### 💳 Tarjeta
 - **Acerca tu tarjeta TUSSAM al móvil** (NFC) y BusSev la reconoce, o escribe su número.
 - Ve su **saldo**, tipo, caducidad y **cuántos viajes te quedan** (con el precio actual de TUSSAM).
 - Guarda varias tarjetas y ordénalas (y elige cuál es la primera).
-- **Avisos**: te avisa si te queda poco saldo o si la tarjeta va a caducar.
 - **Historial del saldo** con gráfica (las recargas salen en verde) y la **previsión**: «a tu ritmo (unos 5 € a la
   semana), te quedas sin saldo hacia el sábado 28». Se apunta cada vez que consultas la tarjeta.
+- **Avisos**: te avisa si te queda poco saldo o si la tarjeta va a caducar. Al abrir la app revisa sola tus
+  tarjetas (cada hora, cada 3 h o cada 6 h, a tu elección).
 - **Tarifas y títulos de viaje** actualizados desde la web de TUSSAM.
 
 #### 🎨 Personalizar cada tarjeta (con vista previa en directo, a pantalla completa)
@@ -117,8 +173,8 @@ Las paradas que tienes cerca y cuánto le falta a cada autobús. Si tienes la ub
   favorita), **color** y **ocultar el número** (solo se ven los 4 últimos).
 - **Acabados**: **brillo holográfico** como el de las cartas coleccionables, en tres estilos — **Holo** (bandas de
   arcoíris), **Cosmos** (el arcoíris dentro de burbujas y estrellas) y **Rayado** (rayitas finas) — con su
-  **intensidad** (suave, media o fuerte), en su propia pestaña «Brillo». La luz sigue tu dedo y se mueve al inclinar el móvil; quieta no gasta nada. Y **purpurina**:
-  destellos diminutos que se encienden de vez en cuando.
+  **intensidad** (suave, media o fuerte), en su propia pestaña «Brillo». La luz sigue tu dedo y se mueve al inclinar
+  el móvil; quieta no gasta nada. Y **purpurina**: destellos diminutos que se encienden de vez en cuando.
 - **Darle la vuelta**: toca la tarjeta abierta y gira en 3D. Por detrás, el **saldo**, los **viajes que te quedan**
   y la **caducidad**, como el reverso de una tarjeta de verdad.
 - **Diseño**: 10 dibujos de Sevilla — La Giralda, Torre del Oro, Puente de Triana, Azulejo, Plaza de España,
@@ -127,6 +183,8 @@ Las paradas que tienes cerca y cuánto le falta a cada autobús. Si tienes la ub
   y madera. Cada marco se ve ya puesto sobre tu tarjeta con su dibujo o su foto.
 
 <p align="center"><img src="docs/capturas/tarjeta.png" alt="Tarjeta TUSSAM leída por NFC" width="280"></p>
+
+<a id="pasaporte"></a>
 
 ### 🛂 Pasaporte de Sevilla
 Colecciona **sellos** de 30 lugares (Giralda, Torre del Oro, Triana, Plaza de España, Las Setas, la Macarena,
@@ -137,7 +195,7 @@ Semana Santa, Feria, Navidad, Nochevieja, Reyes… Está en la pestaña **Tarjet
 - **Tus viajes cuentan solos**: abre BusSev en la parada para ver cuánto le falta a tu bus, como siempre, y súbete.
   BusSev sigue el viaje unos minutos con la ubicación (solo el permiso «mientras usas la app») y, al bajarte, te
   dice si ha contado. Si solo mirabas desde casa o te vas sin subirte, se apaga sola sin decir nada. También
-  cuentan los viajes con **«Me he subido»** (en el aviso de llegada y el modo sensor) y con «avísame al bajar».
+  cuentan los viajes con **«Me he subido»** (en el aviso de llegada y el modo sensor) y con «Avísame al bajar».
   Se puede apagar en *Ajustes → Pasaporte de Sevilla → Contar mis viajes*.
 - Solo cuentan los **viajes verificados**. El móvil comprueba que TUSSAM daba **ese autobús llegando a tu parada**
   cuando saliste, que tu posición ha ido **por su recorrido a la par que él** (adivina en qué línea vas aunque
@@ -145,10 +203,12 @@ Semana Santa, Feria, Navidad, Nochevieja, Reyes… Está en la pestaña **Tarjet
   o en bici por la misma calle, no cuenta.
 - Cada viaje va **firmado** dentro de la app, así que no se pueden inventar viajes ni colarlos en una copia de
   seguridad: al restaurar solo entran los que tienen la firma buena.
-- Al ganar un sello o una medalla te llega una **notificación con su dibujo**, y la puedes **compartir** como imagen.
 - **Mapa de sellos**: los 30 sitios en el mapa, los que tienes en color y los que te faltan en gris. Toca uno y te
   dice qué línea te lleva directa desde tu primera favorita, cuántas paradas son y cuánto andas al bajarte, con
-  un botón para abrir «Cómo llegar».
+  un botón para abrir «Cómo llegar». Se mueve con un dedo y se acerca con dos.
+- Al ganar un sello o una medalla te llega una **notificación con su dibujo**, y la puedes **compartir** como imagen.
+
+<a id="tu-anio"></a>
 
 ### ✨ Tu año en BusSev
 Del **1 de diciembre al 15 de enero**, Favoritas te enseña tu resumen del año en **historias a pantalla completa**
@@ -159,53 +219,72 @@ y CO₂ que no echó un coche), sellos y medallas, los avisos que te salvaron, l
 como imagen. El resto del año puedes verlo «hasta ahora» desde el Pasaporte. Todo se calcula en tu móvil y va en
 la copia de seguridad; solo sale la imagen que tú compartas.
 
+<a id="avisos-tussam"></a>
+
 ### ⚠️ Avisos de TUSSAM
-Desvíos, obras y horarios especiales (con sus **PDF e imágenes**). BusSev los revisa al abrirse y te manda una
-notificación si hay uno nuevo en las líneas de tus paradas favoritas. Puedes elegir dónde verlos: en Favoritas,
-en cada parada favorita, al abrir una parada o al abrir una línea.
+Desvíos, obras y horarios especiales, con sus **PDF e imágenes**. BusSev los revisa al abrirse (como mucho una vez
+por hora) y te manda una notificación si hay uno nuevo en **tus líneas** (las de tus favoritas), en **todas** o en
+ninguna, a tu elección.
+- Elige **dónde verlos**: en Favoritas, en cada parada favorita, al abrir una parada o al abrir una línea.
 - **Silencio de noche** (de 23:00 a 8:00, o las horas que elijas): los avisos que salgan de noche no suenan y te
   llegan por la mañana.
 
+<a id="widgets"></a>
+
 ### 📲 Widgets, accesos directos y ajustes rápidos
 - **Widget de paradas**: una parada con sus próximos autobuses, o **«Mis favoritas»** (tus 3 primeras paradas, cada
-  una con sus dos próximos buses). Se adapta al tamaño (más alto, más filas) y tiene botón para refrescar.
+  una con sus dos próximos buses). Se adapta al tamaño (más alto, más filas) y tiene botón para refrescar. Con la
+  pantalla apagada no gasta datos: enseña «De las 9:40 · toca ⟳» y se actualiza al tocarlo o al abrir la app.
 - **Widget de saldo**: tu tarjeta con el saldo y los viajes que te quedan (de la última consulta en la app).
 - **Accesos directos**: mantén pulsado el icono de BusSev y abre al momento una de tus 4 primeras favoritas.
 - **Botón en los ajustes rápidos** (al bajar la cortina): el próximo bus de tu primera favorita, «27 · 4 min».
   Tócalo para refrescar sin abrir la app. Se añade editando los botones de la cortina.
 
+<a id="sin-conexion"></a>
+
 ### ✈️ Sin conexión
 Si te quedas sin datos, BusSev te sigue enseñando los **últimos tiempos que tenía** (avisándote de que no están al día),
 el horario oficial y la información de paradas y líneas, que va guardada dentro de la app.
 
+<a id="bateria-datos"></a>
+
+### 🔋 Batería y datos
+- **Ahorro de batería** (automático, siempre o nunca): en automático se pone solo con el ahorro de batería de
+  Android o con un 15 % o menos sin cargar, y Ajustes te dice cuándo está ahorrando y por qué. Los tiempos se piden
+  como mucho cada minuto, se quedan quietos el cielo de la barra y el brillo de la tarjeta al inclinarla, y el
+  widget y el GPS de los viajes gastan menos. Las demás animaciones siguen igual.
+- **Ahorro de datos** (sigue al de Android): tiempos cada 45 s como mucho, el cielo y Sevici se consultan menos y la
+  versión nueva se busca solo con wifi.
+- **Datos gastados**: en Ajustes ves cuánto ha gastado BusSev **este mes y el pasado**, contando todo (la app, el
+  widget, los avisos y el mapa).
+- Siempre: los tiempos solo se piden mientras miras la pantalla, se piden menos si llevas un rato sin tocar el móvil,
+  y todo se para cuando la app está en segundo plano.
+
+<a id="ajustes"></a>
+
 ### ⚙️ Ajustes y a tu gusto
-- Tema claro u oscuro, **color de la app** (incluidos pasteles) y **color de fondo**.
-- **Como mi móvil** (Android 12 o más): el color de la app sale de tu fondo de pantalla y cambia si lo cambias.
-- Fondo **Negro puro**: negro de verdad para pantallas OLED, que gasta menos batería.
-- Pasos más suaves: al abrir una parada o una línea la pantalla **se desliza**, mientras cargan los tiempos ves
-  su **silueta** en vez de un texto, y los botones dan una **vibración muy corta** al tocarlos (si la vibración está encendida).
-- **Consejos**: de vez en cuando (como mucho uno al día) sale en Favoritas una tarjetita con algo que la app hace y
-  quizá no sabes. «Entendido» y no vuelve; «No más consejos» los apaga (se pueden encender en Ajustes).
+- **Aspecto**: tema claro u oscuro, **color de la app** (incluidos pasteles), **Como mi móvil** (Android 12 o más:
+  el color sale de tu fondo de pantalla y cambia si lo cambias), **color de fondo** y fondo **Negro puro** para
+  pantallas OLED.
+- **Pasos suaves**: al abrir una parada o una línea la pantalla **se desliza**, mientras cargan los tiempos ves su
+  **silueta** en vez de un texto, y los botones dan una **vibración muy corta** al tocarlos (si la vibración está encendida).
 - **Icono de la app** a elegir: Clásico, Noche, Azulejo, Feria, Semana Santa, Giralda y Verde.
   (Al cambiarlo, Android quita el acceso de la pantalla de inicio y hay que volver a ponerlo: te avisa antes.)
 - **Sonido del aviso de llegada**: campanas, ding-dong, marimba o estación (se repite 3 veces), con botón para probarlo.
-- **Cielo de Sevilla** (opcional, se enciende en Ajustes): la barra de arriba se pinta con el cielo real de Sevilla — amanecer, día,
+- **Cielo de Sevilla** (opcional): la barra de arriba se pinta con el cielo real de Sevilla — amanecer, día,
   atardecer o noche con estrellas y la luna en su fase — y nubes o lluvia si las hay (previsión de Open-Meteo).
 - **Temáticas** que cambian solas: Navidad, Semana Santa, Feria y Halloween, con adornos y, si quieres,
   **pasos, coches de caballos o carrozas** en el mapa en vez de autobuses.
 - Cada cuánto **se actualizan los tiempos** y si ver los **autobuses en directo** en el mapa.
-- **Ahorro de batería** (automático, siempre o nunca): con el ahorro de batería de Android o con un 15 % o menos,
-  los tiempos se piden como mucho cada minuto, se quedan quietos el cielo de la barra y el brillo de la tarjeta al
-  inclinarla, y el widget y el GPS de los viajes gastan menos. Las demás animaciones siguen igual.
-- **Ahorro de datos** (sigue al de Android): tiempos cada 45 s como mucho, el cielo y Sevici se consultan menos y la
-  versión nueva se busca solo con wifi. Y en Ajustes ves **cuántos datos ha gastado BusSev este mes** (y el pasado).
-- El **widget** no gasta datos con la pantalla apagada: enseña «De las 9:40 · toca ⟳» y se actualiza al tocarlo.
 - **Accesibilidad**: **modo sencillo** (solo lo esencial y botones grandes), tamaño del texto, botones más grandes,
   alto contraste, menos animaciones, vibración y **lectura en voz alta** (también al abrir una parada).
-- **Copia de seguridad** de favoritas y tarjetas para pasarlas a otro móvil.
+- **Tus datos**: **copia de seguridad** de favoritas, tarjetas, ajustes y Pasaporte en un archivo, para pasarlo a
+  otro móvil, y la fecha hasta la que valen los datos de líneas y paradas que lleva la app.
 - **Actualizaciones**: busca, descarga e instala la versión nueva desde la propia app, y te enseña sus novedades.
 
 ---
+
+<a id="instalar"></a>
 
 ## Cómo instalarla
 
@@ -226,24 +305,31 @@ e instálalo **encima**: no pierdes tus favoritas ni tus tarjetas. BusSev tambi�
 ### Permisos que te puede pedir
 | Permiso | Para qué | ¿Obligatorio? |
 |---|---|---|
-| **Ubicación** | Paradas cerca, Cómo llegar desde donde estás y «Avísame al bajar» | No: solo cuando usas esas funciones |
+| **Ubicación** (solo mientras usas la app) | Paradas cerca, Cómo llegar desde donde estás, «Avísame al bajar», ¿Llego o no llego?, favoritas por cercanía y que tus viajes cuenten en el Pasaporte | No: solo cuando usas esas funciones |
 | **NFC** | Leer tu tarjeta TUSSAM al acercarla | No: también puedes escribir el número |
-| **Notificaciones** | Avisos de llegada, de bajada, de saldo bajo y de TUSSAM | No |
+| **Notificaciones** | Avisos de llegada, de bajada, de saldo bajo, de TUSSAM y de sellos y medallas | No |
+| **Alarmas y recordatorios** | Que los avisos de llegada y los que se repiten suenen a su hora exacta | No, pero sin él pueden llegar con retraso |
+| **Instalar apps** | Instalar la versión nueva desde la propia app | No: Android te lo pregunta solo la primera vez que actualizas |
 
 Para leer la tarjeta, el **NFC del móvil tiene que estar encendido**. Si está apagado, BusSev te lleva al ajuste con un botón.
 
 ---
 
+<a id="preguntas"></a>
+
 ## Preguntas frecuentes
 
 **¿Es segura?**
-Sí. BusSev solo se conecta con las webs de TUSSAM, el mapa (OpenStreetMap), el buscador de direcciones
-(CartoCiudad y Photon), el tiempo de Sevilla para el cielo (Open-Meteo) y, si lo activas, los datos de Sevici (CityBikes). No tiene anuncios ni rastreadores,
-no guarda tus datos en ningún servidor y todo se queda en tu móvil. No pide tu cuenta de TUSSAM.
+Sí. BusSev solo se conecta con las webs de TUSSAM, el mapa (OpenFreeMap / OpenStreetMap, y las fotos aéreas del
+IGN si eliges el mapa satélite), el buscador de direcciones (CartoCiudad y Photon), el tiempo de Sevilla para el
+cielo (Open-Meteo), los datos de Sevici (CityBikes) si los activas y GitHub para buscar actualizaciones. No tiene
+anuncios ni rastreadores, no guarda tus datos en ningún servidor y todo se queda en tu móvil. No pide tu cuenta de TUSSAM.
 
 **¿Gasta mucha batería o datos?**
 No. Solo consulta a TUSSAM mientras miras la pantalla, guarda las respuestas unos segundos para no repetir
-consultas y se para cuando la app está en segundo plano.
+consultas, pide menos si llevas un rato sin tocar el móvil y se para cuando la app está en segundo plano. Con poca
+batería o con el ahorro de datos de Android gasta todavía menos (ver [Batería y datos](#bateria-datos)), y en
+Ajustes puedes ver cuántos datos ha gastado este mes.
 
 **¿Por qué a veces no salen los tiempos?**
 Los tiempos vienen de TUSSAM. Si su servicio falla, BusSev reintenta sola, te enseña los últimos datos que tenía
@@ -257,7 +343,8 @@ sí da: el número y la caducidad.
 No. TUSSAM no publica ese historial en su web pública.
 
 **¿Puedo hacer una copia de mis favoritas y tarjetas?**
-Sí: *Ajustes → Tus datos → Copia de seguridad*. Te sirve para pasarlas a otro móvil.
+Sí: *Ajustes → Tus datos → Copia de seguridad*. Guarda favoritas, tarjetas (con su historial de saldo), ajustes y
+el Pasaporte, y te sirve para pasarlo todo a otro móvil.
 
 ---
 
