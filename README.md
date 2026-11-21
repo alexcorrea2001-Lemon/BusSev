@@ -446,6 +446,19 @@ para que entres con tu cuenta.
   (ODbL), consultados al compilar con Overpass y OSRM (`scripts/paradas_osm.mjs`, `scripts/recorridos_osm.mjs` y `scripts/recorridos.mjs`).
 - Mapa: OpenFreeMap / OpenStreetMap.
 
+### Licencia
+El código de BusSev se publica con la licencia **[PolyForm Noncommercial 1.0.0](LICENSE)**, la misma que la API TUSSAM
+en la que se basa la consulta de tiempos. En resumen:
+- **Puedes** ver, copiar, modificar y compartir el código para **uso personal**, estudios, investigación o en
+  organizaciones **sin ánimo de lucro**, siempre que mantengas el aviso de la licencia.
+- **No puedes** usarlo con **fines comerciales**: venderlo, meterle anuncios o usarlo en una empresa.
+
+Lo que no es código de BusSev sigue con su propia licencia:
+- **Datos**: horarios y paradas (GTFS de TUSSAM, Punto de Acceso Nacional), trazado de las líneas (datos abiertos del
+  Ayuntamiento de Sevilla), paradas y calles de **OpenStreetMap** (© colaboradores de OpenStreetMap, **ODbL**), Metro y
+  Renfe (sus GTFS) y Sevici (CityBikes).
+- **Marcas**: TUSSAM, Metro de Sevilla, Renfe y Sevici son de sus dueños; la licencia no da ningún permiso sobre ellas.
+
 ### Aviso legal
 Uso **personal y no comercial**. Proyecto independiente, sin relación con TUSSAM. Los servicios de TUSSAM no son
 públicos ni están documentados: si cambian, alguna función puede dejar de ir hasta que se ajuste la app.
