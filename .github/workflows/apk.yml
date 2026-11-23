@@ -70,10 +70,13 @@ jobs:
         env:
           TUSSAM_SECRETS_JS: ${{ secrets.TUSSAM_SECRETS_JS }}
         run: |
-          # Si TUSSAM no responde, que se vea por qué (conexión y certificado; no lleva credenciales)
-          for h in auth.tussam.es api.tussam.es; do
-            echo "$h: HTTP $(curl -s -o /dev/null -w '%{http_code}' --max-time 20 "https://$h/" || echo 'sin conexión')"
-            timeout 20 openssl s_client -connect "$h:443" -servername "$h" </dev/null 2>/dev/null | grep -E '^ *[0-9] s:|^ *i:|Verify return' | head -6 || true
+          # Si TUSSAM no responde, que se vea por qué (no lleva credenciales)
+          ip=$(curl -s --max-time 10 https://api.ipify.org || true); echo "Salida de GitHub: ${ip%.*}.x"
+          for u in https://auth.tussam.es/ https://api.tussam.es/ https://reddelineas.tussam.es/ https://www.tussam.es/; do
+            for ua in "" "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/131.0 Mobile Safari/537.36"; do
+              r=$(curl -s -o /dev/null --max-time 20 -A "$ua" -w '%{http_code}' "$u" 2>&1) && e=0 || e=$?
+              echo "$u [${ua:+navegador}] → HTTP $r (curl $e)"
+            done
           done
           node scripts/paradas_tussam.mjs www/data.js "$RUNNER_TEMP/data_antes.js"
           # Novedades: lo que cambia de verdad respecto a lo que llevaba la app (GTFS + TUSSAM en directo)
