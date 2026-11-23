@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Notificación única: aviso de llegada + «Tu autobús ahora» del Pasaporte (desplegada) -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical">
+        <TextView android:id="@+id/n_titulo" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+            android:textColor="@color/n_texto" android:textSize="16sp" android:textStyle="bold" android:singleLine="true" android:ellipsize="end" />
+        <Chronometer android:id="@+id/n_crono" android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:textColor="@color/n_texto2" android:textSize="14sp" android:paddingLeft="8dp" />
+    </LinearLayout>
+    <TextView android:id="@+id/n_parada" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:textColor="@color/n_texto2" android:textSize="14sp" android:singleLine="true" android:ellipsize="end" android:layout_marginTop="2dp" />
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:layout_marginTop="6dp">
+        <TextView android:id="@+id/n_p1_verde" android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:background="@drawable/n_pill_verde" android:textColor="@color/n_verde_tx" android:textSize="12sp"
+            android:paddingLeft="8dp" android:paddingRight="8dp" android:paddingTop="1dp" android:paddingBottom="1dp"
+            android:singleLine="true" android:visibility="gone" />
+        <TextView android:id="@+id/n_p1_ambar" android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:background="@drawable/n_pill_ambar" android:textColor="@color/n_ambar_tx" android:textSize="12sp"
+            android:paddingLeft="8dp" android:paddingRight="8dp" android:paddingTop="1dp" android:paddingBottom="1dp"
+            android:singleLine="true" android:visibility="gone" />
+        <TextView android:id="@+id/n_p2_verde" android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:background="@drawable/n_pill_verde" android:textColor="@color/n_verde_tx" android:textSize="12sp"
+            android:paddingLeft="8dp" android:paddingRight="8dp" android:paddingTop="1dp" android:paddingBottom="1dp"
+            android:singleLine="true" android:visibility="gone" android:layout_marginLeft="4dp" />
+        <TextView android:id="@+id/n_p2_ambar" android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:background="@drawable/n_pill_ambar" android:textColor="@color/n_ambar_tx" android:textSize="12sp"
+            android:paddingLeft="8dp" android:paddingRight="8dp" android:paddingTop="1dp" android:paddingBottom="1dp"
+            android:singleLine="true" android:visibility="gone" android:layout_marginLeft="4dp" />
+        <TextView android:id="@+id/n_p2_rojo" android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:background="@drawable/n_pill_rojo" android:textColor="@color/n_rojo_tx" android:textSize="12sp"
+            android:paddingLeft="8dp" android:paddingRight="8dp" android:paddingTop="1dp" android:paddingBottom="1dp"
+            android:singleLine="true" android:visibility="gone" android:layout_marginLeft="4dp" />
+    </LinearLayout>
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal"
+        android:gravity="center_vertical" android:layout_marginTop="10dp" android:layout_marginBottom="2dp">
+        <ImageView android:layout_width="16dp" android:layout_height="16dp" android:src="@drawable/n_bus" />
+        <ProgressBar android:id="@+id/n_barra" style="@android:style/Widget.ProgressBar.Horizontal"
+            android:layout_width="0dp" android:layout_height="6dp" android:layout_weight="1"
+            android:layout_marginLeft="6dp" android:layout_marginRight="6dp"
+            android:minHeight="6dp" android:maxHeight="6dp" android:max="100" android:progressDrawable="@drawable/n_barra" />
+        <ImageView android:layout_width="12dp" android:layout_height="12dp" android:src="@drawable/n_parada" />
+    </LinearLayout>
+</LinearLayout>

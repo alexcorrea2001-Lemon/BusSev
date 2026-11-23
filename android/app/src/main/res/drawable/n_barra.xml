@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Barra «el autobús se acerca» de la notificación -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:id="@android:id/background">
+        <shape><corners android:radius="3dp" /><solid android:color="@color/n_barra_bg" /></shape>
+    </item>
+    <item android:id="@android:id/progress">
+        <clip><shape><corners android:radius="3dp" /><solid android:color="#FFD41C2B" /></shape></clip>
+    </item>
+</layer-list>

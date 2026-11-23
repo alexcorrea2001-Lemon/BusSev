@@ -31,6 +31,7 @@ public class LlegadaReceiver extends BroadcastReceiver {
     static final String ACCION_REP = "es.bussev.app.LLEGADA_REPETIR";
     static final String CANAL = "bussev_llegada";
     static final String CANAL_CUENTA = "bussev_cuenta";
+    static final String ACCION_QUITAR = "es.bussev.app.LLEGADA_QUITAR";
     private static final long MIN = 60_000L;
 
     // ---------- Lista de avisos pendientes (guardada en el móvil) ----------
@@ -195,6 +196,7 @@ public class LlegadaReceiver extends BroadcastReceiver {
         final Context c = context.getApplicationContext();
         if (Intent.ACTION_BOOT_COMPLETED.equals(intent.getAction())) { programar(c); programarRepetidos(c); return; }
         if (ACCION_REP.equals(intent.getAction())) { dispararRepetidos(c); return; }
+        if (ACCION_QUITAR.equals(intent.getAction())) { quitarDesdeNotificacion(c, intent.getIntExtra("id", 0)); return; }
         final PendingResult pr = goAsync();
         new Thread(new Runnable() {
             public void run() {
@@ -266,6 +268,8 @@ public class LlegadaReceiver extends BroadcastReceiver {
             }
         }
         guardar(c, quedan);
+        // Si estás en la parada con el Pasaporte, su notificación enseña también este aviso (una sola, no dos)
+        ViajeAutoService.refrescar(c);
     }
 
     /** Minutos que le faltan al autobús de esa línea y destino (si el destino no cuadra, el primero de la línea). */
@@ -296,6 +300,13 @@ public class LlegadaReceiver extends BroadcastReceiver {
         if (nm != null) nm.cancel(idCuenta(id));
     }
     static void cuentaAtras(Context c, JSONObject x, int min) {
+        long llega = System.currentTimeMillis() + (long) min * MIN;
+        // Para la notificación única del Pasaporte: a qué hora llega y desde cuántos minutos se empezó a contar (la barra)
+        try { x.put("llega", llega); if (x.optInt("min0", -1) < min) x.put("min0", min); } catch (Exception ignored) { }
+        if (ViajeAutoService.absorbe(c, x.optString("codigo"))) { quitarCuenta(c, x.optInt("id")); return; }
+        mostrarCuenta(c, x, min, llega);
+    }
+    static void mostrarCuenta(Context c, JSONObject x, int min, long llega) {
         NotificationManager nm = (NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE);
         if (nm == null) return;
         if (Build.VERSION.SDK_INT >= 26 && nm.getNotificationChannel(CANAL_CUENTA) == null) {
@@ -306,7 +317,6 @@ public class LlegadaReceiver extends BroadcastReceiver {
             nm.createNotificationChannel(ch);
         }
         int id = x.optInt("id");
-        long llega = System.currentTimeMillis() + (long) min * MIN;
         Notification.Builder b = Build.VERSION.SDK_INT >= 26 ? new Notification.Builder(c, CANAL_CUENTA) : new Notification.Builder(c);
         b.setSmallIcon(icono(c))
                 .setContentTitle("Línea " + x.optString("linea") + " · llega en " + min + " min")
@@ -357,7 +367,88 @@ public class LlegadaReceiver extends BroadcastReceiver {
         b.addAction(0, "Me he subido", piSubido(c, x.optString("codigo"), x.optString("linea"), id));
         // Para el Pasaporte: Android apunta a qué hora llega ese bus a esa parada (lo usa «Me he subido»)
         ViajeAutoService.apuntarPrevisto(c, x.optString("codigo"), x.optString("linea"), System.currentTimeMillis() + (long) Math.max(0, min) * MIN);
+        // La notificación única del Pasaporte (si estás en la parada) pasa a «Avisado» hasta que llega
+        try {
+            long ahora = System.currentTimeMillis();
+            JSONObject av = new JSONObject().put("id", id).put("codigo", x.optString("codigo")).put("linea", x.optString("linea"))
+                    .put("antes", x.optInt("antes", 5)).put("llega", ahora + (long) Math.max(0, min) * MIN)
+                    .put("min0", Math.max(x.optInt("min0", min), Math.max(min, 1))).put("cuando", ahora);
+            c.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString("avisado", av.toString()).apply();
+        } catch (Exception ignored) { }
         try { nm.notify(id, b.build()); } catch (SecurityException ignored) { /* sin permiso de notificaciones */ }
+    }
+
+    /* ---------- Notificación única con el Pasaporte ---------- */
+
+    /** El aviso que se está contando en esa parada (el que llega antes), o null. */
+    static JSONObject avisoEn(Context c, String codigo) {
+        if (codigo == null || codigo.isEmpty()) return null;
+        long ahora = System.currentTimeMillis();
+        JSONArray a = leer(c);
+        JSONObject mejor = null;
+        for (int i = 0; i < a.length(); i++) {
+            JSONObject x = a.optJSONObject(i);
+            if (x == null || !codigo.equals(x.optString("codigo")) || !x.has("llega")) continue;
+            if (x.optLong("llega") < ahora - MIN) continue;
+            if (mejor == null || x.optLong("llega") < mejor.optLong("llega")) mejor = x;
+        }
+        return mejor;
+    }
+    /** El aviso que ya ha sonado en esa parada (para «Avisado»), mientras el autobús no haya pasado. */
+    static JSONObject avisadoEn(Context c, String codigo) {
+        try {
+            String s = c.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString("avisado", null);
+            if (s == null || codigo == null) return null;
+            JSONObject o = new JSONObject(s);
+            long ahora = System.currentTimeMillis();
+            if (!codigo.equals(o.optString("codigo")) || ahora - o.optLong("cuando") > 15 * MIN || ahora > o.optLong("llega") + 3 * MIN) return null;
+            return o;
+        } catch (Exception e) { return null; }
+    }
+    /** Cuando el Pasaporte deja de enseñar el aviso (te subes, pulsas «Parar»…), vuelve la cuenta atrás de siempre. */
+    static void reponerCuentas(Context c, String codigo) {
+        long ahora = System.currentTimeMillis();
+        JSONArray a = leer(c);
+        for (int i = 0; i < a.length(); i++) {
+            JSONObject x = a.optJSONObject(i);
+            if (x == null || !x.has("llega") || (codigo != null && !codigo.equals(x.optString("codigo")))) continue;
+            long llega = x.optLong("llega");
+            if (llega <= ahora) continue;
+            mostrarCuenta(c, x, (int) Math.ceil((llega - ahora) / (double) MIN), llega);
+        }
+    }
+    /** «Quitar aviso» desde la notificación */
+    static PendingIntent piQuitar(Context c, int id) {
+        Intent i = new Intent(c, LlegadaReceiver.class).setAction(ACCION_QUITAR).putExtra("id", id);
+        int f = PendingIntent.FLAG_UPDATE_CURRENT;
+        if (Build.VERSION.SDK_INT >= 23) f |= PendingIntent.FLAG_IMMUTABLE;
+        return PendingIntent.getBroadcast(c, 0x10000000 | (id & 0x0FFFFFFF), i, f);
+    }
+    static void quitarDesdeNotificacion(Context c, int id) {
+        quitar(c, id);
+        SharedPreferences sp = c.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+        SharedPreferences.Editor ed = sp.edit();
+        try {
+            String s = sp.getString("avisado", null);
+            if (s != null && new JSONObject(s).optInt("id") == id) ed.remove("avisado");
+            // La app (al abrirla) también lo quita de su lista
+            JSONArray q = new JSONArray(sp.getString("quitadosNotif", "[]"));
+            q.put(id);
+            ed.putString("quitadosNotif", q.toString());
+        } catch (Exception ignored) { }
+        ed.apply();
+        NotificationManager nm = (NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE);
+        if (nm != null) { nm.cancel(id); nm.cancel(idCuenta(id)); }
+        ViajePlugin.emitir("bussevAvisoQuitado", String.valueOf(id));
+        ViajeAutoService.refrescar(c);
+    }
+    /** Los avisos quitados desde la notificación, para que la app los borre de su lista (y se olvidan). */
+    static synchronized JSONArray recogerQuitados(Context c) {
+        SharedPreferences sp = c.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+        JSONArray q;
+        try { q = new JSONArray(sp.getString("quitadosNotif", "[]")); } catch (Exception e) { q = new JSONArray(); }
+        sp.edit().remove("quitadosNotif").apply();
+        return q;
     }
 
     static int icono(Context c) {

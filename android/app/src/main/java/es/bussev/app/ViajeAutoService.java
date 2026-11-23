@@ -18,6 +18,9 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
+import android.os.SystemClock;
+import android.view.View;
+import android.widget.RemoteViews;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -41,6 +44,7 @@ import java.util.Map;
  */
 public class ViajeAutoService extends Service implements LocationListener {
     static final String ACCION_PARAR = "es.bussev.app.AUTO_PARAR";
+    static final String ACCION_REFRESCAR = "es.bussev.app.AUTO_REFRESCAR";
     static final String CANAL = "bussev_auto";
     static final int ID_FIJA = 7601;
     static final long ESPERA_MAX = 25 * 60_000L, RUTA_MAX = 150 * 60_000L;
@@ -71,6 +75,28 @@ public class ViajeAutoService extends Service implements LocationListener {
     /* El reloj (en las pruebas se simula) */
     long reloj() { return System.currentTimeMillis(); }
 
+    /* ---------- Notificación única con los avisos de llegada ----------
+       Mientras esperas en la parada, si tienes un aviso de llegada en ella, esta notificación lo enseña
+       (y la cuenta atrás del aviso se quita): una sola notificación en vez de dos. */
+    static boolean absorbe(Context c, String codigo) {
+        if (codigo == null || codigo.isEmpty()) return false;
+        android.content.SharedPreferences sp = c.getSharedPreferences(LlegadaReceiver.PREFS, Context.MODE_PRIVATE);
+        // Se renueva cada vez que se repinta (cada 20 s): si el servicio murió sin avisar, a los 2 min vuelve la cuenta atrás normal
+        return codigo.equals(sp.getString("autoEspera", "")) && System.currentTimeMillis() - sp.getLong("autoEsperaT", 0) < 120_000L;
+    }
+    static void refrescar(Context c) {
+        // Solo si el servicio está esperando en una parada ahora mismo (nunca lo arranca de nuevo)
+        android.content.SharedPreferences sp = c.getSharedPreferences(LlegadaReceiver.PREFS, Context.MODE_PRIVATE);
+        if (estado(c) == null || !absorbe(c, sp.getString("autoEspera", ""))) return;
+        try { c.startService(new Intent(c, ViajeAutoService.class).setAction(ACCION_REFRESCAR)); } catch (Exception ignored) { }
+    }
+    /* Deja de enseñar los avisos aquí: vuelve su cuenta atrás de siempre */
+    private void soltarAvisos() {
+        if (!absorbe(this, codigo)) return;
+        getSharedPreferences(LlegadaReceiver.PREFS, MODE_PRIVATE).edit().remove("autoEspera").apply();
+        try { LlegadaReceiver.reponerCuentas(this, codigo); } catch (Exception ignored) { }
+    }
+
     static String estado(Context c) {
         return c.getSharedPreferences(LlegadaReceiver.PREFS, Context.MODE_PRIVATE).getString("auto", null);
     }
@@ -80,6 +106,11 @@ public class ViajeAutoService extends Service implements LocationListener {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         if (intent != null && ACCION_PARAR.equals(intent.getAction())) { parar(); return START_NOT_STICKY; }
+        // Ha cambiado un aviso de llegada: se repinta la notificación (si ya se está esperando en la parada)
+        if (intent != null && ACCION_REFRESCAR.equals(intent.getAction()) && !codigo.isEmpty() && !terminado) {
+            if (!enRuta) { ultimaNotif = ""; actualizarEspera(); }
+            return START_REDELIVER_INTENT;
+        }
         String datos = intent != null ? intent.getStringExtra("auto") : null;
         if (datos == null) datos = estado(this);
         if (datos == null) { stopSelf(); return START_NOT_STICKY; }
@@ -269,6 +300,7 @@ public class ViajeAutoService extends Service implements LocationListener {
                 for (Cand c : cands) {
                     if (distAlRecorrido(c, la, lo) <= 120) {
                         enRuta = true;
+                        soltarAvisos();
                         salida = ultimoEnParada > 0 ? Math.min(ultimoEnParada, ahora - 15_000L) : ahora - 60_000L;
                         previa = null;
                         break;
@@ -412,6 +444,13 @@ public class ViajeAutoService extends Service implements LocationListener {
     }
 
     private void actualizarEspera() {
+        if (fija.isEmpty()) {
+            getSharedPreferences(LlegadaReceiver.PREFS, MODE_PRIVATE).edit().putString("autoEspera", codigo).putLong("autoEsperaT", System.currentTimeMillis()).apply();
+            JSONObject av = LlegadaReceiver.avisoEn(this, codigo);
+            boolean avisado = false;
+            if (av == null) { av = LlegadaReceiver.avisadoEn(this, codigo); avisado = av != null; }
+            if (av != null) { unificada(av, avisado); return; }
+        }
         String corto = proxMin < 0 ? "…" : proxMin <= 1 ? "Llega" : proxMin + " min";
         String titulo = proxMin < 0 ? "🚏 " + nombreParada
                 : "🚏 " + proxLinea + (proxMin <= 1 ? " · está llegando" : " · llega en " + proxMin + " min");
@@ -441,6 +480,80 @@ public class ViajeAutoService extends Service implements LocationListener {
         SensorService.promocionar(b, corto);
         return b.build();
     }
+    /* «Llegas andando…» para la segunda etiqueta: texto y color (0 verde, 1 ámbar, 2 rojo) */
+    private Object[] andando(int falta) {
+        if (distParada < 0) return null;
+        if (distParada <= EN_PARADA_M) return new Object[]{"Estás en la parada", 0};
+        double margen = falta - distParada / 60.0;
+        if (margen >= 1.5) return new Object[]{"Llegas con " + (int) Math.floor(margen) + " min de margen", 0};
+        if (margen >= 0) return new Object[]{"Llegas justo", 1};
+        return new Object[]{"Andando no llegas", 2};
+    }
+
+    private void unificada(JSONObject av, boolean avisado) {
+        long ahora = System.currentTimeMillis();
+        long llega = av.optLong("llega", ahora);
+        int falta = (int) Math.max(0, Math.ceil((llega - ahora) / 60_000.0));
+        String linea = av.optString("linea");
+        int id = av.optInt("id");
+        String titulo = "Línea " + linea + (falta <= 1 ? " · está llegando" : " · " + falta + " min");
+        String p1 = avisado ? "Avisado" : "Aviso a " + av.optInt("antes", 5) + " min";
+        Object[] p2 = andando(falta);
+        int min0 = Math.max(av.optInt("min0", falta), Math.max(falta, 1));
+        int prog = Math.max(0, Math.min(100, Math.round(100f * (min0 - falta) / min0)));
+        String corto = falta <= 1 ? "Llega" : falta + " min";
+        String resumen = p1 + (p2 != null ? " · " + p2[0] : "");
+
+        String k = "u|" + titulo + "|" + resumen + "|" + prog + "|" + (llega / 15_000L) + "|" + id;
+        if (k.equals(ultimaNotif)) return;
+        ultimaNotif = k;
+
+        NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+        if (nm == null) return;
+        if (!avisado) nm.cancel(LlegadaReceiver.idCuenta(id));   // la cuenta atrás va aquí dentro
+
+        Notification.Builder b = Build.VERSION.SDK_INT >= 26 ? new Notification.Builder(this, CANAL) : new Notification.Builder(this);
+        b.setSmallIcon(LlegadaReceiver.icono(this))
+                .setContentTitle(titulo)
+                .setContentText(resumen)
+                .setOngoing(true).setOnlyAlertOnce(true)
+                .setCategory(Notification.CATEGORY_NAVIGATION)
+                .setContentIntent(LlegadaReceiver.abrirParada(this, codigo, ID_FIJA))
+                .addAction(0, "Quitar aviso", LlegadaReceiver.piQuitar(this, id))
+                .addAction(0, "Parar", piParar());
+        if (Build.VERSION.SDK_INT >= 21) b.setColor(0xFFD41C2B);
+        if (Build.VERSION.SDK_INT >= 24) {
+            long base = SystemClock.elapsedRealtime() + Math.max(0, llega - ahora);
+            RemoteViews corta = new RemoteViews(getPackageName(), R.layout.bussev_notif_aviso_corta);
+            RemoteViews larga = new RemoteViews(getPackageName(), R.layout.bussev_notif_aviso);
+            for (RemoteViews v : new RemoteViews[]{corta, larga}) {
+                v.setTextViewText(R.id.n_titulo, titulo);
+                if (falta >= 1) {
+                    v.setViewVisibility(R.id.n_crono, View.VISIBLE);
+                    v.setChronometer(R.id.n_crono, base, null, true);
+                    v.setChronometerCountDown(R.id.n_crono, true);
+                } else v.setViewVisibility(R.id.n_crono, View.GONE);
+            }
+            corta.setTextViewText(R.id.n_resumen, resumen);
+            larga.setTextViewText(R.id.n_parada, nombreParada);
+            pastilla(larga, avisado ? R.id.n_p1_ambar : R.id.n_p1_verde, p1, new int[]{R.id.n_p1_verde, R.id.n_p1_ambar});
+            int[] p2ids = {R.id.n_p2_verde, R.id.n_p2_ambar, R.id.n_p2_rojo};
+            pastilla(larga, p2 == null ? 0 : p2ids[(Integer) p2[1]], p2 == null ? "" : (String) p2[0], p2ids);
+            larga.setProgressBar(R.id.n_barra, 100, prog, false);
+            b.setStyle(new Notification.DecoratedCustomViewStyle());
+            b.setCustomContentView(corta);
+            b.setCustomBigContentView(larga);
+        } else {
+            b.setProgress(100, prog, false);
+        }
+        SensorService.promocionar(b, corto);
+        try { nm.notify(ID_FIJA, b.build()); } catch (SecurityException ignored) { }
+    }
+    private static void pastilla(RemoteViews v, int visible, String texto, int[] todas) {
+        for (int i : todas) v.setViewVisibility(i, i == visible ? View.VISIBLE : View.GONE);
+        if (visible != 0) v.setTextViewText(visible, texto);
+    }
+
     private String ultimaNotif = "";
     private void actualizar(String corto, String titulo, String texto) {
         String k = corto + "|" + titulo + "|" + texto;
@@ -452,6 +565,7 @@ public class ViajeAutoService extends Service implements LocationListener {
 
     void parar() {
         terminado = true;
+        soltarAvisos();
         try { if (lm != null) lm.removeUpdates(this); } catch (Exception ignored) { }
         h.removeCallbacksAndMessages(null);
         getSharedPreferences(LlegadaReceiver.PREFS, MODE_PRIVATE).edit().remove("auto").apply();

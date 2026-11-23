@@ -116,6 +116,22 @@ const avisos = {
 };
 window.avisos = avisos; // lo usa app.js para marcar los avisos activos
 
+/* «Quitar aviso» desde la notificación de Android: la app también lo borra de su lista */
+async function sincronizarQuitados() {
+  if (!plugin('BusSevViaje')) return;
+  const r = await native('BusSevViaje', 'llegadasQuitadas').catch(() => null);
+  const ids = new Set((r?.ids || []).map(Number));
+  if (!ids.size) return;
+  const antes = store.get('avisos', []);
+  const quedan = antes.filter((a) => !ids.has(Number(a.id)));
+  if (quedan.length === antes.length) return;
+  avisos.save(quedan);
+  if (['parada', 'favoritas', 'cerca'].includes(active?.name)) (active.rerender || active.refresh)?.();
+}
+window.addEventListener('bussevAvisoQuitado', () => { sincronizarQuitados(); });
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') sincronizarQuitados(); });
+setTimeout(sincronizarQuitados, 1500);
+
 /* Avisos que se repiten: «de lunes a viernes, desde las 7:40, avísame cuando al 27 le falten 5 min».
    Los lleva Android: cada día, a esa hora, crea un aviso de llegada normal y lo vigila con TUSSAM. */
 const DIAS_CORTOS = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];

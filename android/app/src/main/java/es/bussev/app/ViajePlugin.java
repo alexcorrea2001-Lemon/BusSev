@@ -7,12 +7,14 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Build;
 
+import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 /**
@@ -69,6 +71,17 @@ public class ViajePlugin extends Plugin {
     public void quitarRepetido(PluginCall call) {
         LlegadaReceiver.quitarRegla(getContext(), call.getData().optInt("id", 0));
         call.resolve();
+    }
+
+    /* Avisos quitados con el botón «Quitar aviso» de la notificación (la app los borra de su lista) */
+    @PluginMethod
+    public void llegadasQuitadas(PluginCall call) {
+        JSArray ids = new JSArray();
+        JSONArray q = LlegadaReceiver.recogerQuitados(getContext());
+        for (int i = 0; i < q.length(); i++) ids.put(q.optInt(i));
+        JSObject r = new JSObject();
+        r.put("ids", ids);
+        call.resolve(r);
     }
 
     @PluginMethod

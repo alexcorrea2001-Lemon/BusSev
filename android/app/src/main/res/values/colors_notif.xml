@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Notificación única «aviso + Pasaporte» (claro) -->
+<resources>
+    <color name="n_texto">#DE000000</color>
+    <color name="n_texto2">#8A000000</color>
+    <color name="n_verde_bg">#E1F5EE</color>
+    <color name="n_verde_tx">#0F6E56</color>
+    <color name="n_ambar_bg">#FAEEDA</color>
+    <color name="n_ambar_tx">#854F0B</color>
+    <color name="n_rojo_bg">#FCEBEB</color>
+    <color name="n_rojo_tx">#A32D2D</color>
+    <color name="n_barra_bg">#1F000000</color>
+    <color name="n_parada">#1D9E75</color>
+</resources>
