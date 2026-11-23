@@ -67,8 +67,7 @@ export function comparar(viejo, nuevo) {
   }), 12));
   }
 
-  // Si lleva paradas de TUSSAM en directo (scripts/paradas_tussam.mjs), el id cambia con ellas aunque el GTFS sea el mismo
-  return { id: `${nuevo.generado || ''}${nuevo.vivo?.h ? `+v${nuevo.vivo.h}` : ''}`, desde: String(viejo.generado || ''), fecha: new Date().toISOString().slice(0, 10), grupos };
+  return { id: String(nuevo.generado || ''), desde: String(viejo.generado || ''), fecha: new Date().toISOString().slice(0, 10), grupos };
 }
 
 /* Recorridos dibujados (www/recorridos.js): qué líneas cambian de calle en el mapa aunque paren en las mismas
