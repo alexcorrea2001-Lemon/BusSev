@@ -203,6 +203,6 @@ if (process.argv[1] && import.meta.url.endsWith(process.argv[1].split('/').pop()
     console.log(`TUSSAM en directo: ${conocidas} líneas. ${r.cambios.length ? `Paradas distintas del GTFS en: ${r.cambios.join(', ')}` : 'Todas coinciden con el GTFS.'}${r.nuevas.length ? ` · ${r.nuevas.length} paradas que el GTFS no tenía` : ''}`);
     guardar();
   } catch (e) {
-    plan_b(`No se ha podido consultar TUSSAM (${String(e?.message || e).replace(/\s+/g, ' ').slice(0, 80)}).`);
+    plan_b(`No se ha podido consultar TUSSAM (${String(e?.message || e).replace(/\s+/g, ' ').slice(0, 80)}${e?.cause?.code ? ` · ${String(e.cause.code).slice(0, 40)}` : ''}).`);
   }
 }
