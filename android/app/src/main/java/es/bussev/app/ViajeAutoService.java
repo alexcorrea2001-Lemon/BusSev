@@ -69,7 +69,7 @@ public class ViajeAutoService extends Service implements LocationListener {
     private final Map<String, Long> llegando = new HashMap<>();     // línea → último momento en que TUSSAM la dio a 0–1 min
     private final ArrayDeque<double[]> hist = new ArrayDeque<>();   // {tiempo, lat, lon} de los últimos minutos
     private long inicio = 0, salida = 0, ultimoEnParada = 0;
-    private boolean enRuta = false, terminado = false, mock = false;
+    private boolean enRuta = false, terminado = false, mock = false, registrado = false;
     private int saltos = 0, proxMin = -1, segMin = -1;
     private String proxLinea = "";
     private Location previa = null;
@@ -141,7 +141,7 @@ public class ViajeAutoService extends Service implements LocationListener {
             getSharedPreferences(LlegadaReceiver.PREFS, MODE_PRIVATE).edit().putString("auto", v.put("inicio", inicio).toString()).apply();
         } catch (Exception e) { stopSelf(); return START_NOT_STICKY; }
         if (cands.isEmpty()) { parar(); return START_NOT_STICKY; }
-        enRuta = false; terminado = false; mock = false; saltos = 0; salida = 0; ultimoEnParada = 0;
+        enRuta = false; terminado = false; mock = false; registrado = false; saltos = 0; salida = 0; ultimoEnParada = 0;
         proxMin = -1; segMin = -1; proxLinea = ""; previa = null; distParada = -1; distInicial = -1; distMin = Float.MAX_VALUE; ultimaNotif = "";
         llegando.clear(); hist.clear();
         if (!fija.isEmpty()) sembrarPrevisto();
@@ -237,12 +237,18 @@ public class ViajeAutoService extends Service implements LocationListener {
     boolean revisarTiempo() {
             if (terminado) return false;
             long ahora = reloj();
-            if (!enRuta && ahora - inicio > ESPERA_MAX) { parar(); return false; }
+            if (!enRuta && ahora - inicio > ESPERA_MAX) {
+                if (!fija.isEmpty()) noContado(null, "en 25 minutos el GPS no te vio salir de la parada en el autobús");
+                parar(); return false;
+            }
             if (!enRuta && fija.isEmpty() && distInicial >= 0) {
                 // Solo mirabas (desde casa, por ejemplo): en 4 minutos no te has acercado a la parada
                 if (ahora - inicio > 4 * 60_000L && distMin > 60 && distParada > distInicial - 40) { parar(); return false; }
                 // Estuviste en la parada y te has ido andando sin subirte
-                if (distMin <= 60 && distParada > 200) { parar(); return false; }
+                if (distMin <= 60 && distParada > 200) {
+                    if (velocidadReciente(ahora) >= 3.5) noContado(null, "estuviste en la parada, pero el GPS no te vio irte por el recorrido de ninguna de sus líneas");
+                    parar(); return false;
+                }
             }
             if (enRuta && (ahora - salida > RUTA_MAX || bajado(ahora))) { terminar(); return false; }
             return true;
@@ -312,7 +318,15 @@ public class ViajeAutoService extends Service implements LocationListener {
             }
             if (!enRuta) {
                 // Te alejas sin subirte (o nunca estuviste cerca): se acaba en silencio
-                if (distParada > LEJOS_M && ahora - inicio > 60_000L) { parar(); return; }
+                if (distParada > LEJOS_M && ahora - inicio > 60_000L) {
+                    if (!fija.isEmpty() || (distMin <= 60 && vel >= 3.5)) {
+                        Cand f = !fija.isEmpty() ? cand(fija) : null;
+                        String ruta = f != null ? ", a " + Math.round(distAlRecorrido(f, la, lo)) + " m del recorrido" : "";
+                        noContado(f, "te alejaste " + Math.round(distParada) + " m de la parada sin que el GPS te viera ir en el autobús ("
+                                + Math.round(vel * 3.6) + " km/h" + ruta + (ultimoEnParada > 0 ? "" : ", nunca te situó en la parada") + ")");
+                    }
+                    parar(); return;
+                }
                 actualizarEspera();
                 return;
             }
@@ -342,7 +356,7 @@ public class ViajeAutoService extends Service implements LocationListener {
             vivas++;
             if (c.actual >= c.pos.length - 1) c.completa = true; else siguen++;
         }
-        if (vivas == 0) { parar(); return; }     // no vas por ninguna de sus líneas: no era un autobús de esta parada
+        if (vivas == 0) { noContado(null, "el GPS te situó fuera del recorrido de las líneas de esa parada"); parar(); return; }     // no vas por ninguna de sus líneas: no era un autobús de esta parada
         // Todas las líneas posibles han llegado al final de su tramo: el viaje se acaba ahí
         if (siguen == 0) { terminar(); return; }
         Cand b = mejorCand();
@@ -388,13 +402,19 @@ public class ViajeAutoService extends Service implements LocationListener {
                 double vel = km / Math.max(1e-6, (fin - salida) / 3600000.0);
                 Long ll = llegando.get(norm(c.linea));
                 boolean busLlegando = ll != null && ll >= salida - 5 * 60_000L && ll <= salida + 60_000L;
-                String motivo = null;
-                boolean apuntar = true;
+                String motivo = null, no = null;
                 if (mock) motivo = "la ubicación del móvil era falsa";
                 else if (saltos > 0 || vel > 60) motivo = "la posición dio saltos imposibles";
-                else if (c.actual < 2 || fin - salida < 90_000L || !busLlegando || c.fixes < 4 || c.dentro < c.fixes * 0.7 || vel < 4.5) apuntar = false;   // no era un viaje en ese bus: ni se apunta
-                if (apuntar) guardarViaje(c, salida, fin, km, motivo);
-            }
+                // No parece un viaje en ese bus: no cuenta, pero se guarda con el motivo (se ve en «Tus últimos viajes»)
+                else if (c.actual < 2) no = "solo te vio avanzar 1 parada (hacen falta 2)";
+                else if (fin - salida < 90_000L) no = "el viaje duró menos de minuto y medio";
+                else if (!busLlegando) no = "TUSSAM no daba ese autobús llegando a tu parada cuando saliste";
+                else if (c.fixes < 4) no = "el GPS dio muy pocas posiciones (" + c.fixes + ")";
+                else if (c.dentro < c.fixes * 0.7) no = "el GPS te situó fuera del recorrido (" + Math.round(100.0 * c.dentro / c.fixes) + " % de las veces dentro)";
+                else if (vel < 4.5) no = "iba demasiado despacio (" + Math.round(vel * 10) / 10.0 + " km/h)";
+                if (no != null) noContado(c, no);
+                else guardarViaje(c, salida, fin, km, motivo);
+            } else noContado(c, "el GPS no te vio pasar por ninguna parada del recorrido");
         } catch (Exception ignored) { }
         parar();
     }
@@ -421,6 +441,36 @@ public class ViajeAutoService extends Service implements LocationListener {
             v.put("firma", Pasaporte.firma(v));
             Pasaporte.guardar(this, v);
             Pasaporte.avisarViaje(this, v);
+        } catch (Exception ignored) { }
+    }
+
+    /* Viaje que no ha contado: se guarda igualmente, sin verificar y con el motivo, para que se vea
+       en «Tus últimos viajes» (no da sellos ni medallas ni cuenta en nada). Sin notificación. */
+    void noContado(Cand c, String motivo) {
+        if (registrado) return;
+        registrado = true;
+        try {
+            if (c == null && enRuta) c = mejorCand();
+            if (c == null && !fija.isEmpty()) c = cand(fija);
+            if (c == null && !cands.isEmpty()) c = cands.get(0);
+            if (c == null) return;
+            long fin = reloj(), ini = salida > 0 ? salida : inicio;
+            int hasta = Math.max(0, Math.min(c.actual, c.cods.length - 1));
+            JSONObject v = new JSONObject();
+            v.put("id", ini + "-" + c.linea + "-no");
+            v.put("linea", c.etq);
+            v.put("desde", c.cods[0]);
+            v.put("desdeNombre", c.noms[0]);
+            v.put("hasta", c.cods[hasta]);
+            v.put("hastaNombre", c.noms[hasta]);
+            v.put("inicio", ini);
+            v.put("fin", fin);
+            v.put("paradas", hasta);
+            v.put("verificado", false);
+            v.put("motivo", motivo);
+            v.put("auto", true);
+            v.put("intento", true);
+            Pasaporte.guardar(this, v);
         } catch (Exception ignored) { }
     }
 
