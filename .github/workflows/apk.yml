@@ -114,6 +114,11 @@ jobs:
         if: steps.seguir.outputs.si == 'si'
         run: npm ci
 
+      # Copia de los recorridos dibujados de antes, para contar luego qué líneas cambian en el mapa
+      - name: Guardar los recorridos de antes (para las novedades)
+        if: steps.seguir.outputs.si == 'si'
+        run: cp www/recorridos.js "$RUNNER_TEMP/recorridos_antes.js" 2>/dev/null || echo "No había recorridos."
+
       # Recorridos por calle: es un extra. Si el servidor de mapas falla o tarda,
       # NO se detiene la compilación; la app usa líneas rectas entre paradas.
       - name: Calcular recorridos por calle (opcional)
@@ -141,6 +146,14 @@ jobs:
             git commit -m "Recorridos por calle actualizados"
             git push || echo "No se han podido guardar (no pasa nada: van igual en el APK)."
           fi
+
+      # Qué líneas cambian de calle en el mapa (aunque paren en las mismas paradas): se añade a www/novedades.json
+      # para que la app lo enseñe al actualizar y vaya en la descripción de la versión. Solo cuando TUSSAM ha
+      # publicado datos nuevos (si el cambio viene de cómo calcula la app los recorridos, no se anuncia).
+      - name: Novedades de los recorridos
+        if: steps.seguir.outputs.si == 'si' && steps.datos.outputs.cambio == 'si'
+        continue-on-error: true
+        run: node scripts/novedades.mjs --recorridos "$RUNNER_TEMP/recorridos_antes.js" www/recorridos.js www/data.js www/novedades.json || true
 
       # Número de versión dentro de la app (para el botón «Buscar actualización» de Ajustes)
       - name: Apuntar la versión

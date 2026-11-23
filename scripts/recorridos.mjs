@@ -7,13 +7,15 @@ import vm from 'node:vm';
 import crypto from 'node:crypto';
 import { recorridosOSM, mejorEncaje } from './recorridos_osm.mjs';
 import { recorridosTussam, encajarOficial, indices } from './recorridos_tussam.mjs';
+const indicesOficial = indices;
 import { leerCalles, redDeCalles, pegarACalles } from './pegar_calles.mjs';
 
 const OSRM = process.env.OSRM_URL || 'https://router.project-osrm.org';
 const ROOT = new URL('..', import.meta.url).pathname;
 const MAX_WAYPOINTS = 80;
 let MAX_AJUSTE = 10;          // el servidor público de OSRM solo encaja trazados de pocas paradas de una vez
-const VERSION_CALCULO = 11;   // 11: trazado OFICIAL ajustado a las calles de OSM con la red guardada en la rama «calles-osm»
+const VERSION_CALCULO = 12;   // 12: la línea empieza y acaba en la 1ª y la última parada; si el oficial nuevo se aparta de las paradas, se queda el dibujo anterior
+                              // 11: trazado OFICIAL ajustado a las calles de OSM con la red guardada en la rama «calles-osm»
                               //     (10: oficial + OSRM /match; 9: oficial; 8: OSM solo-TUSSAM; 7: mediana; 6: shapes/OSM/OSRM)
 const PAUSA_MS = Number(process.env.OSRM_PAUSA_MS ?? 1100); // el servidor público pide como mucho 1 consulta por segundo
 
@@ -21,6 +23,8 @@ const ctx = { window: {} };
 vm.runInNewContext(fs.readFileSync(`${ROOT}www/data.js`, 'utf8'), ctx);
 const D = ctx.window.BUSSEV_DATA;
 const paradas = new Map(D.paradas.map((p) => [p.codigo, p]));
+// Posición que da TUSSAM (antes de colocar las paradas con OpenStreetMap): a veces una de las dos está mal
+const crudas = new Map(D.paradas.map((p) => [p.codigo, [p.latitud, p.longitud]]));
 
 /* Geometría REAL del recorrido que publica TUSSAM (shapes.txt del GTFS), si gtfs_a_datos.py la dejó
    en scripts/_shapes.json. Es la ruta exacta del autobús; si falta una línea, se calcula con OSRM. */
@@ -60,6 +64,32 @@ if (!process.env.BUSSEV_SOLO_FUNCIONES && !process.env.FORZAR_RECORRIDOS) {
       process.exit(0);
     }
   } catch { /* no hay previos */ }
+}
+
+/* Dibujos de la vez anterior (www/recorridos.js): si el trazado oficial nuevo de una línea se aparta de sus
+   paradas (TUSSAM cambia el dibujo pero no las paradas, p. ej. por unas obras), se queda el dibujo anterior
+   si pasaba por todas ellas. Así no salen paradas unidas a la línea con un «pincho». */
+let previos = {};
+try { const c = { window: {} }; vm.runInNewContext(fs.readFileSync(`${ROOT}www/recorridos.js`, 'utf8'), c); previos = c.window.BUSSEV_RECORRIDOS || {}; } catch { /* no hay anteriores */ }
+let anterioresUsados = 0;
+const desplegar = (r) => { const pts = []; let la = 0, lo = 0; for (let i = 0; i + 1 < (r?.d?.length || 0); i += 2) { la += r.d[i]; lo += r.d[i + 1]; pts.push([la / 1e5, lo / 1e5]); } return pts; };
+/* Lo más lejos que queda alguna parada de la línea dibujada (m) */
+export function peorParada(pts, stopsLL, otras = []) {
+  const r = Math.PI / 180;
+  let peor = 0;
+  const cerca = (p) => {
+    let mn = Infinity;
+    for (let i = 0; i + 1 < pts.length; i++) {
+      const a = pts[i], b = pts[i + 1], kx = 111320 * Math.cos(a[0] * r), ky = 110540;
+      const bx = (b[1] - a[1]) * kx, by = (b[0] - a[0]) * ky, px = (p[1] - a[1]) * kx, py = (p[0] - a[0]) * ky;
+      const L2 = bx * bx + by * by, t = L2 ? Math.max(0, Math.min(1, (px * bx + py * by) / L2)) : 0;
+      mn = Math.min(mn, Math.hypot(px - t * bx, py - t * by));
+    }
+    return mn;
+  };
+  // Cada parada cuenta por la más cercana de sus dos posiciones (OpenStreetMap o TUSSAM)
+  stopsLL.forEach((p, i) => { peor = Math.max(peor, Math.min(cerca(p), otras[i] ? cerca(otras[i]) : Infinity)); });
+  return peor;
 }
 
 /* 1) Posición real de cada parada según OpenStreetMap (las de TUSSAM a veces caen 50-100 m fuera de la calle) */
@@ -255,6 +285,46 @@ export function pegadoAceptable(oficial, pegado, maxMediana = Number(process.env
   return (ds[ds.length >> 1] || 0) <= maxMediana;
 }
 
+/* La línea dibujada empieza justo en la 1ª parada y acaba justo en la última (sin el trocito de cabecera o de
+   cochera que trae el trazado oficial más allá de ellas): cada extremo se corta en el punto de la línea más
+   cercano a esa parada. Si la parada está lejos de la línea (más de 60 m), ese extremo se deja como está. */
+export function recortarExtremos(pts, stopsLL, indices = indicesOficial) {
+  if (!Array.isArray(pts) || pts.length < 3 || stopsLL.length < 2) return pts;
+  const r = Math.PI / 180;
+  const proy = (p, a, b) => {
+    const kx = 111320 * Math.cos(a[0] * r), ky = 110540;
+    const bx = (b[1] - a[1]) * kx, by = (b[0] - a[0]) * ky, px = (p[1] - a[1]) * kx, py = (p[0] - a[0]) * ky;
+    const L2 = bx * bx + by * by, t = L2 ? Math.max(0, Math.min(1, (px * bx + py * by) / L2)) : 0;
+    return { t, q: [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t], d: Math.hypot(px - t * bx, py - t * by) };
+  };
+  const mejor = (p, desde, hasta) => {
+    let m = null;
+    for (let i = desde; i < hasta; i++) { const x = proy(p, pts[i], pts[i + 1]); if (!m || x.d < m.d) m = { ...x, i }; }
+    return m;
+  };
+  // Solo se mira junto a donde ya está encajada cada parada extrema (el trazado puede volver a pasar cerca de
+  // ella más adelante, en una vuelta, y eso no es el extremo).
+  const n = pts.length, idx = indices(pts, stopsLL);
+  const i0 = Math.min(n - 2, Math.max(0, idx[0] ?? 0)), i1 = Math.min(n - 1, Math.max(1, idx[idx.length - 1] ?? n - 1));
+  const a = mejor(stopsLL[0], 0, Math.min(n - 1, i0 + 1));
+  const b = mejor(stopsLL[stopsLL.length - 1], Math.max(0, i1 - 1), n - 1);
+  if (!a || !b) return pts;
+  let out = pts;
+  const fin = b.d <= 60 ? b : null, ini = a.d <= 60 ? a : null;
+  if (ini && fin && (ini.i > fin.i || (ini.i === fin.i && ini.t >= fin.t))) return pts;   // algo raro: mejor no tocar
+  if (fin) out = [...out.slice(0, fin.i + 1), fin.q];
+  if (ini) out = [ini.q, ...out.slice(ini.i + 1)];
+  const limpio = [];
+  for (const q of out) { const l = limpio[limpio.length - 1]; if (!l || Math.abs(l[0] - q[0]) > 1e-7 || Math.abs(l[1] - q[1]) > 1e-7) limpio.push(q); }
+  if (limpio.length < 2) return pts;
+  // Seguro: si al cortar alguna parada queda más lejos de la línea (una vuelta junto a la cabecera que sí hace
+  // el autobús), no se corta nada.
+  const lejos = (poly) => stopsLL.map((p) => { let mn = Infinity; for (let i = 0; i + 1 < poly.length; i++) mn = Math.min(mn, proy(p, poly[i], poly[i + 1]).d); return mn; });
+  const antes = lejos(pts), despues = lejos(limpio);
+  if (despues.some((d, i) => d > antes[i] + 3)) return pts;
+  return limpio;
+}
+
 async function montarOficial(m, stopsLL, rapido) {
   // Solo se reroutea por calle una parada que caiga CLARAMENTE fuera del trazado oficial (un extremo que el
   // dato no cubre, o una parada de en medio por la que el trazado va por otra calle). Una imprecisión pequeña
@@ -356,13 +426,23 @@ if (!process.env.BUSSEV_SOLO_FUNCIONES) for (const [k, lista] of grupos) {
         try { aj = pegarACalles(redCalles, r.pts); } catch { /* se queda el oficial */ }
         if (aj && aj.pegado >= 0.5 && pegadoAceptable(r.pts, aj.pts)) { lineaPts = aj.pts; pegada = true; }
       }
-      const idx = pegada ? indices(lineaPts, stops.map((s) => [s.lat, s.lon])) : r.idx;
+      lineaPts = recortarExtremos(lineaPts, stops.map((s) => [s.lat, s.lon]));
+      // El oficial nuevo se aparta de alguna parada (más de 130 m): si el dibujo anterior pasaba por todas, se queda ese.
+      let anterior = false;
+      if (r.rerutadas && previos[k]) {
+        const ll = stops.map((s) => [s.lat, s.lon]);
+        const prev = recortarExtremos(desplegar(previos[k]), ll);
+        const pPrev = prev.length >= 2 ? peorParada(prev, ll, stops.map((s) => crudas.get(s.codigo))) : Infinity;
+        // El tramo nuevo por calle sale de un servidor público (o en recta si falla): el anterior, si pasaba por todas, es más fiable.
+        if (pPrev <= 45) { lineaPts = prev; anterior = true; anterioresUsados++; }
+      }
+      const idx = indices(lineaPts, stops.map((s) => [s.lat, s.lon]));
       const pts = lineaPts.map(([la, lo]) => [Math.round(la * 1e5) / 1e5, Math.round(lo * 1e5) / 1e5]);
       const d = []; let pl = 0, pn = 0;
       for (const [lat, lon] of pts) { const L = Math.round(lat * 1e5), N = Math.round(lon * 1e5); d.push(L - pl, N - pn); pl = L; pn = N; }
       salida[k] = { d, s: idx };
       ok++; oficialUsados++; if (pegada) pegadosOSM++;
-      process.stdout.write(`✓ ${k} (trazado oficial de TUSSAM, ${stops.length} paradas, ±${Math.round(m.coste)} m${pegada ? ', ajustado a la calle' : ''}${r.rerutadas ? `, ${r.rerutadas} por calle` : ''})\n`);
+      process.stdout.write(`✓ ${k} (trazado oficial de TUSSAM, ${stops.length} paradas, ±${Math.round(m.coste)} m${pegada ? ', ajustado a la calle' : ''}${r.rerutadas ? `, ${r.rerutadas} por calle` : ''}${anterior ? '; el oficial nuevo se aparta de las paradas: se queda el dibujo anterior' : ''})\n`);
       continue;
     }
   }
@@ -459,4 +539,4 @@ if (!process.env.BUSSEV_SOLO_FUNCIONES) fs.writeFileSync(`${ROOT}www/recorridos.
   `/* Paradas colocadas sobre la calle por la que pasa el autobús (las de TUSSAM a veces caen dentro de una manzana) */\nwindow.BUSSEV_PARADAS_AJUSTADAS=${JSON.stringify(Object.fromEntries([...[...ajustes].map(([c, a]) => [c, a.pos.map((v) => Math.round(v * 1e6) / 1e6)]), ...osm]))};\n` +
   `/* Posición de las paradas según OpenStreetMap (© colaboradores de OpenStreetMap, ODbL); se reutiliza si un día no contesta */\nwindow.BUSSEV_PARADAS_OSM=${JSON.stringify(Object.fromEntries(osm))};\n` +
   `window.BUSSEV_RECORRIDOS_FIRMA="${FIRMA}";window.BUSSEV_RECORRIDOS_COMPLETO=${!rapidas && !sinCalcular && !fallidas && osm.size > 0 && !osmReutilizado};\n`);
-if (!process.env.BUSSEV_SOLO_FUNCIONES) console.log(`Recorridos: ${ok}/${grupos.size} líneas-sentido (${oficialUsados} del trazado oficial de TUSSAM, ${pegadosOSM} ajustadas a la calle (OSM), ${shapesUsados} del GTFS, ${osmUsados} de OpenStreetMap, el resto por OSRM), ${rehechos} recálculos de tramos raros (${rarosQuedan} siguen algo raros, pero por calle), ${rectos} en recta (sin camino); paradas: ${osm.size} con OpenStreetMap y ${ajustes.size} pegadas a la calle; ${rapidas} líneas en modo rápido, ${sinCalcular} sin calcular.`);
+if (!process.env.BUSSEV_SOLO_FUNCIONES) console.log(`Recorridos: ${ok}/${grupos.size} líneas-sentido (${oficialUsados} del trazado oficial de TUSSAM, ${pegadosOSM} ajustadas a la calle (OSM), ${shapesUsados} del GTFS, ${osmUsados} de OpenStreetMap, el resto por OSRM), ${rehechos} recálculos de tramos raros (${rarosQuedan} siguen algo raros, pero por calle), ${rectos} en recta (sin camino); paradas: ${osm.size} con OpenStreetMap y ${ajustes.size} pegadas a la calle; ${rapidas} líneas en modo rápido, ${sinCalcular} sin calcular; ${anterioresUsados} con el dibujo anterior (el oficial nuevo se apartaba de sus paradas).`);

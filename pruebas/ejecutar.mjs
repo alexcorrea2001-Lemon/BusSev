@@ -14,6 +14,7 @@ const PRUEBAS = [
   ['Cercanías de Sevilla (cálculo del horario)', 'python3', ['-I', 'cercanias_gtfs.py']],
   ['Primer y último autobús (en la app)', 'node', ['horas.mjs']],
   ['Novedades al actualizar', 'node', ['novedades.mjs']],
+  ['Recorridos: extremos en las paradas y dibujo anterior', 'node', ['recorridos-gen.mjs']],
   ['Líneas juntas en el mapa (carriles)', 'node', ['carriles.mjs']],
   ['Aviso de versión nueva', 'node', ['aviso_version.mjs']],
   ['Ahorro de batería', 'node', ['reposo.mjs']],

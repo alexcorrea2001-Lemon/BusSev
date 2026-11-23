@@ -41,4 +41,26 @@ assert.equal(JSON.parse(Buffer.from(env.match(/NOVEDADES_B64=(.*)\n/)[1], 'base6
 // sin archivo: no rompe y deja las variables vacías
 fs.writeFileSync(`${TMP}/genv.txt`, ''); execFileSync('node', [R + 'scripts/novedades.mjs', '--publicar', `${TMP}/no_existe.json`], { env: { ...process.env, GITHUB_ENV: `${TMP}/genv.txt` } });
 assert.match(fs.readFileSync(`${TMP}/genv.txt`, 'utf8'), /NOVEDADES_B64=\n$/);
+// Recorridos dibujados: una línea que cambia de calle sale; un retoque de pocos metros, no
+{
+  const { compararRecorridos } = await import(R + 'scripts/novedades.mjs');
+  const cod = (pts) => { const d = []; let a = 0, b = 0; for (const [la, lo] of pts) { const A = Math.round(la * 1e5), B = Math.round(lo * 1e5); d.push(A - a, B - b); a = A; b = B; } return { d, s: [0, pts.length - 1] }; };
+  const recta = [[37.39, -5.99], [37.39, -5.985], [37.39, -5.98]];
+  const Rv = { '29|1': cod(recta), '27|1': cod(recta) };
+  const Rn = { '29|1': cod([[37.39, -5.99], [37.392, -5.985], [37.39, -5.98]]), '27|1': cod([[37.39001, -5.99], [37.39, -5.985], [37.39, -5.98]]) };
+  const c = compararRecorridos(Rv, Rn, viejo);
+  assert.equal(c.length, 1, 'solo la que cambia de calle: ' + c.join(' | '));
+  assert.match(c[0], /^29 hacia .+: cambia de calle cerca de .+ \(hasta 2\d0 m\)$/);
+  assert.deepEqual(compararRecorridos(Rv, Rv, viejo), [], 'igual: nada');
+  // Se añade a las novedades de hoy y cambia el id
+  const f = `${TMP}/nov_rec.json`, fv = `${TMP}/rec_v.js`, fn = `${TMP}/rec_n.js`;
+  fs.writeFileSync(fv, 'window.BUSSEV_RECORRIDOS=' + JSON.stringify(Rv) + ';'); fs.writeFileSync(fn, 'window.BUSSEV_RECORRIDOS=' + JSON.stringify(Rn) + ';');
+  fs.writeFileSync(f, JSON.stringify({ id: 'X', fecha: new Date().toISOString().slice(0, 10), grupos: [{ t: 'Paradas nuevas', i: ['a'] }] }));
+  execFileSync('node', [R + 'scripts/novedades.mjs', '--recorridos', fv, fn, R + 'www/data.js', f]);
+  const j = JSON.parse(fs.readFileSync(f, 'utf8'));
+  assert.deepEqual(j.grupos.map((g) => g.t), ['Paradas nuevas', 'Recorridos que cambian en el mapa']);
+  assert.match(j.id, /^X\+r[0-9a-f]{8}$/);
+  // Sin recorridos de antes: no hace nada
+  execFileSync('node', [R + 'scripts/novedades.mjs', '--recorridos', `${TMP}/no_hay.js`, fn, R + 'www/data.js', f]);
+}
 console.log('OK novedades\n' + aTexto(nov).replace(/\*\*/g, '').split('\n').slice(0, 14).join('\n'));

@@ -297,7 +297,9 @@ el horario oficial y la información de paradas y líneas, que va guardada dentr
   alto contraste, menos animaciones, vibración y **lectura en voz alta** (también al abrir una parada).
 - **Tus datos**: **copia de seguridad** de favoritas, tarjetas, ajustes y Pasaporte en un archivo, para pasarlo a
   otro móvil, y la fecha hasta la que valen los datos de líneas y paradas que lleva la app.
-- **Actualizaciones**: busca, descarga e instala la versión nueva desde la propia app, y te enseña sus novedades.
+- **Actualizaciones**: busca, descarga e instala la versión nueva desde la propia app, y te enseña sus novedades:
+  también, cuando la actualización automática de los lunes trae datos nuevos de TUSSAM, **qué líneas cambian de
+  recorrido, de paradas o de horario** y **cuáles cambian de calle en el mapa**.
 
 
 <p align="center"><img src="docs/capturas/ajustes.jpg" alt="Ajustes: tema y temáticas" width="260"></p>
