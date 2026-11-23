@@ -46,6 +46,9 @@ public class ViajeAutoService extends Service implements LocationListener {
     static final String ACCION_PARAR = "es.bussev.app.AUTO_PARAR";
     static final String ACCION_REFRESCAR = "es.bussev.app.AUTO_REFRESCAR";
     static final String CANAL = "bussev_auto";
+    // Canal casi invisible (sin icono arriba ni en la pantalla de bloqueo) para cuando solo se cuenta el viaje.
+    // Android obliga a tener una notificación mientras se usa la ubicación con la pantalla apagada.
+    static final String CANAL_SILENCIO = "bussev_auto_silencio";
     static final int ID_FIJA = 7601;
     static final long ESPERA_MAX = 25 * 60_000L, RUTA_MAX = 150 * 60_000L;
     static final float LEJOS_M = 700f, EN_PARADA_M = 45f, SALIDA_M = 90f, CERCA_PARADA_M = 120f;
@@ -424,6 +427,15 @@ public class ViajeAutoService extends Service implements LocationListener {
     /* ---------- Notificación ---------- */
     private void canal() {
         NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+        if (Build.VERSION.SDK_INT >= 26 && nm != null && nm.getNotificationChannel(CANAL_SILENCIO) == null) {
+            NotificationChannel s = new NotificationChannel(CANAL_SILENCIO, "Pasaporte: contando tu viaje", NotificationManager.IMPORTANCE_MIN);
+            s.setDescription("Mientras BusSev mira si te subes al autobús para tu Pasaporte. Va escondida al final de las notificaciones.");
+            s.setSound(null, null);
+            s.enableVibration(false);
+            s.setShowBadge(false);
+            s.setLockscreenVisibility(Notification.VISIBILITY_SECRET);
+            nm.createNotificationChannel(s);
+        }
         if (Build.VERSION.SDK_INT < 26 || nm == null || nm.getNotificationChannel(CANAL) != null) return;
         NotificationChannel ch = new NotificationChannel(CANAL, "Tu autobús ahora", NotificationManager.IMPORTANCE_LOW);
         ch.setDescription("Al abrir una parada: cuánto le falta a tu autobús, si llegas andando y tu viaje para el Pasaporte.");
@@ -467,17 +479,17 @@ public class ViajeAutoService extends Service implements LocationListener {
 
     private Notification fija(String corto, String titulo) { return construir(corto, titulo, nombreParada); }
     private Notification construir(String corto, String titulo, String texto) {
-        Notification.Builder b = Build.VERSION.SDK_INT >= 26 ? new Notification.Builder(this, CANAL) : new Notification.Builder(this);
+        // Solo contando el viaje (sin aviso de llegada en esta parada): escondida, sin icono arriba ni pantalla de bloqueo
+        Notification.Builder b = Build.VERSION.SDK_INT >= 26 ? new Notification.Builder(this, CANAL_SILENCIO) : new Notification.Builder(this);
         b.setSmallIcon(LlegadaReceiver.icono(this))
-                .setContentTitle(titulo)
-                .setContentText(texto)
-                .setSubText("Pasaporte de Sevilla")
-                .setOngoing(true).setOnlyAlertOnce(true)
-                .setCategory(Notification.CATEGORY_NAVIGATION)
+                .setContentTitle("Pasaporte de Sevilla")
+                .setContentText("Contando tu viaje si te subes")
+                .setOngoing(true).setOnlyAlertOnce(true).setShowWhen(false)
+                .setCategory(Notification.CATEGORY_SERVICE)
                 .setContentIntent(LlegadaReceiver.abrirParada(this, codigo, ID_FIJA))
                 .addAction(0, "Parar", piParar());
-        if (Build.VERSION.SDK_INT >= 21) b.setColor(0xFF7A1D34);
-        SensorService.promocionar(b, corto);
+        if (Build.VERSION.SDK_INT < 26) b.setPriority(Notification.PRIORITY_MIN);
+        if (Build.VERSION.SDK_INT >= 21) { b.setColor(0xFF7A1D34); b.setVisibility(Notification.VISIBILITY_SECRET); }
         return b.build();
     }
     /* «Llegas andando…» para la segunda etiqueta: texto y color (0 verde, 1 ámbar, 2 rojo) */
@@ -556,7 +568,7 @@ public class ViajeAutoService extends Service implements LocationListener {
 
     private String ultimaNotif = "";
     private void actualizar(String corto, String titulo, String texto) {
-        String k = corto + "|" + titulo + "|" + texto;
+        String k = "silencio";   // siempre el mismo texto: no hace falta repintarla
         if (k.equals(ultimaNotif)) return;
         ultimaNotif = k;
         NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
