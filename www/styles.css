@@ -1449,7 +1449,7 @@ body[data-view="tuano"] .topbar, body[data-view="tuano"] .tabbar { visibility: h
 .wr-cerrar svg { width: 22px; height: 22px; }
 .wr-pag { position: absolute; inset: 0; overflow: hidden; transition: background .4s; }
 .wr-s { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; gap: 10px; padding: calc(env(safe-area-inset-top, 0px) + 80px) 28px calc(env(safe-area-inset-bottom, 0px) + 48px); }
-.wr-in { opacity: 0; animation: wr-sube .6s cubic-bezier(.2,.8,.2,1) var(--d, 0s) forwards; }
+.wr-in { opacity: 0; animation: wr-sube .6s cubic-bezier(.2,.8,.2,1) var(--d, 0s) both; }   /* «both»: durante la espera ya está escondido (si no, las letras con su propia opacidad se ven, desaparecen y vuelven a subir) */
 @keyframes wr-sube { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
 .wr-k { margin: 0; font-size: 14px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; opacity: .85; }
 .wr-t { margin: 0; font-size: 26px; font-weight: 800; line-height: 1.15; letter-spacing: -.01em; }
@@ -1515,7 +1515,7 @@ body[data-view="tuano"] .topbar, body[data-view="tuano"] .tabbar { visibility: h
 
 /* Pasaporte: los sellos caen uno a uno */
 .wr-sellos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 8px 0 10px; }
-.wr-sello { opacity: 0; animation: wr-golpe .55s cubic-bezier(.3,1.6,.5,1) var(--d) forwards; filter: drop-shadow(0 6px 10px rgb(90 50 0 / .25)); }
+.wr-sello { opacity: 0; animation: wr-golpe .55s cubic-bezier(.3,1.6,.5,1) var(--d) both; filter: drop-shadow(0 6px 10px rgb(90 50 0 / .25)); }
 .wr-sello svg { width: 100%; height: auto; display: block; }
 .wr-sello:nth-child(2n) { rotate: -7deg; } .wr-sello:nth-child(3n) { rotate: 6deg; }
 
