@@ -1093,12 +1093,13 @@ html.oculta #fiesta-cielo .f-cruza, html.oculta #fiesta-cielo .f-cruza svg, html
 .p-sub .p-num { font: 700 14px/1 var(--font-board); color: var(--ink); background: var(--surface-2, rgb(127 127 127 / .15)); border-radius: 6px; padding: 3px 6px; }
 .p-sub .p-sep { opacity: .5; }
 .p-bts { display: grid; grid-template-columns: repeat(var(--n, 3), minmax(0, 1fr)); gap: 8px; }
-.p-bt { display: grid; justify-items: center; gap: 4px; padding: 10px 4px; border-radius: 14px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font: 600 13px/1.15 inherit; cursor: pointer; text-align: center; }
+.p-bt { display: grid; justify-items: center; gap: 4px; padding: 10px 4px; border-radius: 14px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font: inherit; font-weight: 600; font-size: 14px; line-height: 1.15; cursor: pointer; text-align: center; min-width: 0; overflow-wrap: break-word; -webkit-hyphens: auto; hyphens: auto; }
 .p-bt svg { width: 22px; height: 22px; }
+.p-nw { white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; }
 .p-bt .p-bt-ico { font-size: 20px; line-height: 22px; }
 .p-bt:active { transform: scale(.97); }
 .p-lin { display: grid; gap: 8px; }
-.p-rec { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 5px; }
+.p-rec { display: contents; }   /* sus números se reparten en la fila del código (y saltan de línea uno a uno) */
 .p-rec:empty { display: none; }
 .p-rec .p-sep { margin-right: 1px; }
 .p-rec a { text-decoration: none; }
@@ -1454,7 +1455,7 @@ body[data-view="tuano"] .topbar, body[data-view="tuano"] .tabbar { visibility: h
 .wr-t { margin: 0; font-size: 26px; font-weight: 800; line-height: 1.15; letter-spacing: -.01em; }
 .wr-p { margin: 0; font-size: 17px; line-height: 1.45; opacity: .92; max-width: 34ch; }
 .wr-p small { opacity: .75; font-size: 13.5px; }
-.wr-gigante { margin: 0; font-size: clamp(84px, 30vw, 136px); font-weight: 900; line-height: .95; letter-spacing: -.04em; font-variant-numeric: tabular-nums; }
+.wr-gigante { margin: 0; white-space: nowrap; max-width: 100%; font-size: clamp(84px, 30vw, 136px); font-weight: 900; line-height: .95; letter-spacing: -.04em; font-variant-numeric: tabular-nums; }
 .wr-gigante .wr-num, .wr-cajas .wr-num { font: inherit; }
 .wr-nombre { margin: 4px 0; font-size: clamp(32px, 10vw, 46px); font-weight: 900; line-height: 1.05; letter-spacing: -.02em; }
 .wr-pista { position: absolute; bottom: calc(env(safe-area-inset-bottom, 0px) + 34px); left: 28px; margin: 0; font-size: 14px; opacity: .7; }
@@ -1466,7 +1467,7 @@ body[data-view="tuano"] .topbar, body[data-view="tuano"] .tabbar { visibility: h
 .wr-giralda { position: absolute; right: -8vw; bottom: 6vh; width: 58vw; animation: wr-sube 1.2s ease-out .2s both; }
 .wr-giralda svg { opacity: .16; }
 .wr-giralda svg { width: 100%; height: auto; display: block; }
-.wr-anio { margin: 0; font-size: clamp(110px, 38vw, 170px); font-weight: 900; line-height: .9; letter-spacing: -.05em;
+.wr-anio { margin: 0; white-space: nowrap; max-width: 100%; align-self: flex-start; font-size: clamp(110px, 38vw, 170px); font-weight: 900; line-height: .9; letter-spacing: -.05em;
   background: linear-gradient(180deg, #fff3d6 0%, #e9b44c 70%, #b9781c 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .wr-f-azulejo { background-color: #17418e; background-image: linear-gradient(180deg, rgb(14 36 86 / .2), rgb(9 24 60 / .85)), var(--azul-pat); }
 .wr-f-albero { background: linear-gradient(160deg, #f4c766, #e0a032 60%, #b97a17); color: #3a2a1c; }
@@ -1496,7 +1497,7 @@ body[data-view="tuano"] .topbar, body[data-view="tuano"] .tabbar { visibility: h
 /* Parada y línea */
 .wr-poste { width: 74px; height: 74px; border-radius: 22px; background: #fff7e3; display: grid; place-items: center; box-shadow: 0 8px 24px rgb(90 50 0 / .25); }
 .wr-poste svg, .wr-medallon svg { width: 60%; height: 60%; }
-.wr-lista { margin: 14px 0 0; padding: 0; list-style: none; display: grid; gap: 8px; counter-reset: wr 1; }
+.wr-lista { margin: 14px 0 0; padding: 0; list-style: none; display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; counter-reset: wr 1; }
 .wr-lista li { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 14px; background: rgb(255 255 255 / .35); font-weight: 700; }
 .wr-lista li::before { counter-increment: wr; content: counter(wr) "."; font-weight: 900; opacity: .6; }
 .wr-lista li span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -1527,8 +1528,8 @@ body[data-view="tuano"] .topbar, body[data-view="tuano"] .tabbar { visibility: h
 .wr-f-resumen .wr-s { justify-content: center; align-items: center; gap: 18px; padding-top: calc(env(safe-area-inset-top, 0px) + 64px); }
 .wr-tarjeta { width: min(100%, calc((100vh - 230px) * .5625)); border-radius: 22px; overflow: hidden; box-shadow: 0 24px 60px rgb(0 0 0 / .55); }
 .wr-tarjeta svg { display: block; width: 100%; height: auto; }
-.wr-acciones { display: flex; gap: 10px; width: min(100%, 420px); }
-.wr-acciones .btn { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+.wr-acciones { display: flex; flex-wrap: wrap; gap: 10px; width: min(100%, 420px); }
+.wr-acciones .btn { flex: 1 1 auto; white-space: nowrap; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
 .wr-f-resumen .btn.ghost { color: #fff; border-color: rgb(255 255 255 / .3); background: rgb(255 255 255 / .08); }
 
 /* Entradas */

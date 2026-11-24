@@ -246,7 +246,7 @@ function avisoModal({ codigo, parada, linea, destino, minutos, color }) {
         close();
         toast(`Te aviso sobre las ${new Date(at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}`);
         active.rerender?.();
-      } catch (e) { toast(e.message); }
+      } catch (e) { toast(textoError(e)); }
     }; });
   });
 }

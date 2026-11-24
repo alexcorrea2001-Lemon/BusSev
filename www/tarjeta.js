@@ -436,7 +436,7 @@ views.tarjeta = (el) => {
       lectorActivo = false;
       if (dead || e?.code === 'CANCELADO' || /Cancelado/.test(e?.message)) return;
       if (e?.code === 'NFC_OFF') { const b = $('#nfc-estado', el); if (b) { b.innerHTML = nfcEstadoHTML('off'); bindNfc(); } return; }
-      toast(e?.message || 'No se ha podido leer la tarjeta. Prueba otra vez.');
+      toast(textoError(e, 'No se ha podido leer la tarjeta. Prueba otra vez.'));
     }
     setTimeout(armarLector, 600);
   }
@@ -458,7 +458,7 @@ views.tarjeta = (el) => {
       if (dead) return;
       if (e.code === 'CANCELADO') { detalle = { ...detalle, loading: false }; pintar(); return; }
       if (e.code === 'CLOUDFLARE') store.set('cfPendiente', true);
-      detalle = { ...detalle, loading: false, code: e.code, err: e.code === 'CLOUDFLARE' ? 'TUSSAM pide una comprobación de seguridad antes de enseñar el saldo.' : (e.message || 'No se ha podido consultar.') };
+      detalle = { ...detalle, loading: false, code: e.code, err: e.code === 'CLOUDFLARE' ? 'TUSSAM pide una comprobación de seguridad antes de enseñar el saldo.' : textoError(e, 'No se ha podido consultar.') };
     }
     pintar();
   }

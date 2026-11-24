@@ -150,7 +150,7 @@ views.tarifas = (el) => {
   async function load(forzar) {
     if (cargando) return;
     cargando = true; error = ''; spin(true); paint();
-    try { await T.cargar({ forzar }); } catch (e) { error = e.message || 'No se ha podido consultar la web de TUSSAM.'; }
+    try { await T.cargar({ forzar }); } catch (e) { error = textoError(e, 'No se ha podido consultar la web de TUSSAM.'); }
     finally { cargando = false; spin(false); if (!dead) paint(); }
   }
   load(false);

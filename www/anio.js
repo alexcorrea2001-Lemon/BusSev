@@ -356,6 +356,24 @@ views.tuano = (el) => {
   const pag = $('.wr-pag', el), barras = [...el.querySelectorAll('.wr-barras span')];
   const salir = () => { if (history.length > 1) history.back(); else location.hash = 'favoritas'; };
   $('.wr-cerrar', el).onclick = (e) => { e.stopPropagation(); salir(); };
+  /* Los números y el año grandes se encogen si no caben (pantallas estrechas o letra del sistema grande) */
+  function ajustar() {
+    const nums = [...pag.querySelectorAll('[data-cuenta]')];
+    const antes = nums.map((b) => b.textContent);
+    for (const b of nums) {   // se mide con el número final (el más ancho)
+      const fin = Number(b.dataset.cuenta), dec = Number(b.dataset.dec || 0);
+      b.textContent = dec ? fin.toLocaleString('es-ES', { minimumFractionDigits: dec, maximumFractionDigits: dec }) : fmtN(fin);
+    }
+    for (const t of pag.querySelectorAll('.wr-anio, .wr-gigante, .wr-nombre')) {
+      t.style.fontSize = '';
+      const ancho = t.clientWidth;
+      if (!ancho) continue;
+      for (let k = 0; k < 4 && t.scrollWidth > ancho + 1; k++) {
+        t.style.fontSize = `${Math.floor(parseFloat(getComputedStyle(t).fontSize) * (ancho / t.scrollWidth) * 0.98)}px`;
+      }
+    }
+    nums.forEach((b, k) => { b.textContent = antes[k]; });
+  }
   function contar() {
     for (const b of pag.querySelectorAll('[data-cuenta]')) {
       const fin = Number(b.dataset.cuenta), dec = Number(b.dataset.dec || 0);
@@ -375,6 +393,7 @@ views.tuano = (el) => {
     pag.setAttribute('style', s.estilo || '');
     pag.innerHTML = `<div class="wr-s" data-id="${s.id}">${s.html}</div>`;
     barras.forEach((b, k) => { b.className = k < i ? 'hecha' : k === i ? 'ahora' : ''; b.firstChild.style.animationDuration = `${DURA}ms`; });
+    ajustar();
     contar();
     vibrar?.(8);
     clearTimeout(timer); restante = DURA; pausa = false; el.querySelector('.wr').classList.remove('pausa');

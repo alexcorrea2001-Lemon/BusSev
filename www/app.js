@@ -6,6 +6,16 @@
 /* ================================================================== */
 /* Almacenamiento y ajustes                                            */
 /* ================================================================== */
+/* Mensaje de error para enseñar: los fallos de conexión del navegador llegan en inglés («Failed to fetch»…) */
+function textoError(e, porDefecto = 'Ha fallado algo. Inténtalo otra vez.') {
+  const m = String(e?.message ?? e ?? '').trim();
+  if (!m) return porDefecto;
+  if (/failed to fetch|networkerror|network request failed|load failed|net::|err_|internet connection|offline|unable to resolve host|failed to connect|timed? ?out|timeout|socket|unexpected end of stream|connection (reset|refused|abort)/i.test(m)) return 'Sin conexión: revisa los datos o el wifi e inténtalo otra vez.';
+  if (/^[\x00-\x7F]*$/.test(m) && !/[áéíóúñ¿¡]/i.test(m) && /\b(the|failed|cannot|unable|undefined|exception|is not|was not)\b/i.test(m)) return porDefecto;   // mensaje técnico en inglés
+  return m;
+}
+window.textoError = textoError;
+
 const store = {
   get(k, d) { try { const v = localStorage.getItem('bussev.' + k); return v == null ? d : JSON.parse(v); } catch { return d; } },
   set(k, v) { try { localStorage.setItem('bussev.' + k, JSON.stringify(v)); } catch { /* sin almacenamiento */ } },
@@ -1238,7 +1248,7 @@ const emptyHTML = (icon, title, text, actions = '') => `<div class="empty">${ico
 const FILA_ESQ = '<div class="sk-fila"><i class="sk-badge"></i><i class="sk-txt"></i><i class="sk-min"></i></div>';
 const skeletons = (n = 3) => `<div class="stack" aria-busy="true" aria-label="Cargando">${`<div class="skeleton"><i class="sk-t"></i>${FILA_ESQ.repeat(3)}</div>`.repeat(n)}</div>`;
 const esqueletoTiempos = (n = 3) => `<div class="board-skel" aria-busy="true" aria-label="Cargando tiempos">${FILA_ESQ.repeat(n)}</div>`;
-const errorHTML = (e, retryId) => emptyHTML(ICON.off, 'No se han podido cargar los datos', esc(e.message || 'Error desconocido.'), `<button class="btn" type="button" id="${retryId}">Reintentar</button>`);
+const errorHTML = (e, retryId) => emptyHTML(ICON.off, 'No se han podido cargar los datos', esc(textoError(e, 'Error desconocido.')), `<button class="btn" type="button" id="${retryId}">Reintentar</button>`);
 const backHead = (inner = '') => `<div class="detail-head"><button class="back-btn" type="button" aria-label="Volver">${ICON.back}</button>${inner}</div>`;
 const swatchesHTML = (cur, attr) => `<div class="swatches">${TAGS.map((c) => `<button class="swatch" type="button" ${attr}="${c}" aria-pressed="${cur === c}" aria-label="Color" style="background:${c};color:${textOn(c)}">${cur === c ? ICON.check : ''}</button>`).join('')}</div>`;
 
@@ -2570,7 +2580,7 @@ function selectStop(p) {
       if (e.status === 429) {
         $('#sh-board').innerHTML = cargandoHTML('TUSSAM va saturado', 'Lo intentamos de nuevo en unos segundos…');
         setTimeout(() => { if (mapState.sel === p) load(); }, Math.max(4000, window.BusSevBackend.pausa + 500));
-      } else $('#sh-board').innerHTML = `<div class="board-empty" style="border:0">${esc(e.message)}</div>`;
+      } else $('#sh-board').innerHTML = `<div class="board-empty" style="border:0">${esc(textoError(e))}</div>`;
     } finally { spin(false); }
   }
   load();
@@ -3135,7 +3145,11 @@ views.parada = (el, codigo) => {
     }).join('')}</div>` : '';
     // Los números para ver el recorrido van arriba, junto al número de la parada
     const rec = $('#p-rec', el);
-    if (rec) setHTML(rec, `<span class="p-sep">·</span>${todas.map((n) => badge(et(n), lineaFor(n)?.color, { sm: true, href: `#linea-${encodeURIComponent(n)}` })).join('')}`);
+    if (rec) {
+      // El «·» va pegado a la primera línea (si no, al partir la fila se queda solo)
+      const bs = todas.map((n) => badge(et(n), lineaFor(n)?.color, { sm: true, href: `#linea-${encodeURIComponent(n)}` }));
+      setHTML(rec, bs.length ? `<span class="p-nw"><span class="p-sep">·</span>${bs[0]}</span>${bs.slice(1).join('')}` : '');
+    }
     if (!chips) { box.hidden = true; return; }
     setHTML(box, `<span class="lf-tit">Líneas · toca para ver solo esa</span>${chips}`);
     box.hidden = false;
@@ -3188,7 +3202,7 @@ views.parada = (el, codigo) => {
       // TUSSAM pide esperar: se reintenta solo en cuanto deje (sin que tengas que tocar nada)
       if (e.status === 429) { clearTimeout(reintento); reintento = setTimeout(() => { if (!dead) load(true); }, Math.max(4000, window.BusSevBackend.pausa + 500)); }
       if (!ultimo) $('#p-board', el).innerHTML = e.status === 429 ? cargandoHTML('TUSSAM va saturado', 'Lo intentamos de nuevo en unos segundos…') : `<div class="board-empty">${esc(e.message)}</div>`;
-      else if (e.status !== 429) toast(e.message);
+      else if (e.status !== 429) toast(textoError(e));
     } finally { spin(false); }
   }
   init();
@@ -3238,7 +3252,7 @@ views.cerca = (el) => {
         ${d.paradas.map((p) => stopCardHTML(p, { tiempos: p.tiempos || [], status: p.tiempos_status, distancia: p.distancia })).join('')}
         <p class="updated">Actualizado a las ${fmtClock()} · ${refreshNote()}</p></div>`;
     } catch (e) {
-      if (!quiet) { el.innerHTML = errorHTML(e, 'retry-cerca'); $('#retry-cerca', el).onclick = () => load(); } else toast(e.message);
+      if (!quiet) { el.innerHTML = errorHTML(e, 'retry-cerca'); $('#retry-cerca', el).onclick = () => load(); } else toast(textoError(e));
     } finally { loading = false; spin(false); }
   }
   if (store.get('geoOk', false)) locate(); else intro();
@@ -3486,7 +3500,7 @@ views.ajustes = (el) => {
           $('#imp-no', m).onclick = close;
           $('#imp-ok', m).onclick = () => { copia.aplicar(d); close(); toast('Copia recuperada'); render(); };
         });
-      } catch (err) { toast(err.message); }
+      } catch (err) { toast(textoError(err)); }
       e.target.value = '';
     };
   }

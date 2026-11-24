@@ -245,7 +245,7 @@ window.avisosTussam = (() => {
         adj.forEach((a, i) => { const b = $(`[data-av="${i}"]`, m); if (b) b.onclick = () => openWeb(a.href); });
       }).catch((e) => {
         const box = $('#av-det', m);
-        if (box) box.innerHTML = `<p class="help">${esc(e.message || 'No se ha podido abrir el aviso.')} Puedes verlo en la web de TUSSAM.</p>`;
+        if (box) box.innerHTML = `<p class="help">${esc(textoError(e, 'No se ha podido abrir el aviso.'))} Puedes verlo en la web de TUSSAM.</p>`;
       });
       window.dispatchEvent(new Event('bussev-avisos'));
     });
@@ -419,7 +419,7 @@ views.avisos = (el) => {
   async function load(forzar = true) {
     if (cargando) return;
     cargando = true; error = ''; spin(true); paint();
-    try { await A.revisar({ forzar }); } catch (e) { error = e.message || 'No se ha podido consultar la web de TUSSAM.'; }
+    try { await A.revisar({ forzar }); } catch (e) { error = textoError(e, 'No se ha podido consultar la web de TUSSAM.'); }
     finally { cargando = false; spin(false); if (!dead) paint(); }
   }
   const onAv = () => { if (!dead && !cargando) paint(); };
