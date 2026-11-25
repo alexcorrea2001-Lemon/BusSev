@@ -115,7 +115,8 @@ public class AvisoService extends Service {
         if (x != null && !ViajeAutoService.absorbe(this, x.optString("codigo"))) {
             long ahora = System.currentTimeMillis();
             long llega = x.optLong("llega", 0);
-            if (llega < ahora) llega = x.optLong("at", ahora) + (long) x.optInt("antes", 5) * 60_000L;
+            if (llega == 0 || (llega < ahora && !x.optBoolean("avisado", false)))
+                llega = x.optLong("at", ahora) + (long) x.optInt("antes", 5) * 60_000L;   // aún sin dato de TUSSAM
             int min = (int) Math.max(0, Math.ceil((llega - ahora) / 60_000.0));
             id = LlegadaReceiver.idCuenta(x.optInt("id"));
             n = LlegadaReceiver.construirCuenta(this, x, min, llega);

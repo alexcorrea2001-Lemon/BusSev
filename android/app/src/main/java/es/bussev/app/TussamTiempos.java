@@ -31,9 +31,10 @@ class TussamTiempos {
         final String linea;
         final String destino;
         final int minutos;
+        final int segundos;   // lo que da TUSSAM, sin redondear (para avisar y contar a tiempo)
         final String color;
-        Llegada(String linea, String destino, int minutos, String color) {
-            this.linea = linea; this.destino = destino; this.minutos = minutos; this.color = color;
+        Llegada(String linea, String destino, int segundos, String color) {
+            this.linea = linea; this.destino = destino; this.segundos = segundos; this.minutos = segundos / 60; this.color = color;
         }
     }
 
@@ -149,7 +150,7 @@ class TussamTiempos {
                         String destino = "";
                         JSONObject d = e.optJSONObject("destino");
                         if (d != null) destino = d.optString("texto", "");
-                        out.add(new Llegada(label, destino, realSeg / 60, color));
+                        out.add(new Llegada(label, destino, realSeg, color));
                     }
                 }
             }

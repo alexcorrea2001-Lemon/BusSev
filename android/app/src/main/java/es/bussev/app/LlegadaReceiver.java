@@ -55,7 +55,13 @@ public class LlegadaReceiver extends BroadcastReceiver {
     static synchronized void poner(Context c, JSONObject nuevo) {
         JSONArray a = leer(c), b = new JSONArray();
         int id = nuevo.optInt("id");
-        for (int i = 0; i < a.length(); i++) { JSONObject x = a.optJSONObject(i); if (x != null && x.optInt("id") != id) b.put(x); }
+        for (int i = 0; i < a.length(); i++) {
+            JSONObject x = a.optJSONObject(i);
+            if (x == null) continue;
+            if (x.optInt("id") != id) { b.put(x); continue; }
+            // La app corrige la hora: la barra sigue desde donde empezó y no se repite el aviso ya dado
+            try { for (String k : new String[]{"seg0", "min0", "llega", "avisado", "hasta", "segUlt"}) if (x.has(k)) nuevo.put(k, x.get(k)); } catch (Exception ignored) { }
+        }
         b.put(nuevo);
         guardar(c, b);
         programar(c);
@@ -250,21 +256,45 @@ public class LlegadaReceiver extends BroadcastReceiver {
                 if (revisar > ahora + 8_000L) { quedan.put(x); continue; }
                 // Lejos todavía: se mira de nuevo cuando falten 15 minutos para avisar
                 if (at - ahora > 16 * MIN) { x.put("revisar", at - 15 * MIN); quedan.put(x); continue; }
-                Integer min = null;
+                Integer seg = null;
                 try {
                     if (!tokenProbado) { tokenProbado = true; token = TussamTiempos.token(cred); }
-                    if (token != null) min = minutos(TussamTiempos.tiempos(x.optString("codigo"), token), x.optString("linea"), x.optString("destino"));
+                    if (token != null) seg = segundos(TussamTiempos.tiempos(x.optString("codigo"), token), x.optString("linea"), x.optString("destino"));
                 } catch (Exception ignored) { /* sin red o TUSSAM no contesta */ }
-                if (min != null) {
-                    if (min <= antes) { quitarCuenta(c, x.optInt("id")); avisar(c, x, min); continue; }
-                    cuentaAtras(c, x, min);
-                    long nuevo = ahora + (long) (min - antes) * MIN;
+                if (x.optBoolean("avisado", false)) {
+                    // Ya avisado: la cuenta atrás (y la isla) siguen hasta que el autobús pasa
+                    int ult = x.optInt("segUlt", -1);
+                    if (seg != null && ult >= 0 && ult <= 90 && seg >= 240) { quitarCuenta(c, x.optInt("id")); continue; }   // pasó: sale el siguiente
+                    if (seg != null) { x.put("llega", ahora + seg * 1000L); x.put("segUlt", seg); }
+                    if (ahora > x.optLong("hasta", 0) || ahora > x.optLong("llega", ahora) + 2 * MIN) { quitarCuenta(c, x.optInt("id")); continue; }
+                    if (ViajeAutoService.absorbe(c, x.optString("codigo"))) quitarCuenta(c, x.optInt("id"));
+                    else mostrarCuenta(c, x, 0, x.optLong("llega", ahora));
+                    x.put("at", ahora);
+                    x.put("revisar", ahora + 20_000L);
+                    quedan.put(x);
+                    continue;
+                }
+                if (seg != null) {
+                    int min = seg / 60;
+                    if (seg <= antes * 60) {
+                        avisar(c, x, min);
+                        x.put("avisado", true);
+                        x.put("llega", ahora + seg * 1000L);
+                        x.put("segUlt", seg);
+                        x.put("hasta", ahora + Math.min(15 * MIN, seg * 1000L + 3 * MIN));
+                        x.put("at", ahora);
+                        x.put("revisar", ahora + 20_000L);
+                        if (!ViajeAutoService.absorbe(c, x.optString("codigo"))) mostrarCuenta(c, x, min, ahora + seg * 1000L);
+                        quedan.put(x);
+                        continue;
+                    }
+                    cuentaAtras(c, x, seg);
+                    long nuevo = ahora + (seg - antes * 60) * 1000L;
                     x.put("at", nuevo);
-                    // Cuanto más cerca, más a menudo (y nunca más tarde de la hora de avisar).
-                    // TUSSAM da minutos enteros: «3 min» puede ser 3:59 o 3:00, así que cuando le falta
-                    // 1 minuto para tu aviso se pregunta cada 20 s, para avisar justo al pasar a tus minutos.
-                    int falta = min - antes;
-                    long paso = falta <= 1 ? 20_000L : falta <= 3 ? 40_000L : falta <= 6 ? MIN : 2 * MIN;
+                    // TUSSAM da segundos: se avisa justo al llegar a tus minutos. En los últimos minutos
+                    // se pregunta cada 20 s (el servicio en primer plano mantiene esto con la pantalla apagada).
+                    int falta = seg - antes * 60;
+                    long paso = falta <= 6 * 60 ? 20_000L : 40_000L;
                     x.put("revisar", Math.min(nuevo, ahora + paso));
                     quedan.put(x);
                 } else if (x.optBoolean("rep", false)) {
@@ -289,6 +319,18 @@ public class LlegadaReceiver extends BroadcastReceiver {
         ViajeAutoService.refrescar(c);
     }
 
+    /** Segundos que le faltan al autobús de esa línea y destino (si el destino no cuadra, el primero de la línea). */
+    static Integer segundos(List<TussamTiempos.Llegada> l, String linea, String destino) {
+        String nl = normLinea(linea), nd = normTexto(destino);
+        Integer mejorDestino = null, mejorLinea = null;
+        for (TussamTiempos.Llegada x : l) {
+            if (!normLinea(x.linea).equals(nl)) continue;
+            if (mejorLinea == null || x.segundos < mejorLinea) mejorLinea = x.segundos;
+            String d = normTexto(x.destino);
+            if (!nd.isEmpty() && (d.equals(nd) || d.contains(nd) || nd.contains(d)) && (mejorDestino == null || x.segundos < mejorDestino)) mejorDestino = x.segundos;
+        }
+        return mejorDestino != null ? mejorDestino : mejorLinea;
+    }
     /** Minutos que le faltan al autobús de esa línea y destino (si el destino no cuadra, el primero de la línea). */
     static Integer minutos(List<TussamTiempos.Llegada> l, String linea, String destino) {
         String nl = normLinea(linea), nd = normTexto(destino);
@@ -316,10 +358,15 @@ public class LlegadaReceiver extends BroadcastReceiver {
         NotificationManager nm = (NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE);
         if (nm != null) nm.cancel(idCuenta(id));
     }
-    static void cuentaAtras(Context c, JSONObject x, int min) {
-        long llega = System.currentTimeMillis() + (long) min * MIN;
-        // Para la notificación única del Pasaporte: a qué hora llega y desde cuántos minutos se empezó a contar (la barra)
-        try { x.put("llega", llega); if (x.optInt("min0", -1) < min) x.put("min0", min); } catch (Exception ignored) { }
+    static void cuentaAtras(Context c, JSONObject x, int seg) {
+        long llega = System.currentTimeMillis() + seg * 1000L;
+        int min = seg / 60;
+        // Para la barra: a qué hora llega y desde cuánto se empezó a contar (también la notificación del Pasaporte)
+        try {
+            x.put("llega", llega);
+            if (x.optInt("seg0", -1) < seg) x.put("seg0", seg);
+            if (x.optInt("min0", -1) < (seg + 59) / 60) x.put("min0", (seg + 59) / 60);
+        } catch (Exception ignored) { }
         // Pasaporte sin abrir la app: cuando se empieza a contar, BusSev sigue el viaje solo en esa parada
         // (si diste la ubicación «todo el tiempo»). Si estás lejos, se para en un minuto y se reintenta luego.
         long probado = x.optLong("autoProbado", 0), ahoraMs = System.currentTimeMillis();
@@ -351,10 +398,13 @@ public class LlegadaReceiver extends BroadcastReceiver {
         }
         int id = x.optInt("id");
         String linea = x.optString("linea");
-        String titulo = "Línea " + linea + (min <= 1 ? " · está llegando" : " · " + min + " min");
-        String p1 = "Aviso a " + x.optInt("antes", 5) + " min";
-        int min0 = Math.max(x.optInt("min0", min), Math.max(min, 1));
-        int prog = Math.max(0, Math.min(100, Math.round(100f * (min0 - min) / min0)));
+        // Lo que falta, desde la hora de llegada (se repinta cada 20 s): igual que los minutos de la app
+        int seg = (int) Math.max(0, (llega - System.currentTimeMillis()) / 1000L);
+        min = seg / 60;
+        String titulo = "Línea " + linea + (seg < 60 ? " · está llegando" : " · " + min + " min");
+        String p1 = x.optBoolean("avisado", false) ? "Avisado" : "Aviso a " + x.optInt("antes", 5) + " min";
+        int seg0 = Math.max(x.optInt("seg0", seg), Math.max(seg, 1));
+        int prog = Math.max(0, Math.min(100, Math.round(100f * (seg0 - seg) / seg0)));
         Notification.Builder b = Build.VERSION.SDK_INT >= 26 ? new Notification.Builder(c, canalCuenta) : new Notification.Builder(c);
         b.setSmallIcon(icono(c))
                 .setContentTitle(titulo)
@@ -364,8 +414,8 @@ public class LlegadaReceiver extends BroadcastReceiver {
                 .setContentIntent(abrirParada(c, x.optString("codigo"), idCuenta(id)));
         b.addAction(0, "Quitar aviso", piQuitar(c, id));   // el modo sensor también lleva botón y sale en la isla
         if (Build.VERSION.SDK_INT >= 21) b.setColor(0xFFD41C2B);
-        disenoAviso(c, b, titulo, x.optString("parada"), p1, false, null, 0, prog, llega, min);
-        SensorService.promocionar(b, min <= 1 ? "Llega" : min + " min");
+        disenoAviso(c, b, titulo, x.optString("parada"), p1, x.optBoolean("avisado", false), null, 0, prog, llega, min);
+        SensorService.promocionar(b, seg < 60 ? "Llega" : min + " min");
         return b.build();
     }
 
@@ -519,7 +569,7 @@ public class LlegadaReceiver extends BroadcastReceiver {
         JSONObject mejor = null;
         for (int i = 0; i < a.length(); i++) {
             JSONObject x = a.optJSONObject(i);
-            if (x == null || !codigo.equals(x.optString("codigo")) || !x.has("llega")) continue;
+            if (x == null || !codigo.equals(x.optString("codigo")) || !x.has("llega") || x.optBoolean("avisado", false)) continue;
             if (x.optLong("llega") < ahora - MIN) continue;
             if (mejor == null || x.optLong("llega") < mejor.optLong("llega")) mejor = x;
         }
