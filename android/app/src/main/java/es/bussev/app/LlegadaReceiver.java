@@ -274,12 +274,6 @@ public class LlegadaReceiver extends BroadcastReceiver {
                     quedan.put(x);
                     continue;
                 }
-                if (seg != null && x.optLong("llega", 0) > 0) {
-                    // TUSSAM tarda en actualizar: si su dato va hasta 45 s por detrás de la cuenta atrás que ya se
-                    // ve en la notificación, manda la cuenta atrás (si no, «2 min» en pantalla y sin avisar)
-                    long est = (x.optLong("llega") - ahora) / 1000L;
-                    if (est < seg && seg - est <= 45) seg = (int) Math.max(0, est);
-                }
                 if (seg != null) {
                     // Minutos como los enseña la app (2:59 → «2 min»). Se avisa en cuanto la app pondría tus
                     // minutos: aviso a 2 min = en cuanto le falten menos de 3:00, no cuando ya va por 1 y pico.
@@ -302,7 +296,7 @@ public class LlegadaReceiver extends BroadcastReceiver {
                     // TUSSAM da segundos: se avisa justo al llegar a tus minutos. En los últimos minutos
                     // se pregunta cada 20 s (el servicio en primer plano mantiene esto con la pantalla apagada).
                     int falta = seg - (antes * 60 + 59);
-                    long paso = falta <= 6 * 60 ? 15_000L : 40_000L;
+                    long paso = falta <= 2 * 60 ? 10_000L : falta <= 6 * 60 ? 15_000L : 40_000L;
                     x.put("revisar", Math.min(nuevo, ahora + paso));
                     quedan.put(x);
                 } else if (x.optBoolean("rep", false)) {
@@ -372,6 +366,7 @@ public class LlegadaReceiver extends BroadcastReceiver {
         // Para la barra: a qué hora llega y desde cuánto se empezó a contar (también la notificación del Pasaporte)
         try {
             x.put("llega", llega);
+            x.put("segUlt", seg);   // el último dato de TUSSAM: los minutos del título salen de aquí, como en la app
             if (x.optInt("seg0", -1) < seg) x.put("seg0", seg);
             if (x.optInt("min0", -1) < (seg + 59) / 60) x.put("min0", (seg + 59) / 60);
         } catch (Exception ignored) { }
@@ -411,7 +406,10 @@ public class LlegadaReceiver extends BroadcastReceiver {
         // Lo que falta, desde la hora de llegada (se repinta cada 20 s): igual que los minutos de la app
         int seg = (int) Math.max(0, (llega - System.currentTimeMillis()) / 1000L);
         min = seg / 60;
-        String titulo = "Línea " + linea + (seg < 60 ? " · está llegando" : " · " + min + " min");
+        // Minutos del título: los del último dato de TUSSAM, igual que en la app (y el aviso salta a la vez)
+        int segT = x.has("segUlt") ? Math.max(0, x.optInt("segUlt")) : seg;
+        min = segT / 60;
+        String titulo = "Línea " + linea + (segT < 60 ? " · está llegando" : " · " + min + " min");
         String p1 = x.optBoolean("avisado", false) ? "Avisado" : "Aviso a " + x.optInt("antes", 5) + " min";
         // La barra cubre al menos los últimos 10 min: si pones el aviso con el autobús ya cerca, también se mueve
         int seg0 = Math.max(Math.max(x.optInt("seg0", seg), 600), Math.max(seg, 1));
@@ -430,7 +428,7 @@ public class LlegadaReceiver extends BroadcastReceiver {
         b.addAction(0, "Quitar aviso", piQuitar(c, id));   // el modo sensor también lleva botón y sale en la isla
         if (Build.VERSION.SDK_INT >= 21) b.setColor(0xFFD41C2B);
         disenoAviso(c, b, titulo, x.optString("parada"), p1, x.optBoolean("avisado", false), null, 0, prog, llega, min);
-        SensorService.promocionar(b, seg < 60 ? "Llega" : min + " min");
+        SensorService.promocionar(b, segT < 60 ? "Llega" : min + " min");
         return b.build();
     }
 
@@ -448,8 +446,21 @@ public class LlegadaReceiver extends BroadcastReceiver {
         // subtexto y barra de progreso normal; sin cronómetro, sin estilo ni vista propia.
         if (Build.VERSION.SDK_INT >= 36) {
             b.setContentTitle(titulo);
-            b.setContentText(p1 + (p2 != null ? " · " + p2 : ""));
+            // Las etiquetas del diseño, en su color (verde; ámbar o rojo si toca)
+            final int verde = 0xFF8FD6B4, ambar = 0xFFF2B53A, rojo = 0xFFF07A7A;
+            android.text.SpannableStringBuilder t = new android.text.SpannableStringBuilder();
+            t.append(p1, new android.text.style.ForegroundColorSpan(p1Ambar ? ambar : verde), 0);
+            if (p2 != null) {
+                t.append("  ·  ");
+                t.append(p2, new android.text.style.ForegroundColorSpan(p2Color == 1 ? ambar : p2Color == 2 ? rojo : verde), 0);
+            }
+            b.setContentText(t);
             b.setSubText(parada);
+            // Cuenta atrás con segundos arriba a la derecha (05:10), como en el diseño
+            if (llega > ahora + 1000L) {
+                b.setWhen(llega).setShowWhen(true).setUsesChronometer(true);
+                b.setChronometerCountDown(true);
+            }
             // El diseño nuevo en versión nativa (la vista propia no puede salir en la isla): barra roja con el
             // autobús avanzando y tu parada al final. Si el móvil no la tiene, la barra normal.
             if (!estiloProgreso(c, b, prog)) b.setProgress(100, Math.max(0, Math.min(100, prog)), false);
