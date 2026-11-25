@@ -358,8 +358,19 @@ public class LlegadaReceiver extends BroadcastReceiver {
        p2Color: 0 verde, 1 ámbar, 2 rojo. */
     static void disenoAviso(Context c, Notification.Builder b, String titulo, String parada, String p1, boolean p1Ambar,
                             String p2, int p2Color, int prog, long llega, int falta) {
-        if (Build.VERSION.SDK_INT < 24) { b.setProgress(100, prog, false); return; }
         long ahora = System.currentTimeMillis();
+        // Android 16 (HyperOS 3…): notificación estándar con la barra de progreso nueva (autobús que avanza y tu
+        // parada al final). Así puede salir en la isla dinámica / chip de arriba, cosa que una vista propia no deja.
+        if (Build.VERSION.SDK_INT >= 36 && estiloProgreso(c, b, prog)) {
+            b.setContentTitle(titulo);
+            b.setContentText(parada + " · " + p1 + (p2 != null ? " · " + p2 : ""));
+            if (falta >= 1) {
+                b.setWhen(llega).setShowWhen(true).setUsesChronometer(true);
+                b.setChronometerCountDown(true);
+            }
+            return;
+        }
+        if (Build.VERSION.SDK_INT < 24) { b.setProgress(100, prog, false); return; }
         long base = SystemClock.elapsedRealtime() + Math.max(0, llega - ahora);
         RemoteViews corta = new RemoteViews(c.getPackageName(), R.layout.bussev_notif_aviso_corta);
         RemoteViews larga = new RemoteViews(c.getPackageName(), R.layout.bussev_notif_aviso);
@@ -380,6 +391,25 @@ public class LlegadaReceiver extends BroadcastReceiver {
         b.setStyle(new Notification.DecoratedCustomViewStyle());
         b.setCustomContentView(corta);
         b.setCustomBigContentView(larga);
+    }
+    /* Notification.ProgressStyle (Android 16). Se usa por reflexión porque la app compila con un SDK anterior. */
+    static boolean estiloProgreso(Context c, Notification.Builder b, int prog) {
+        try {
+            Class<?> ps = Class.forName("android.app.Notification$ProgressStyle");
+            Class<?> seg = Class.forName("android.app.Notification$ProgressStyle$Segment");
+            Object st = ps.getConstructor().newInstance();
+            Object s = seg.getConstructor(int.class).newInstance(100);
+            seg.getMethod("setColor", int.class).invoke(s, 0xFFD41C2B);
+            ps.getMethod("addProgressSegment", seg).invoke(st, s);
+            ps.getMethod("setProgress", int.class).invoke(st, Math.max(0, Math.min(100, prog)));
+            ps.getMethod("setStyledByProgress", boolean.class).invoke(st, true);
+            ps.getMethod("setProgressTrackerIcon", android.graphics.drawable.Icon.class)
+                    .invoke(st, android.graphics.drawable.Icon.createWithResource(c, R.drawable.n_bus));
+            ps.getMethod("setProgressEndIcon", android.graphics.drawable.Icon.class)
+                    .invoke(st, android.graphics.drawable.Icon.createWithResource(c, R.drawable.n_parada));
+            b.setStyle((Notification.Style) st);
+            return true;
+        } catch (Throwable t) { return false; }
     }
     private static void pastilla(RemoteViews v, int visible, String texto, int[] todas) {
         for (int i : todas) v.setViewVisibility(i, i == visible ? View.VISIBLE : View.GONE);
