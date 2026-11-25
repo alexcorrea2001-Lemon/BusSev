@@ -335,7 +335,8 @@ public class LlegadaReceiver extends BroadcastReceiver {
         }
         int id = x.optInt("id");
         String linea = x.optString("linea");
-        String titulo = "Línea " + linea + (min <= 1 ? " · está llegando" : " · " + min + " min");
+        String titulo = Build.VERSION.SDK_INT >= 36 ? "Línea " + linea + (min <= 1 ? " · está llegando" : " · llega en " + min + " min")
+                : "Línea " + linea + (min <= 1 ? " · está llegando" : " · " + min + " min");
         String p1 = "Aviso a " + x.optInt("antes", 5) + " min";
         int min0 = Math.max(x.optInt("min0", min), Math.max(min, 1));
         int prog = Math.max(0, Math.min(100, Math.round(100f * (min0 - min) / min0)));
@@ -345,8 +346,8 @@ public class LlegadaReceiver extends BroadcastReceiver {
                 .setContentText(x.optString("parada") + " · " + p1)
                 .setOngoing(true).setOnlyAlertOnce(true)
                 .setCategory(Notification.CATEGORY_PROGRESS)
-                .setContentIntent(abrirParada(c, x.optString("codigo"), idCuenta(id)))
-                .addAction(0, "Quitar aviso", piQuitar(c, id));
+                .setContentIntent(abrirParada(c, x.optString("codigo"), idCuenta(id)));
+        if (Build.VERSION.SDK_INT < 36) b.addAction(0, "Quitar aviso", piQuitar(c, id));   // en Android 16, como antes: sin botones
         if (Build.VERSION.SDK_INT >= 21) b.setColor(0xFFD41C2B);
         disenoAviso(c, b, titulo, x.optString("parada"), p1, false, null, 0, prog, llega, min);
         SensorService.promocionar(b, min <= 1 ? "Llega" : min + " min");
@@ -361,9 +362,11 @@ public class LlegadaReceiver extends BroadcastReceiver {
         long ahora = System.currentTimeMillis();
         // Android 16 (HyperOS 3…): notificación estándar con la barra de progreso nueva (autobús que avanza y tu
         // parada al final). Así puede salir en la isla dinámica / chip de arriba, cosa que una vista propia no deja.
-        if (Build.VERSION.SDK_INT >= 36 && estiloProgreso(c, b, prog)) {
+        // Android 16 (HyperOS 3): exactamente como la cuenta atrás de antes (sin estilo ni barra), que es la que
+        // sale en la isla dinámica de Xiaomi; con la barra de progreso nueva tampoco salía.
+        if (Build.VERSION.SDK_INT >= 36) {
             b.setContentTitle(titulo);
-            b.setContentText(parada + " · " + p1 + (p2 != null ? " · " + p2 : ""));
+            b.setContentText(parada + " · " + (p1.startsWith("Aviso a ") ? "te aviso cuando falten " + p1.substring(8) : p1) + (p2 != null ? " · " + p2 : ""));
             if (falta >= 1) {
                 b.setWhen(llega).setShowWhen(true).setUsesChronometer(true);
                 b.setChronometerCountDown(true);
