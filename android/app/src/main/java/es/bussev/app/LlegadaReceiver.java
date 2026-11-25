@@ -275,10 +275,10 @@ public class LlegadaReceiver extends BroadcastReceiver {
                     continue;
                 }
                 if (seg != null) {
-                    // Minutos «de reloj» redondeados (2:20 → 2 min): así el texto dice tus minutos al avisar
-                    int min = Math.max(0, Math.round(seg / 60f));
-                    // Se avisa con 20 s de margen: TUSSAM actualiza a saltos y entre consulta y consulta pasa tiempo
-                    if (seg <= antes * 60 + 20) {
+                    // Minutos como los enseña la app (2:59 → «2 min»). Se avisa en cuanto la app pondría tus
+                    // minutos: aviso a 2 min = en cuanto le falten menos de 3:00, no cuando ya va por 1 y pico.
+                    int min = seg / 60;
+                    if (min <= antes) {
                         avisar(c, x, min);
                         x.put("avisado", true);
                         x.put("llega", ahora + seg * 1000L);
@@ -291,11 +291,11 @@ public class LlegadaReceiver extends BroadcastReceiver {
                         continue;
                     }
                     cuentaAtras(c, x, seg);
-                    long nuevo = ahora + (seg - antes * 60) * 1000L;
+                    long nuevo = ahora + (seg - (antes * 60 + 59)) * 1000L;   // cuando pase a «tus minutos»
                     x.put("at", nuevo);
                     // TUSSAM da segundos: se avisa justo al llegar a tus minutos. En los últimos minutos
                     // se pregunta cada 20 s (el servicio en primer plano mantiene esto con la pantalla apagada).
-                    int falta = seg - antes * 60;
+                    int falta = seg - (antes * 60 + 59);
                     long paso = falta <= 6 * 60 ? 15_000L : 40_000L;
                     x.put("revisar", Math.min(nuevo, ahora + paso));
                     quedan.put(x);
@@ -387,6 +387,7 @@ public class LlegadaReceiver extends BroadcastReceiver {
     }
     /* La cuenta atrás del aviso (la usa también AvisoService como notificación del servicio en primer plano) */
     private static final java.util.Map<Integer, Integer> PROG = new java.util.HashMap<>();
+    static int ultimoProg(int id) { Integer p = PROG.get(id); return p == null ? -1 : p; }
     static Notification construirCuenta(Context c, JSONObject x, int min, long llega) {
         NotificationManager nm = (NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE);
         if (nm == null) return null;
@@ -406,7 +407,8 @@ public class LlegadaReceiver extends BroadcastReceiver {
         min = seg / 60;
         String titulo = "Línea " + linea + (seg < 60 ? " · está llegando" : " · " + min + " min");
         String p1 = x.optBoolean("avisado", false) ? "Avisado" : "Aviso a " + x.optInt("antes", 5) + " min";
-        int seg0 = Math.max(x.optInt("seg0", seg), Math.max(seg, 1));
+        // La barra cubre al menos los últimos 10 min: si pones el aviso con el autobús ya cerca, también se mueve
+        int seg0 = Math.max(Math.max(x.optInt("seg0", seg), 600), Math.max(seg, 1));
         int prog = Math.max(0, Math.min(100, Math.round(100f * (seg0 - seg) / seg0)));
         // TUSSAM corrige a saltos: la barra solo avanza (no da pasos atrás si el bus «retrocede» un poco)
         Integer antesProg = PROG.get(id);

@@ -30,7 +30,8 @@ public class AvisoService extends Service {
 
     private final Handler h = new Handler(Looper.getMainLooper());
     private PowerManager.WakeLock wl;
-    private int idActual = 0;          // id de la notificación que mantiene el servicio en primer plano
+    private int idActual = 0;
+    private String ultimaHuella = "";          // id de la notificación que mantiene el servicio en primer plano
     private long inicio = 0;
     private volatile boolean terminado = false;
     static volatile boolean activo = false;
@@ -140,6 +141,12 @@ public class AvisoService extends Service {
             n = oculta();
         }
         if (n == null) return;
+        // Solo se vuelve a publicar si cambia algo (minutos o barra): HyperOS deja de refrescar la isla si se
+        // le manda la misma notificación una y otra vez
+        String huella = id + "|" + n.extras.getCharSequence(Notification.EXTRA_TITLE) + "|" + n.extras.getCharSequence(Notification.EXTRA_TEXT)
+                + "|" + LlegadaReceiver.ultimoProg(x != null ? x.optInt("id") : -1);
+        if (huella.equals(ultimaHuella) && id == idActual) return;
+        ultimaHuella = huella;
         try {
             if (Build.VERSION.SDK_INT >= 34) startForeground(id, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC);
             else startForeground(id, n);
