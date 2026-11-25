@@ -274,6 +274,12 @@ public class LlegadaReceiver extends BroadcastReceiver {
                     quedan.put(x);
                     continue;
                 }
+                if (seg != null && x.optLong("llega", 0) > 0) {
+                    // TUSSAM tarda en actualizar: si su dato va hasta 45 s por detrás de la cuenta atrás que ya se
+                    // ve en la notificación, manda la cuenta atrás (si no, «2 min» en pantalla y sin avisar)
+                    long est = (x.optLong("llega") - ahora) / 1000L;
+                    if (est < seg && seg - est <= 45) seg = (int) Math.max(0, est);
+                }
                 if (seg != null) {
                     // Minutos como los enseña la app (2:59 → «2 min»). Se avisa en cuanto la app pondría tus
                     // minutos: aviso a 2 min = en cuanto le falten menos de 3:00, no cuando ya va por 1 y pico.
@@ -477,11 +483,20 @@ public class LlegadaReceiver extends BroadcastReceiver {
             Class<?> ps = Class.forName("android.app.Notification$ProgressStyle");
             Class<?> seg = Class.forName("android.app.Notification$ProgressStyle$Segment");
             Object st = ps.getConstructor().newInstance();
-            Object s = seg.getConstructor(int.class).newInstance(100);
-            seg.getMethod("setColor", int.class).invoke(s, 0xFFD41C2B);
-            ps.getMethod("addProgressSegment", seg).invoke(st, s);
-            ps.getMethod("setProgress", int.class).invoke(st, Math.max(0, Math.min(100, prog)));
-            ps.getMethod("setStyledByProgress", boolean.class).invoke(st, true);
+            int p = Math.max(0, Math.min(100, prog));
+            // Lo recorrido en rojo y lo que falta en gris (antes todo era rojo y no se distinguía)
+            if (p > 0) {
+                Object s = seg.getConstructor(int.class).newInstance(p);
+                seg.getMethod("setColor", int.class).invoke(s, 0xFFD41C2B);
+                ps.getMethod("addProgressSegment", seg).invoke(st, s);
+            }
+            if (p < 100) {
+                Object s = seg.getConstructor(int.class).newInstance(100 - p);
+                seg.getMethod("setColor", int.class).invoke(s, 0xFF5A5A5A);
+                ps.getMethod("addProgressSegment", seg).invoke(st, s);
+            }
+            ps.getMethod("setProgress", int.class).invoke(st, p);
+            ps.getMethod("setStyledByProgress", boolean.class).invoke(st, false);
             ps.getMethod("setProgressTrackerIcon", android.graphics.drawable.Icon.class)
                     .invoke(st, android.graphics.drawable.Icon.createWithResource(c, R.drawable.n_bus));
             ps.getMethod("setProgressEndIcon", android.graphics.drawable.Icon.class)
