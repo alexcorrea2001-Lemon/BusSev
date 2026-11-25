@@ -297,6 +297,7 @@ public class ViajePlugin extends Plugin {
             v.put("lon", call.getData().optDouble("lon"));
             v.put("fija", call.getString("fija", ""));
             v.put("lineas", call.getArray("lineas"));
+            if (call.getArray("otras") != null) v.put("otras", call.getArray("otras"));   // la parada de enfrente
             v.put("inicio", System.currentTimeMillis());
             Intent i = new Intent(c, ViajeAutoService.class).putExtra("auto", v.toString());
             if (Build.VERSION.SDK_INT >= 26) c.startForegroundService(i); else c.startService(i);

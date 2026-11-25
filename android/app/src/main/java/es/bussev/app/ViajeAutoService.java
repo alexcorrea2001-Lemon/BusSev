@@ -52,7 +52,7 @@ public class ViajeAutoService extends Service implements LocationListener {
     static final String CANAL_16 = "bussev_auto16";
     static final int ID_FIJA = 7601;
     static final long ESPERA_MAX = 25 * 60_000L, RUTA_MAX = 150 * 60_000L;
-    static final float LEJOS_M = 700f, EN_PARADA_M = 45f, SALIDA_M = 90f, CERCA_PARADA_M = 120f;
+    static final float LEJOS_M = 700f, EN_PARADA_M = 75f, SALIDA_M = 90f, CERCA_PARADA_M = 120f;
 
     static final class Cand {
         String linea, etq;
@@ -65,6 +65,9 @@ public class ViajeAutoService extends Service implements LocationListener {
     private LocationManager lm;
     private final Handler h = new Handler(Looper.getMainLooper());
     private String codigo = "", nombreParada = "", fija = "";
+    // Paradas de enfrente (p. ej. «Enfrente» y «Debajo»): no se sabe a cuál vas, así que se vigilan las dos
+    private final List<String> otras = new ArrayList<>();
+    static final float CERCA_M = 150f;   // «has estado en la parada», con el error normal del GPS
     private double[] parada = new double[]{0, 0};
     private final List<Cand> cands = new ArrayList<>();
     private final Map<String, Long> llegando = new HashMap<>();     // línea → último momento en que TUSSAM la dio a 0–1 min
@@ -152,6 +155,9 @@ public class ViajeAutoService extends Service implements LocationListener {
             codigo = v.optString("codigo"); nombreParada = v.optString("nombre"); fija = v.optString("fija", "");
             parada = new double[]{v.getDouble("lat"), v.getDouble("lon")};
             inicio = v.optLong("inicio", System.currentTimeMillis());
+            otras.clear();
+            JSONArray os = v.optJSONArray("otras");
+            if (os != null) for (int i = 0; i < os.length(); i++) { String o = os.optString(i); if (!o.isEmpty() && !o.equals(codigo)) otras.add(o); }
             cands.clear();
             JSONArray ls = v.getJSONArray("lineas");
             for (int i = 0; i < ls.length(); i++) {
@@ -233,7 +239,13 @@ public class ViajeAutoService extends Service implements LocationListener {
                     long ahora = System.currentTimeMillis();
                     Map<String, List<Integer>> porLinea = new HashMap<>();
                     Map<String, String> etiqueta = new HashMap<>();
-                    for (TussamTiempos.Llegada x : TussamTiempos.tiempos(codigo, TussamTiempos.token(false))) {
+                    String tk = TussamTiempos.token(false);
+                    // Las de enfrente solo para saber qué autobús estaba llegando (la notificación enseña la tuya)
+                    for (String o : otras) {
+                        try { for (TussamTiempos.Llegada x : TussamTiempos.tiempos(o, tk)) if (x.minutos <= 1) llegando.put(norm(x.linea), ahora); }
+                        catch (Exception ignored) { }
+                    }
+                    for (TussamTiempos.Llegada x : TussamTiempos.tiempos(codigo, tk)) {
                         Cand c = cand(x.linea);
                         if (c == null) continue;
                         String k = norm(c.linea);
@@ -273,9 +285,9 @@ public class ViajeAutoService extends Service implements LocationListener {
             }
             if (!enRuta && fija.isEmpty() && distInicial >= 0) {
                 // Solo mirabas (desde casa, por ejemplo): en 4 minutos no te has acercado a la parada
-                if (ahora - inicio > 4 * 60_000L && distMin > 60 && distParada > distInicial - 40) { parar(); return false; }
+                if (ahora - inicio > 4 * 60_000L && distMin > CERCA_M && distParada > distInicial - 40) { parar(); return false; }
                 // Estuviste en la parada y te has ido andando sin subirte
-                if (distMin <= 60 && distParada > 200) {
+                if (distMin <= CERCA_M && distParada > 250) {
                     if (velocidadReciente(ahora) >= 3.5) noContado(null, "estuviste en la parada, pero el GPS no te vio irte por el recorrido de ninguna de sus líneas");
                     parar(); return false;
                 }
@@ -335,7 +347,7 @@ public class ViajeAutoService extends Service implements LocationListener {
             // ¿Ha salido el autobús contigo? Lejos de la parada, a velocidad de bus y por el recorrido de alguna línea.
             // (Con «Me he subido» puede que ya vayas dentro al pulsar: no hace falta haberte visto en la parada.)
             double vel = l.hasSpeed() ? Math.max(l.getSpeed(), velocidadReciente(ahora)) : velocidadReciente(ahora);
-            if (distParada >= SALIDA_M && vel >= 3.5 && (ultimoEnParada > 0 || !fija.isEmpty())) {
+            if (distParada >= SALIDA_M && vel >= 3.5 && (ultimoEnParada > 0 || distMin <= CERCA_M || !fija.isEmpty())) {
                 for (Cand c : cands) {
                     if (distAlRecorrido(c, la, lo) <= 120) {
                         enRuta = true;
@@ -350,7 +362,8 @@ public class ViajeAutoService extends Service implements LocationListener {
             if (!enRuta) {
                 // Te alejas sin subirte (o nunca estuviste cerca): se acaba en silencio
                 if (distParada > LEJOS_M && ahora - inicio > 60_000L) {
-                    if (!fija.isEmpty() || (distMin <= 60 && vel >= 3.5)) {
+                    // Si estuviste en la parada, queda apuntado en «Tus últimos viajes» con el motivo
+                    if (!fija.isEmpty() || distMin <= CERCA_M) {
                         Cand f = !fija.isEmpty() ? cand(fija) : null;
                         String ruta = f != null ? ", a " + Math.round(distAlRecorrido(f, la, lo)) + " m del recorrido" : "";
                         noContado(f, "te alejaste " + Math.round(distParada) + " m de la parada sin que el GPS te viera ir en el autobús ("

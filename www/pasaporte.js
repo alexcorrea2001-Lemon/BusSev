@@ -516,9 +516,13 @@ const auto = {
         codigo = mejor;
       }
       const p = pos.get(codigo);
-      const lineas = this.candidatas(codigo, fija);
-      if (!p || !lineas.length) return false;
-      await native('BusSevViaje', 'empezarViajeAuto', { codigo, nombre: p.nombre, lat: p.latitud, lon: p.longitud, fija: fija ? sinCeros(fija) : '', lineas });
+      if (!p) return false;
+      // Paradas de la lista a menos de 150 m de esa (la de enfrente): el GPS no distingue a qué acera vas,
+      // así que se siguen las líneas de las dos y cuenta la que de verdad cojas
+      const otras = fija ? [] : codigos.map(String).filter((c) => c !== codigo && pos.get(c) && metros(p.latitud, p.longitud, pos.get(c).latitud, pos.get(c).longitud) <= 150);
+      const lineas = [...this.candidatas(codigo, fija), ...otras.flatMap((c) => this.candidatas(c, ''))];
+      if (!lineas.length) return false;
+      await native('BusSevViaje', 'empezarViajeAuto', { codigo, nombre: p.nombre, lat: p.latitud, lon: p.longitud, fija: fija ? sinCeros(fija) : '', lineas, otras });
       return true;
     } catch { return false; }
   },
