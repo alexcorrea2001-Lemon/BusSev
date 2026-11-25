@@ -512,6 +512,18 @@ const auto = {
       return true;
     } catch { return false; }
   },
+  /* Lo que necesita Android para seguir el viaje desde un aviso de llegada sin abrir la app
+     (solo si lo has activado en Ajustes → Pasaporte). Todas las líneas de la parada: vale el bus que cojas. */
+  datosAviso(codigo) {
+    try {
+      if (!this.activo() || settings.contarConAviso !== true) return undefined;
+      const { pos } = indiceRecorridos();
+      const p = pos.get(String(codigo));
+      const lineas = this.candidatas(String(codigo), '');
+      if (!p || !lineas.length) return undefined;
+      return { codigo: String(codigo), nombre: p.nombre, lat: p.latitud, lon: p.longitud, lineas };
+    } catch { return undefined; }
+  },
   /* «Me he subido» desde el aviso de llegada o el modo sensor */
   async subido(codigo, linea) {
     let ok = await this.quizas([codigo], { fija: linea, forzar: true });

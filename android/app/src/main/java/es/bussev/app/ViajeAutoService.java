@@ -81,6 +81,35 @@ public class ViajeAutoService extends Service implements LocationListener {
     /* ---------- Notificación única con los avisos de llegada ----------
        Mientras esperas en la parada, si tienes un aviso de llegada en ella, esta notificación lo enseña
        (y la cuenta atrás del aviso se quita): una sola notificación en vez de dos. */
+    /* Ya vas en el autobús: la alerta del aviso de esta parada (si sonó) ya no hace falta */
+    private void quitarAlertaAviso() {
+        try {
+            JSONObject a = LlegadaReceiver.avisadoEn(this, codigo);
+            NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+            if (a != null && nm != null) nm.cancel(a.optInt("id"));
+        } catch (Exception ignored) { }
+    }
+
+    /* Ubicación «todo el tiempo» (Android 10+): hace falta para seguir el viaje sin abrir la app */
+    static boolean permisoSiempre(Context c) {
+        if (!permiso(c)) return false;
+        return Build.VERSION.SDK_INT < 29 || c.checkSelfPermission(Manifest.permission.ACCESS_BACKGROUND_LOCATION) == PackageManager.PERMISSION_GRANTED;
+    }
+
+    /* Empieza a seguir el viaje desde un aviso de llegada (sin abrir la app). Devuelve si lo ha intentado. */
+    static boolean empezarDesdeAviso(Context c, JSONObject viaje) {
+        try {
+            if (viaje == null || !permisoSiempre(c) || estado(c) != null || BajadaService.activo(c)) return false;
+            JSONObject v = new JSONObject(viaje.toString());
+            v.put("fija", "");
+            v.put("inicio", System.currentTimeMillis());
+            v.put("desdeAviso", true);
+            Intent i = new Intent(c, ViajeAutoService.class).putExtra("auto", v.toString());
+            if (Build.VERSION.SDK_INT >= 26) c.startForegroundService(i); else c.startService(i);
+            return true;
+        } catch (Exception e) { return false; }   // Android no ha dejado empezarlo ahora: se reintenta más tarde
+    }
+
     static boolean absorbe(Context c, String codigo) {
         if (codigo == null || codigo.isEmpty()) return false;
         android.content.SharedPreferences sp = c.getSharedPreferences(LlegadaReceiver.PREFS, Context.MODE_PRIVATE);
@@ -310,6 +339,7 @@ public class ViajeAutoService extends Service implements LocationListener {
                     if (distAlRecorrido(c, la, lo) <= 120) {
                         enRuta = true;
                         soltarAvisos();
+                        quitarAlertaAviso();
                         salida = ultimoEnParada > 0 ? Math.min(ultimoEnParada, ahora - 15_000L) : ahora - 60_000L;
                         previa = null;
                         break;
@@ -584,36 +614,10 @@ public class ViajeAutoService extends Service implements LocationListener {
                 .addAction(0, "Quitar aviso", LlegadaReceiver.piQuitar(this, id))
                 .addAction(0, "Parar", piParar());
         if (Build.VERSION.SDK_INT >= 21) b.setColor(0xFFD41C2B);
-        if (Build.VERSION.SDK_INT >= 24) {
-            long base = SystemClock.elapsedRealtime() + Math.max(0, llega - ahora);
-            RemoteViews corta = new RemoteViews(getPackageName(), R.layout.bussev_notif_aviso_corta);
-            RemoteViews larga = new RemoteViews(getPackageName(), R.layout.bussev_notif_aviso);
-            for (RemoteViews v : new RemoteViews[]{corta, larga}) {
-                v.setTextViewText(R.id.n_titulo, titulo);
-                if (falta >= 1) {
-                    v.setViewVisibility(R.id.n_crono, View.VISIBLE);
-                    v.setChronometer(R.id.n_crono, base, null, true);
-                    v.setChronometerCountDown(R.id.n_crono, true);
-                } else v.setViewVisibility(R.id.n_crono, View.GONE);
-            }
-            corta.setTextViewText(R.id.n_resumen, resumen);
-            larga.setTextViewText(R.id.n_parada, nombreParada);
-            pastilla(larga, avisado ? R.id.n_p1_ambar : R.id.n_p1_verde, p1, new int[]{R.id.n_p1_verde, R.id.n_p1_ambar});
-            int[] p2ids = {R.id.n_p2_verde, R.id.n_p2_ambar, R.id.n_p2_rojo};
-            pastilla(larga, p2 == null ? 0 : p2ids[(Integer) p2[1]], p2 == null ? "" : (String) p2[0], p2ids);
-            larga.setProgressBar(R.id.n_barra, 100, prog, false);
-            b.setStyle(new Notification.DecoratedCustomViewStyle());
-            b.setCustomContentView(corta);
-            b.setCustomBigContentView(larga);
-        } else {
-            b.setProgress(100, prog, false);
-        }
+        LlegadaReceiver.disenoAviso(this, b, titulo, nombreParada, p1, avisado, p2 == null ? null : (String) p2[0],
+                p2 == null ? 0 : (Integer) p2[1], prog, llega, falta);
         SensorService.promocionar(b, corto);
         try { nm.notify(ID_FIJA, b.build()); } catch (SecurityException ignored) { }
-    }
-    private static void pastilla(RemoteViews v, int visible, String texto, int[] todas) {
-        for (int i : todas) v.setViewVisibility(i, i == visible ? View.VISIBLE : View.GONE);
-        if (visible != 0) v.setTextViewText(visible, texto);
     }
 
     private String ultimaNotif = "";

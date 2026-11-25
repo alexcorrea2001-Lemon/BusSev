@@ -9,7 +9,16 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.media.AudioAttributes;
+import android.media.AudioManager;
 import android.os.Build;
+import android.os.SystemClock;
+import android.os.VibrationAttributes;
+import android.os.VibrationEffect;
+import android.os.Vibrator;
+import android.os.VibratorManager;
+import android.view.View;
+import android.widget.RemoteViews;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -182,6 +191,7 @@ public class LlegadaReceiver extends BroadcastReceiver {
                 x.put("linea", r.optString("linea")); x.put("destino", r.optString("destino"));
                 x.put("antes", r.optInt("antes", 5)); x.put("sonido", r.optString("sonido", "sistema"));
                 x.put("at", ahora); x.put("revisar", ahora); x.put("rep", true); x.put("creado", ahora);
+                if (r.has("viaje")) x.put("viaje", r.optJSONObject("viaje"));
                 poner(c, x);
                 r.put("hecho", clave);
                 cambio = true;
@@ -303,6 +313,13 @@ public class LlegadaReceiver extends BroadcastReceiver {
         long llega = System.currentTimeMillis() + (long) min * MIN;
         // Para la notificación única del Pasaporte: a qué hora llega y desde cuántos minutos se empezó a contar (la barra)
         try { x.put("llega", llega); if (x.optInt("min0", -1) < min) x.put("min0", min); } catch (Exception ignored) { }
+        // Pasaporte sin abrir la app: cuando se empieza a contar, BusSev sigue el viaje solo en esa parada
+        // (si diste la ubicación «todo el tiempo»). Si estás lejos, se para en un minuto y se reintenta luego.
+        long probado = x.optLong("autoProbado", 0), ahoraMs = System.currentTimeMillis();
+        if (x.has("viaje") && ahoraMs - probado > 4 * MIN && x.optInt("autoVeces", 0) < 4
+                && ViajeAutoService.empezarDesdeAviso(c, x.optJSONObject("viaje"))) {
+            try { x.put("autoProbado", ahoraMs); x.put("autoVeces", x.optInt("autoVeces", 0) + 1); } catch (Exception ignored) { }
+        }
         if (ViajeAutoService.absorbe(c, x.optString("codigo"))) { quitarCuenta(c, x.optInt("id")); return; }
         mostrarCuenta(c, x, min, llega);
     }
@@ -317,24 +334,87 @@ public class LlegadaReceiver extends BroadcastReceiver {
             nm.createNotificationChannel(ch);
         }
         int id = x.optInt("id");
+        String linea = x.optString("linea");
+        String titulo = "Línea " + linea + (min <= 1 ? " · está llegando" : " · " + min + " min");
+        String p1 = "Aviso a " + x.optInt("antes", 5) + " min";
+        int min0 = Math.max(x.optInt("min0", min), Math.max(min, 1));
+        int prog = Math.max(0, Math.min(100, Math.round(100f * (min0 - min) / min0)));
         Notification.Builder b = Build.VERSION.SDK_INT >= 26 ? new Notification.Builder(c, CANAL_CUENTA) : new Notification.Builder(c);
         b.setSmallIcon(icono(c))
-                .setContentTitle("Línea " + x.optString("linea") + " · llega en " + min + " min")
-                .setContentText(x.optString("parada") + " · te aviso cuando falten " + x.optInt("antes", 5) + " min")
+                .setContentTitle(titulo)
+                .setContentText(x.optString("parada") + " · " + p1)
                 .setOngoing(true).setOnlyAlertOnce(true)
                 .setCategory(Notification.CATEGORY_PROGRESS)
-                .setWhen(llega).setShowWhen(true)
-                .setContentIntent(abrirParada(c, x.optString("codigo"), idCuenta(id)));
-        if (Build.VERSION.SDK_INT >= 24) { b.setUsesChronometer(true); b.setChronometerCountDown(true); }
+                .setContentIntent(abrirParada(c, x.optString("codigo"), idCuenta(id)))
+                .addAction(0, "Quitar aviso", piQuitar(c, id))
+                .addAction(0, "Me he subido", piSubido(c, x.optString("codigo"), linea, idCuenta(id), id));
         if (Build.VERSION.SDK_INT >= 21) b.setColor(0xFFD41C2B);
-        SensorService.promocionar(b, min + " min");
+        disenoAviso(c, b, titulo, x.optString("parada"), p1, false, null, 0, prog, llega, min);
+        SensorService.promocionar(b, min <= 1 ? "Llega" : min + " min");
         try { nm.notify(idCuenta(id), b.build()); } catch (SecurityException ignored) { }
     }
 
+    /* Diseño del aviso (el mismo con o sin Pasaporte): línea y minutos con cuenta atrás, parada, etiquetas
+       («Aviso a 2 min» / «Avisado» y «Estás en la parada»…) y la barra del autobús acercándose.
+       p2Color: 0 verde, 1 ámbar, 2 rojo. */
+    static void disenoAviso(Context c, Notification.Builder b, String titulo, String parada, String p1, boolean p1Ambar,
+                            String p2, int p2Color, int prog, long llega, int falta) {
+        if (Build.VERSION.SDK_INT < 24) { b.setProgress(100, prog, false); return; }
+        long ahora = System.currentTimeMillis();
+        long base = SystemClock.elapsedRealtime() + Math.max(0, llega - ahora);
+        RemoteViews corta = new RemoteViews(c.getPackageName(), R.layout.bussev_notif_aviso_corta);
+        RemoteViews larga = new RemoteViews(c.getPackageName(), R.layout.bussev_notif_aviso);
+        for (RemoteViews v : new RemoteViews[]{corta, larga}) {
+            v.setTextViewText(R.id.n_titulo, titulo);
+            if (falta >= 1) {
+                v.setViewVisibility(R.id.n_crono, View.VISIBLE);
+                v.setChronometer(R.id.n_crono, base, null, true);
+                v.setChronometerCountDown(R.id.n_crono, true);
+            } else v.setViewVisibility(R.id.n_crono, View.GONE);
+        }
+        corta.setTextViewText(R.id.n_resumen, p1 + (p2 != null ? " · " + p2 : ""));
+        larga.setTextViewText(R.id.n_parada, parada);
+        pastilla(larga, p1Ambar ? R.id.n_p1_ambar : R.id.n_p1_verde, p1, new int[]{R.id.n_p1_verde, R.id.n_p1_ambar});
+        int[] p2ids = {R.id.n_p2_verde, R.id.n_p2_ambar, R.id.n_p2_rojo};
+        pastilla(larga, p2 == null ? 0 : p2ids[Math.max(0, Math.min(2, p2Color))], p2 == null ? "" : p2, p2ids);
+        larga.setProgressBar(R.id.n_barra, 100, prog, false);
+        b.setStyle(new Notification.DecoratedCustomViewStyle());
+        b.setCustomContentView(corta);
+        b.setCustomBigContentView(larga);
+    }
+    private static void pastilla(RemoteViews v, int visible, String texto, int[] todas) {
+        for (int i : todas) v.setViewVisibility(i, i == visible ? View.VISIBLE : View.GONE);
+        if (visible != 0) v.setTextViewText(visible, texto);
+    }
+
+    /* Con el móvil en silencio o en vibración, Android no vibra con las notificaciones normales:
+       el aviso de llegada vibra igualmente (como una alarma). */
+    static void vibrarFuerte(Context c) {
+        try {
+            AudioManager am = (AudioManager) c.getSystemService(Context.AUDIO_SERVICE);
+            if (am != null && am.getRingerMode() == AudioManager.RINGER_MODE_NORMAL) return;   // ya vibra el canal
+            long[] patron = {0, 500, 250, 500, 250, 900};
+            if (Build.VERSION.SDK_INT >= 33) {
+                VibratorManager vm = (VibratorManager) c.getSystemService(Context.VIBRATOR_MANAGER_SERVICE);
+                Vibrator v = vm != null ? vm.getDefaultVibrator() : null;
+                if (v != null) v.vibrate(VibrationEffect.createWaveform(patron, -1), VibrationAttributes.createForUsage(VibrationAttributes.USAGE_ALARM));
+            } else if (Build.VERSION.SDK_INT >= 26) {
+                Vibrator v = (Vibrator) c.getSystemService(Context.VIBRATOR_SERVICE);
+                if (v != null) v.vibrate(VibrationEffect.createWaveform(patron, -1),
+                        new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM).setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build());
+            } else {
+                Vibrator v = (Vibrator) c.getSystemService(Context.VIBRATOR_SERVICE);
+                if (v != null) v.vibrate(patron, -1);
+            }
+        } catch (Exception ignored) { }
+    }
+
     /* «Me he subido»: abre BusSev en la parada y empieza a contar el viaje en esa línea */
-    static PendingIntent piSubido(Context c, String codigo, String linea, int notif) {
+    static PendingIntent piSubido(Context c, String codigo, String linea, int notif) { return piSubido(c, codigo, linea, notif, 0); }
+    /* aviso ≠ 0: además se quita ese aviso (ya vas en el autobús, no tiene que sonar) */
+    static PendingIntent piSubido(Context c, String codigo, String linea, int notif, int aviso) {
         Intent open = new Intent(c, MainActivity.class).putExtra("bussev_parada", codigo).putExtra("bussev_subido", linea)
-                .putExtra("bussev_cancelar", notif)
+                .putExtra("bussev_cancelar", notif).putExtra("bussev_aviso", aviso)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
         int f = PendingIntent.FLAG_UPDATE_CURRENT;
         if (Build.VERSION.SDK_INT >= 23) f |= PendingIntent.FLAG_IMMUTABLE;
@@ -365,6 +445,8 @@ public class LlegadaReceiver extends BroadcastReceiver {
         if (Build.VERSION.SDK_INT < 26) { b.setPriority(Notification.PRIORITY_HIGH); b.setDefaults(Notification.DEFAULT_ALL); }
         if (Build.VERSION.SDK_INT >= 21) b.setColor(0xFFD41C2B);
         b.addAction(0, "Me he subido", piSubido(c, x.optString("codigo"), x.optString("linea"), id));
+        // Se quita sola cuando el autobús ya ha pasado (no se queda puesta todo el viaje)
+        if (Build.VERSION.SDK_INT >= 26) b.setTimeoutAfter((long) Math.max(0, min) * MIN + 4 * MIN);
         // Para el Pasaporte: Android apunta a qué hora llega ese bus a esa parada (lo usa «Me he subido»)
         ViajeAutoService.apuntarPrevisto(c, x.optString("codigo"), x.optString("linea"), System.currentTimeMillis() + (long) Math.max(0, min) * MIN);
         // La notificación única del Pasaporte (si estás en la parada) pasa a «Avisado» hasta que llega
@@ -376,6 +458,7 @@ public class LlegadaReceiver extends BroadcastReceiver {
             c.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString("avisado", av.toString()).apply();
         } catch (Exception ignored) { }
         try { nm.notify(id, b.build()); } catch (SecurityException ignored) { /* sin permiso de notificaciones */ }
+        vibrarFuerte(c);
     }
 
     /* ---------- Notificación única con el Pasaporte ---------- */

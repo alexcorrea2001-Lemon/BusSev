@@ -94,6 +94,10 @@ public class MainActivity extends BridgeActivity {
             android.app.NotificationManager nm = (android.app.NotificationManager) getSystemService(NOTIFICATION_SERVICE);
             if (nm != null) nm.cancel(cancelar);
         }
+        // «Me he subido» desde la cuenta atrás del aviso: ese aviso ya no tiene que sonar
+        int aviso = intent.getIntExtra("bussev_aviso", 0);
+        if (aviso != 0) { try { LlegadaReceiver.quitarDesdeNotificacion(this, aviso); } catch (Exception ignored) { } }
+        intent.removeExtra("bussev_aviso");
         intent.removeExtra("bussev_subido");
     }
 

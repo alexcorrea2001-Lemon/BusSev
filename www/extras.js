@@ -83,7 +83,7 @@ const avisos = {
     let vigilado = false;
     if (plugin('BusSevViaje')) {
       try {
-        await native('BusSevViaje', 'vigilarLlegada', { id, codigo: a.codigo, parada: a.parada, linea: a.linea, destino: a.destino, antes: a.antes, at, sonido: settings.sonidoAviso || 'sistema' });
+        await native('BusSevViaje', 'vigilarLlegada', { id, codigo: a.codigo, parada: a.parada, linea: a.linea, destino: a.destino, antes: a.antes, at, sonido: settings.sonidoAviso || 'sistema', viaje: window.pasaporte?.auto?.datosAviso?.(a.codigo) });
         window.anio?.apuntar?.('aviso', { codigo: a.codigo, linea: a.linea });
         vigilado = true;
       } catch { /* se usa la notificación de siempre */ }
@@ -147,7 +147,7 @@ const repetidos = {
     if (!plugin('BusSevViaje')) throw new Error('Los avisos que se repiten solo funcionan en la app instalada.');
     await avisos.permiso();
     const nuevo = { ...r, id: r.id || (Math.floor(Math.random() * 900_000_000) + 100_000_000), codigo: String(r.codigo), linea: String(r.linea), sonido: settings.sonidoAviso || 'sistema' };
-    await native('BusSevViaje', 'repetirLlegada', nuevo);
+    await native('BusSevViaje', 'repetirLlegada', { ...nuevo, viaje: window.pasaporte?.auto?.datosAviso?.(nuevo.codigo) });
     store.set('avisosRep', [...this.list().filter((x) => x.id !== nuevo.id), nuevo]);
     return nuevo;
   },

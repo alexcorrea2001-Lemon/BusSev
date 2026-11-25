@@ -48,6 +48,8 @@ public class ViajePlugin extends Plugin {
             long at = call.getData().optLong("at", System.currentTimeMillis());
             x.put("at", at);
             x.put("revisar", Math.min(at, System.currentTimeMillis() + 60_000L));
+            JSObject viaje = call.getObject("viaje");   // para seguir el viaje del Pasaporte sin abrir la app
+            if (viaje != null) x.put("viaje", viaje);
             LlegadaReceiver.poner(getContext(), x);
             call.resolve();
         } catch (Exception e) { call.reject(e.getMessage()); }
@@ -63,6 +65,8 @@ public class ViajePlugin extends Plugin {
             r.put("linea", call.getString("linea", "")); r.put("destino", call.getString("destino", ""));
             r.put("antes", call.getData().optInt("antes", 5)); r.put("hora", call.getData().optInt("hora", 480));
             r.put("dias", call.getArray("dias")); r.put("sonido", call.getString("sonido", "sistema"));
+            JSObject viaje = call.getObject("viaje");
+            if (viaje != null) r.put("viaje", viaje);
             LlegadaReceiver.ponerRegla(getContext(), r);
             call.resolve();
         } catch (Exception e) { call.reject(e.getMessage()); }
@@ -252,6 +256,25 @@ public class ViajePlugin extends Plugin {
         r.put("lon", l.getLongitude());
         r.put("precision", l.hasAccuracy() ? l.getAccuracy() : -1);
         return r;
+    }
+
+    /* Ubicación «todo el tiempo»: para que el Pasaporte siga el viaje del aviso sin abrir la app */
+    @PluginMethod
+    public void permisoSiempre(PluginCall call) {
+        JSObject r = new JSObject();
+        r.put("siempre", ViajeAutoService.permisoSiempre(getContext()));
+        r.put("ubicacion", ViajeAutoService.permiso(getContext()));
+        call.resolve(r);
+    }
+    @PluginMethod
+    public void pedirPermisoSiempre(PluginCall call) {
+        try {
+            if (Build.VERSION.SDK_INT >= 29 && getActivity() != null) {
+                // Android 11+ abre la pantalla de permisos de BusSev con la opción «Permitir todo el tiempo»
+                getActivity().requestPermissions(new String[]{android.Manifest.permission.ACCESS_BACKGROUND_LOCATION}, 7301);
+            }
+            call.resolve();
+        } catch (Exception e) { call.reject("No se ha podido pedir el permiso."); }
     }
 
     @PluginMethod

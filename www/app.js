@@ -529,6 +529,8 @@ setTimeout(ajustarPestanas, 300);
 let firmaFiesta = '';
 setInterval(() => { if (document.visibilityState === 'visible') revisarFiesta(); }, 60_000);
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') revisarFiesta(); });
+// Al volver de los permisos del móvil, Ajustes se repinta (por si has dado la ubicación «todo el tiempo»)
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && active?.name === 'ajustes') setTimeout(() => active?.rerender?.(), 400); });
 /* ================================================================== */
 /* El cielo de Sevilla en la barra de arriba (opción en Ajustes)       */
 /* Amanecer, día, atardecer y noche según la posición real del sol en  */
@@ -3312,7 +3314,7 @@ views.ajustes = (el) => {
         ${tem !== 'normal' ? '<p>Mientras haya una temática puesta, la app usa sus colores. Con la temática Normal vuelve tu color.</p>' : '<p>Los pasteles llevan el texto oscuro encima para que se lea bien.</p>'}</div>
       ${(window.repetidos?.list() || []).length ? `<div class="set-group"><h3>Avisos que se repiten</h3>${window.repetidos.list().map((r) => `<div class="row-flat rep-fila">${badge(r.linea, lineaFor(r.linea)?.color, { sm: true })}<div><b>${esc(r.parada)}</b><p class="help">${esc(window.repetidos.texto(r))}</p></div><button class="btn ghost sm" type="button" data-rep-quitar="${r.id}">Quitar</button></div>`).join('')}</div>` : ''}
       <div class="set-group"><h3>Favoritas</h3>${sw('consejos', settings.consejos !== false, 'Consejos', 'De vez en cuando (como mucho uno al día) una tarjetita en Favoritas con algo que la app hace y quizá no sabes.')}${sw('favsCerca', settings.favsCerca === true, 'La más cercana, arriba', 'Tus favoritas se ordenan solas según dónde estés: en casa sale primero «Casa» y en el trabajo, «Trabajo». Si una está en un grupo, sube el grupo entero. Usa la última ubicación del móvil, sin preguntar; si no la hay, se queda tu orden.')}</div>
-      <div class="set-group"><h3>Pasaporte de Sevilla</h3>${sw('contarViajes', settings.contarViajes !== false, 'Contar mis viajes', 'Al abrir una parada estando en ella (o yendo hacia ella), BusSev sigue tu viaje unos minutos con la ubicación: la notificación te enseña cuánto le falta a tu bus y si llegas andando, y si te subes, el viaje cuenta para el Pasaporte. Solo usa el permiso de ubicación «mientras usas la app» y todo se queda en tu móvil.')}</div>
+      <div class="set-group"><h3>Pasaporte de Sevilla</h3>${sw('contarViajes', settings.contarViajes !== false, 'Contar mis viajes', 'Al abrir una parada estando en ella (o yendo hacia ella), BusSev sigue tu viaje unos minutos con la ubicación: la notificación te enseña cuánto le falta a tu bus y si llegas andando, y si te subes, el viaje cuenta para el Pasaporte. Solo usa el permiso de ubicación «mientras usas la app» y todo se queda en tu móvil.')}${settings.contarViajes !== false && plugin('BusSevViaje') ? `${sw('contarConAviso', settings.contarConAviso === true, 'Contar también con el aviso de llegada', 'Cuando falten pocos minutos para el autobús de tu aviso, BusSev empieza a seguir el viaje aunque no abras la app: si te subes, cuenta. Si estás lejos de la parada, se para solo en un minuto. Necesita la ubicación «Permitir todo el tiempo».')}<div id="perm-siempre"></div>` : ''}</div>
       <div class="set-group"><h3>Cielo de Sevilla</h3>${sw('cieloSevilla', settings.cieloSevilla === true, 'El cielo de Sevilla arriba', 'La barra de arriba se pinta con el cielo real de Sevilla: amanecer, día, atardecer o noche con la luna, y nubes o lluvia si las hay. Con una temática (Feria, Navidad…) manda la temática.')}</div>
       <div class="set-group"><h3>Color de fondo</h3>
         <div class="fondos">
@@ -3402,7 +3404,7 @@ views.ajustes = (el) => {
           <li>Tu propio servidor del saldo, solo si lo configuras.</li>
         </ul>
         <p>No tiene anuncios ni seguimiento, y no envía a nadie tu ubicación ni tus viajes. Tus favoritas, tarjetas, viajes y medallas se guardan solo en este móvil (y en la copia de seguridad si la haces).</p>
-        <p>Permisos: internet; ubicación (opcional, solo mientras usas la app); NFC (solo con la pestaña Tarjeta abierta); notificaciones (solo si activas algún aviso); alarmas exactas (para que los avisos suenen a su hora) e instalar apps (solo para actualizar BusSev).</p></div>
+        <p>Permisos: internet; ubicación (opcional, solo mientras usas la app; «todo el tiempo» solo si activas «Contar también con el aviso de llegada» en el Pasaporte, y solo en los minutos antes de tu aviso); NFC (solo con la pestaña Tarjeta abierta); notificaciones (solo si activas algún aviso); alarmas exactas (para que los avisos suenen a su hora) e instalar apps (solo para actualizar BusSev).</p></div>
       <div class="set-group"><h3>Datos de líneas y paradas</h3><p>Datos oficiales de TUSSAM ${dc ? `válidos hasta el ${dc.toLocaleDateString('es-ES')}` : ''}. ${window.BusSevBackend?.caducados?.() ? 'Ya han caducado: la app pide los recorridos a TUSSAM en directo.' : 'Cuando caduquen, la app pedirá los recorridos a TUSSAM en directo.'} Recorridos por calle: ${Object.keys(window.BUSSEV_RECORRIDOS || {}).length ? 'sí' : 'en línea recta'}. Mapas: © OpenStreetMap, OpenFreeMap, OpenMapTiles.</p>
         <p>BusSev es una app personal, sin relación con TUSSAM.</p></div>
     </div>`;
@@ -3419,11 +3421,23 @@ views.ajustes = (el) => {
       render();
     }; });
     el.querySelectorAll('[data-rep-quitar]').forEach((b) => { b.onclick = async () => { await window.repetidos.quitar(Number(b.dataset.repQuitar)); toast('Aviso quitado'); render(); }; });
+    // «Contar también con el aviso»: si falta la ubicación «todo el tiempo», se dice y se ofrece pedirla
+    const ps = $('#perm-siempre', el);
+    if (ps && settings.contarConAviso === true) native('BusSevViaje', 'permisoSiempre').then((r) => {
+      if (r?.siempre || !ps.isConnected) return;
+      ps.innerHTML = `<div class="alert" style="margin:8px 0 0">Falta la ubicación «Permitir todo el tiempo»: sin ella, el viaje solo cuenta si abres la parada o pulsas «Me he subido». <button type="button" class="btn" id="pedir-siempre" style="margin-top:8px">Permitir todo el tiempo</button></div>`;
+      $('#pedir-siempre', ps).onclick = () => native('BusSevViaje', 'pedirPermisoSiempre').catch(() => toast('Ábrelo en Ajustes del móvil → Aplicaciones → BusSev → Permisos → Ubicación.'));
+    }).catch(() => {});
     el.querySelectorAll('[data-sw]').forEach((b) => { b.onchange = () => {
       settings[b.dataset.sw] = b.checked;
       // Modo sencillo enciende «Reducir animaciones»; al quitarlo, se apaga.
       if (b.dataset.sw === 'modoSencillo') settings.menosAnimaciones = b.checked;
       if (b.dataset.sw === 'contarViajes' && !b.checked) window.pasaporte?.auto?.parar?.();
+      if (b.dataset.sw === 'contarConAviso') {
+        // Los avisos que se repiten se vuelven a mandar a Android (con o sin los datos del viaje)
+        for (const r of window.repetidos?.list?.() || []) window.repetidos.poner(r).catch(() => {});
+        if (b.checked) native('BusSevViaje', 'permisoSiempre').then((r) => { if (!r?.siempre) native('BusSevViaje', 'pedirPermisoSiempre').catch(() => {}); }).catch(() => {});
+      }
       saveSettings(); applyTheme(); render(); aplicarCapasMapa(mapState.bm);
     }; });
     el.querySelectorAll('[data-tem]').forEach((b) => { b.onclick = () => { pruebaDia = null; settings.tematicaAuto = false; settings.tematica = b.dataset.tem; saveSettings(); applyTheme(); render(); }; });

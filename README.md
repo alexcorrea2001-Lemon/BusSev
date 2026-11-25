@@ -328,6 +328,7 @@ e instálalo **encima**: no pierdes tus favoritas ni tus tarjetas. BusSev tambi�
 | Permiso | Para qué | ¿Obligatorio? |
 |---|---|---|
 | **Ubicación** (solo mientras usas la app) | Paradas cerca, Cómo llegar desde donde estás, «Avísame al bajar», ¿Llego o no llego?, favoritas por cercanía y que tus viajes cuenten en el Pasaporte | No: solo cuando usas esas funciones |
+| **Ubicación «todo el tiempo»** | Solo si activas «Contar también con el aviso de llegada» (Ajustes → Pasaporte): seguir el viaje en los minutos antes de tu aviso aunque no abras la app | No, y está apagado si no lo activas |
 | **NFC** | Leer tu tarjeta TUSSAM al acercarla | No: también puedes escribir el número |
 | **Notificaciones** | Avisos de llegada, de bajada, de saldo bajo, de TUSSAM y de sellos y medallas | No |
 | **Alarmas y recordatorios** | Que los avisos de llegada y los que se repiten suenen a su hora exacta | No, pero sin él pueden llegar con retraso |
