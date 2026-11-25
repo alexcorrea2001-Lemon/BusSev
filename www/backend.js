@@ -384,8 +384,11 @@
       if (!res.ok) {
         // Lo que dice TUSSAM al rechazarlo (suele explicar qué falta): se enseña bajo «TUSSAM no responde»
         let det = '';
-        try { const tx = await res.text(); try { const j = JSON.parse(tx); det = j?.mensaje || j?.message || j?.error || j?.detail || ''; } catch { det = tx; } } catch { /* sin cuerpo */ }
-        det = String(det || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 80);
+        try { det = await res.text(); } catch { /* sin cuerpo */ }
+        // Cuerpo completo (sin recortar a un campo) y cabeceras de respuesta que suelen explicar el rechazo
+        let cab = '';
+        try { res.headers.forEach((v, k) => { if (/^(www-authenticate|x-|error|message|mensaje)/i.test(k)) cab += ` ${k}=${v}`; }); } catch { /* sin cabeceras */ }
+        det = (String(det || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim() + (cab ? ` |${cab}` : '')).slice(0, 300);
         throw new HttpError(502, `TUSSAM respondió ${res.status}${det ? ` (${det})` : ''}`);
       }
       const txt = await res.text();
