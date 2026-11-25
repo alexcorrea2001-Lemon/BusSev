@@ -88,6 +88,13 @@ public class ViajePlugin extends Plugin {
         call.resolve(r);
     }
 
+    /* Lo que la app acaba de recibir de TUSSAM para un aviso: el aviso usa el mismo dato que se ve en pantalla */
+    @PluginMethod
+    public void datoLlegada(PluginCall call) {
+        LlegadaReceiver.datoApp(getContext(), call.getData().optInt("id", 0), call.getData().optInt("segundos", -1));
+        call.resolve();
+    }
+
     @PluginMethod
     public void quitarLlegada(PluginCall call) {
         int id = call.getData().optInt("id", 0);

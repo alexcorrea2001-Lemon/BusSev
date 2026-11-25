@@ -161,6 +161,7 @@
           linea: label,
           color: l.color || lineaByNum.get(label)?.color || '#000000',
           tiempo_minutos: Math.floor(seg / 60),
+          segundos: seg,   // para que el aviso de llegada use el mismo dato que se ve en pantalla
           destino: e.destino?.texto || '',
           distancia_metros: e.distancia ?? null,
           vehiculo: e.vehiculo ?? null,

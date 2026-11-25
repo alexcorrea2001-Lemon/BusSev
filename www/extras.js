@@ -109,6 +109,8 @@ const avisos = {
     for (const a of mios) {
       const t = (tiempos || []).filter((x) => x.linea === a.linea && x.destino === a.destino).sort((x, y) => x.tiempo_minutos - y.tiempo_minutos)[0];
       if (!t) continue;
+      // El aviso (en Android) usa este mismo dato: así marca los mismos minutos que la app y avisa a la vez
+      if (t.segundos != null && plugin('BusSevViaje')) native('BusSevViaje', 'datoLlegada', { id: a.id, segundos: t.segundos }).catch(() => null);
       const nuevo = Date.now() + (t.tiempo_minutos - a.antes) * 60_000;
       if (Math.abs(nuevo - a.at) > 45_000 && nuevo > Date.now()) this.programar({ ...a, minutos: t.tiempo_minutos }).catch(() => null);
     }

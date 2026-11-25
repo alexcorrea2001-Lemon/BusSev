@@ -75,6 +75,21 @@ public class LlegadaReceiver extends BroadcastReceiver {
         programar(c);
         try { AvisoService.siHaceFalta(c); } catch (Exception ignored) { }
     }
+    /** Dato de TUSSAM que acaba de enseñar la app para este aviso: se repasa ya con él (mismos minutos que la app). */
+    static synchronized void datoApp(Context c, int id, int seg) {
+        if (id == 0 || seg < 0) return;
+        JSONArray a = leer(c);
+        long ahora = System.currentTimeMillis();
+        boolean hay = false;
+        for (int i = 0; i < a.length(); i++) {
+            JSONObject x = a.optJSONObject(i);
+            if (x == null || x.optInt("id") != id) continue;
+            try { x.put("segApp", seg); x.put("cuandoApp", ahora); x.put("revisar", ahora); hay = true; } catch (Exception ignored) { }
+        }
+        if (!hay) return;
+        guardar(c, a);
+        if (AvisoService.activo) AvisoService.refrescar(c); else AvisoService.siHaceFalta(c);
+    }
     static synchronized void quitar(Context c, int id) {
         JSONArray a = leer(c), b = new JSONArray();
         for (int i = 0; i < a.length(); i++) { JSONObject x = a.optJSONObject(i); if (x != null && x.optInt("id") != id) b.put(x); }
@@ -269,6 +284,12 @@ public class LlegadaReceiver extends BroadcastReceiver {
                     if (!tokenProbado) { tokenProbado = true; token = TussamTiempos.token(cred); }
                     if (token != null) seg = segundos(TussamTiempos.tiempos(x.optString("codigo"), token), x.optString("linea"), x.optString("destino"));
                 } catch (Exception ignored) { /* sin red o TUSSAM no contesta */ }
+                // Si la app acaba de enseñar menos tiempo (otra respuesta de TUSSAM), manda lo de la app:
+                // así la notificación dice lo mismo que la pantalla y el aviso salta a la vez
+                if (ahora - x.optLong("cuandoApp", 0) < 40_000L) {
+                    int app = x.optInt("segApp", -1);
+                    if (app >= 0 && (seg == null || app < seg)) seg = app;
+                }
                 if (x.optBoolean("avisado", false)) {
                     // Ya avisado: la cuenta atrás (y la isla) siguen hasta que el autobús pasa
                     int ult = x.optInt("segUlt", -1);
@@ -454,7 +475,8 @@ public class LlegadaReceiver extends BroadcastReceiver {
         // subtexto y barra de progreso normal; sin cronómetro, sin estilo ni vista propia.
         if (Build.VERSION.SDK_INT >= 36) {
             b.setContentTitle(titulo);
-            b.setContentText(p1 + (p2 != null ? " · " + p2 : ""));   // HyperOS no respeta colores en el texto
+            // HyperOS no respeta colores en el texto: el color va en un punto delante (🟢 normal, 🟡 ámbar, 🔴 rojo)
+            b.setContentText(punto(p1, p1Ambar ? 1 : 0) + (p2 != null ? "   " + punto(p2, p2Color) : ""));
             b.setSubText(parada);
             b.setShowWhen(false);   // sin contador ni hora
             // El diseño nuevo en versión nativa (la vista propia no puede salir en la isla): barra roja con el
@@ -485,6 +507,10 @@ public class LlegadaReceiver extends BroadcastReceiver {
         b.setCustomBigContentView(larga);
     }
     /* Notification.ProgressStyle (Android 16). Se usa por reflexión porque la app compila con un SDK anterior. */
+    private static String punto(String etiqueta, int color) {
+        if (etiqueta == null || etiqueta.isEmpty() || !Character.isLetter(etiqueta.charAt(0))) return etiqueta == null ? "" : etiqueta;
+        return (color == 1 ? "🟡 " : color == 2 ? "🔴 " : "🟢 ") + etiqueta;
+    }
     static boolean estiloProgreso(Context c, Notification.Builder b, int prog) {
         try {
             Class<?> ps = Class.forName("android.app.Notification$ProgressStyle");
