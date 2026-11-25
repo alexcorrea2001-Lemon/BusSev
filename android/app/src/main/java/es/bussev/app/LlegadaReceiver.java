@@ -40,6 +40,7 @@ public class LlegadaReceiver extends BroadcastReceiver {
     static final String ACCION_REP = "es.bussev.app.LLEGADA_REPETIR";
     static final String CANAL = "bussev_llegada";
     static final String CANAL_CUENTA = "bussev_cuenta";
+    static final String CANAL_CUENTA_16 = "bussev_cuenta16";
     static final String ACCION_QUITAR = "es.bussev.app.LLEGADA_QUITAR";
     private static final long MIN = 60_000L;
 
@@ -326,8 +327,10 @@ public class LlegadaReceiver extends BroadcastReceiver {
     static void mostrarCuenta(Context c, JSONObject x, int min, long llega) {
         NotificationManager nm = (NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE);
         if (nm == null) return;
-        if (Build.VERSION.SDK_INT >= 26 && nm.getNotificationChannel(CANAL_CUENTA) == null) {
-            NotificationChannel ch = new NotificationChannel(CANAL_CUENTA, "Cuenta atrás de tus avisos", NotificationManager.IMPORTANCE_LOW);
+        // Android 16: canal de importancia normal y en silencio, como el del modo sensor (el de importancia baja no sale en la isla)
+        final String canalCuenta = Build.VERSION.SDK_INT >= 36 ? CANAL_CUENTA_16 : CANAL_CUENTA;
+        if (Build.VERSION.SDK_INT >= 26 && nm.getNotificationChannel(canalCuenta) == null) {
+            NotificationChannel ch = new NotificationChannel(canalCuenta, "Cuenta atrás de tus avisos", Build.VERSION.SDK_INT >= 36 ? NotificationManager.IMPORTANCE_DEFAULT : NotificationManager.IMPORTANCE_LOW);
             ch.setDescription("Los minutos que le faltan al autobús de tu aviso de llegada, en la barra de arriba.");
             ch.setSound(null, null);
             ch.enableVibration(false);
@@ -340,14 +343,14 @@ public class LlegadaReceiver extends BroadcastReceiver {
         String p1 = "Aviso a " + x.optInt("antes", 5) + " min";
         int min0 = Math.max(x.optInt("min0", min), Math.max(min, 1));
         int prog = Math.max(0, Math.min(100, Math.round(100f * (min0 - min) / min0)));
-        Notification.Builder b = Build.VERSION.SDK_INT >= 26 ? new Notification.Builder(c, CANAL_CUENTA) : new Notification.Builder(c);
+        Notification.Builder b = Build.VERSION.SDK_INT >= 26 ? new Notification.Builder(c, canalCuenta) : new Notification.Builder(c);
         b.setSmallIcon(icono(c))
                 .setContentTitle(titulo)
                 .setContentText(x.optString("parada") + " · " + p1)
                 .setOngoing(true).setOnlyAlertOnce(true)
                 .setCategory(Notification.CATEGORY_PROGRESS)
                 .setContentIntent(abrirParada(c, x.optString("codigo"), idCuenta(id)));
-        if (Build.VERSION.SDK_INT < 36) b.addAction(0, "Quitar aviso", piQuitar(c, id));   // en Android 16, como antes: sin botones
+        b.addAction(0, "Quitar aviso", piQuitar(c, id));   // el modo sensor también lleva botón y sale en la isla
         if (Build.VERSION.SDK_INT >= 21) b.setColor(0xFFD41C2B);
         disenoAviso(c, b, titulo, x.optString("parada"), p1, false, null, 0, prog, llega, min);
         SensorService.promocionar(b, min <= 1 ? "Llega" : min + " min");
@@ -364,13 +367,13 @@ public class LlegadaReceiver extends BroadcastReceiver {
         // parada al final). Así puede salir en la isla dinámica / chip de arriba, cosa que una vista propia no deja.
         // Android 16 (HyperOS 3): exactamente como la cuenta atrás de antes (sin estilo ni barra), que es la que
         // sale en la isla dinámica de Xiaomi; con la barra de progreso nueva tampoco salía.
+        // Aquí se copia lo que hace el modo sensor (que sí sale en la isla): título y texto normales, la parada como
+        // subtexto y barra de progreso normal; sin cronómetro, sin estilo ni vista propia.
         if (Build.VERSION.SDK_INT >= 36) {
             b.setContentTitle(titulo);
-            b.setContentText(parada + " · " + (p1.startsWith("Aviso a ") ? "te aviso cuando falten " + p1.substring(8) : p1) + (p2 != null ? " · " + p2 : ""));
-            if (falta >= 1) {
-                b.setWhen(llega).setShowWhen(true).setUsesChronometer(true);
-                b.setChronometerCountDown(true);
-            }
+            b.setContentText(p1 + (p2 != null ? " · " + p2 : ""));
+            b.setSubText(parada);
+            b.setProgress(100, Math.max(0, Math.min(100, prog)), false);
             return;
         }
         if (Build.VERSION.SDK_INT < 24) { b.setProgress(100, prog, false); return; }

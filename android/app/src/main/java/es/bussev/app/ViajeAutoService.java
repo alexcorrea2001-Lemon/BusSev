@@ -49,6 +49,7 @@ public class ViajeAutoService extends Service implements LocationListener {
     // Canal casi invisible (sin icono arriba ni en la pantalla de bloqueo) para cuando solo se cuenta el viaje.
     // Android obliga a tener una notificación mientras se usa la ubicación con la pantalla apagada.
     static final String CANAL_SILENCIO = "bussev_auto_silencio";
+    static final String CANAL_16 = "bussev_auto16";
     static final int ID_FIJA = 7601;
     static final long ESPERA_MAX = 25 * 60_000L, RUTA_MAX = 150 * 60_000L;
     static final float LEJOS_M = 700f, EN_PARADA_M = 45f, SALIDA_M = 90f, CERCA_PARADA_M = 120f;
@@ -516,6 +517,14 @@ public class ViajeAutoService extends Service implements LocationListener {
             s.setLockscreenVisibility(Notification.VISIBILITY_SECRET);
             nm.createNotificationChannel(s);
         }
+        // Android 16: la isla dinámica de Xiaomi solo recoge canales de importancia normal (como el del modo sensor)
+        if (Build.VERSION.SDK_INT >= 36 && nm != null && nm.getNotificationChannel(CANAL_16) == null) {
+            NotificationChannel c16 = new NotificationChannel(CANAL_16, "Tu autobús ahora", NotificationManager.IMPORTANCE_DEFAULT);
+            c16.setDescription("Al abrir una parada: cuánto le falta a tu autobús, si llegas andando y tu viaje para el Pasaporte.");
+            c16.setSound(null, null);
+            c16.enableVibration(false);
+            nm.createNotificationChannel(c16);
+        }
         if (Build.VERSION.SDK_INT < 26 || nm == null || nm.getNotificationChannel(CANAL) != null) return;
         NotificationChannel ch = new NotificationChannel(CANAL, "Tu autobús ahora", NotificationManager.IMPORTANCE_LOW);
         ch.setDescription("Al abrir una parada: cuánto le falta a tu autobús, si llegas andando y tu viaje para el Pasaporte.");
@@ -604,12 +613,13 @@ public class ViajeAutoService extends Service implements LocationListener {
         if (nm == null) return;
         if (!avisado) nm.cancel(LlegadaReceiver.idCuenta(id));   // la cuenta atrás va aquí dentro
 
-        Notification.Builder b = Build.VERSION.SDK_INT >= 26 ? new Notification.Builder(this, CANAL) : new Notification.Builder(this);
+        boolean a16 = Build.VERSION.SDK_INT >= 36;   // Android 16: igual que el modo sensor, que sí sale en la isla
+        Notification.Builder b = Build.VERSION.SDK_INT >= 26 ? new Notification.Builder(this, a16 ? CANAL_16 : CANAL) : new Notification.Builder(this);
         b.setSmallIcon(LlegadaReceiver.icono(this))
                 .setContentTitle(titulo)
                 .setContentText(resumen)
                 .setOngoing(true).setOnlyAlertOnce(true)
-                .setCategory(Notification.CATEGORY_NAVIGATION)
+                .setCategory(a16 ? Notification.CATEGORY_PROGRESS : Notification.CATEGORY_NAVIGATION)
                 .setContentIntent(LlegadaReceiver.abrirParada(this, codigo, ID_FIJA))
                 .addAction(0, "Quitar aviso", LlegadaReceiver.piQuitar(this, id))
                 .addAction(0, "Parar", piParar());
