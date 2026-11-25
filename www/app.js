@@ -3425,7 +3425,7 @@ views.ajustes = (el) => {
     const ps = $('#perm-siempre', el);
     if (ps && settings.contarConAviso === true) native('BusSevViaje', 'permisoSiempre').then((r) => {
       if (r?.siempre || !ps.isConnected) return;
-      ps.innerHTML = `<div class="alert" style="margin:8px 0 0">Falta la ubicación «Permitir todo el tiempo»: sin ella, el viaje solo cuenta si abres la parada o pulsas «Me he subido». <button type="button" class="btn" id="pedir-siempre" style="margin-top:8px">Permitir todo el tiempo</button></div>`;
+      ps.innerHTML = `<div class="alert" style="margin:8px 0 0">Falta la ubicación «Permitir todo el tiempo»: sin ella, el viaje solo cuenta si abres la parada en BusSev estando en ella. <button type="button" class="btn" id="pedir-siempre" style="margin-top:8px">Permitir todo el tiempo</button></div>`;
       $('#pedir-siempre', ps).onclick = () => native('BusSevViaje', 'pedirPermisoSiempre').catch(() => toast('Ábrelo en Ajustes del móvil → Aplicaciones → BusSev → Permisos → Ubicación.'));
     }).catch(() => {});
     el.querySelectorAll('[data-sw]').forEach((b) => { b.onchange = () => {

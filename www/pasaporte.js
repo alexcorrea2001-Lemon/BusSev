@@ -486,11 +486,15 @@ const auto = {
     return out;
   },
   /* ¿Estás en alguna de estas paradas (o cerca)? Si sí, empieza a seguir el viaje. Nunca pide permisos. */
-  async quizas(codigos, { fija = '', forzar = false } = {}) {
+  async quizas(codigos, { fija = '', forzar = false, intento = 0 } = {}) {
     try {
       if ((!this.activo() && !fija) || !plugin('BusSevViaje') || !codigos?.length) return false;
-      if (!forzar && !fija && Date.now() - this.ultimo < 60_000) return false;
+      // No repetir la misma comprobación en menos de un minuto. Antes valía para todas: si al abrir la app
+      // se miraban las favoritas, al abrir justo después una parada ya no se comprobaba (y no contaba el viaje).
+      const clave = codigos.map(String).join();
+      if (!forzar && !fija && clave === this.ultimaClave && Date.now() - this.ultimo < 60_000) return false;
       this.ultimo = Date.now();
+      this.ultimaClave = clave;
       const est = await native('BusSevViaje', 'estadoViajeAuto').catch(() => ({}));
       if (est?.activo && !fija) return false;
       const baj = await native('BusSevViaje', 'estadoBajada').catch(() => ({}));
@@ -499,7 +503,13 @@ const auto = {
       let codigo = String(codigos[0]);
       if (!fija) {
         const yo = await native('BusSevViaje', 'dondeEstoy').catch(() => ({}));
-        if (typeof yo?.lat !== 'number') return false;    // sin permiso o sin posición reciente: no se hace nada
+        if (typeof yo?.lat !== 'number') {
+          // El GPS aún no sabe dónde estás (pasa al sacar el móvil del bolsillo): se vuelve a probar dos veces
+          // mientras sigas en esa pantalla, en vez de rendirse a la primera.
+          const pantalla = location.hash;
+          if (intento < 2) setTimeout(() => { if (location.hash === pantalla) this.quizas(codigos, { forzar: true, intento: intento + 1 }); }, 15_000);
+          return false;
+        }
         let mejor = null, dm = Infinity;
         for (const c of codigos) { const p = pos.get(String(c)); if (!p) continue; const d = metros(yo.lat, yo.lon, p.latitud, p.longitud); if (d < dm) { dm = d; mejor = String(c); } }
         if (!mejor || dm > CERCA_M) return false;

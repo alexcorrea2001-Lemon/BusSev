@@ -191,7 +191,7 @@ public class SensorService extends Service {
                 .setCategory(Notification.CATEGORY_PROGRESS)
                 .setContentIntent(LlegadaReceiver.abrirParada(this, codigo, ID_FIJA))
                 .addAction(0, "Parar", piParar());
-        if (terminado || (minutos >= 0 && minutos <= 2)) b.addAction(0, "Me he subido", LlegadaReceiver.piSubido(this, codigo, linea, ID_FIJA));
+        // Sin botón «Me he subido»: el viaje se detecta solo (abriendo la parada o con el aviso)
         if (minutos >= 0) b.setProgress(Math.max(minMax, 1), Math.max(0, Math.max(minMax, 1) - minutos), false);
         else b.setProgress(0, 0, true);
         if (Build.VERSION.SDK_INT >= 21) b.setColor(0xFFD41C2B);

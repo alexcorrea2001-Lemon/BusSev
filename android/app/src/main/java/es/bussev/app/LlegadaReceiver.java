@@ -346,8 +346,7 @@ public class LlegadaReceiver extends BroadcastReceiver {
                 .setOngoing(true).setOnlyAlertOnce(true)
                 .setCategory(Notification.CATEGORY_PROGRESS)
                 .setContentIntent(abrirParada(c, x.optString("codigo"), idCuenta(id)))
-                .addAction(0, "Quitar aviso", piQuitar(c, id))
-                .addAction(0, "Me he subido", piSubido(c, x.optString("codigo"), linea, idCuenta(id), id));
+                .addAction(0, "Quitar aviso", piQuitar(c, id));
         if (Build.VERSION.SDK_INT >= 21) b.setColor(0xFFD41C2B);
         disenoAviso(c, b, titulo, x.optString("parada"), p1, false, null, 0, prog, llega, min);
         SensorService.promocionar(b, min <= 1 ? "Llega" : min + " min");
@@ -444,7 +443,6 @@ public class LlegadaReceiver extends BroadcastReceiver {
                 .setCategory(Notification.CATEGORY_ALARM);
         if (Build.VERSION.SDK_INT < 26) { b.setPriority(Notification.PRIORITY_HIGH); b.setDefaults(Notification.DEFAULT_ALL); }
         if (Build.VERSION.SDK_INT >= 21) b.setColor(0xFFD41C2B);
-        b.addAction(0, "Me he subido", piSubido(c, x.optString("codigo"), x.optString("linea"), id));
         // Se quita sola cuando el autobús ya ha pasado (no se queda puesta todo el viaje)
         if (Build.VERSION.SDK_INT >= 26) b.setTimeoutAfter((long) Math.max(0, min) * MIN + 4 * MIN);
         // Para el Pasaporte: Android apunta a qué hora llega ese bus a esa parada (lo usa «Me he subido»)

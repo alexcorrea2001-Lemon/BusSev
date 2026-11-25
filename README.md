@@ -81,7 +81,8 @@ Guarda las paradas que más usas y ve de un vistazo cuánto le falta a cada auto
 Desde una parada, toca un autobús y elige cómo quieres que te avise:
 - **Avísame cuando llegue**: una notificación cuando le falten los minutos que digas, con el **sonido** que elijas
   (campanas, ding-dong, marimba o estación), aunque tengas la app cerrada. En los últimos 15 minutos verás la
-  **cuenta atrás** en la barra de arriba (como chip en Android 16), y el aviso trae el botón **«Me he subido»**.
+  **cuenta atrás** con la barra del autobús acercándose (como chip en Android 16) y el botón **«Quitar aviso»**.
+  Con el móvil en silencio o en vibración, el aviso vibra igualmente.
 - **Avisos que se repiten**: «de lunes a viernes, desde las 7:40, avísame cuando al 27 le falten 5 min». Lo pones
   una vez y cada día el móvil lo vigila solo con TUSSAM, aunque no abras la app (y aunque reinicies el móvil).
   Los ves y los quitas en Ajustes.
@@ -206,7 +207,8 @@ Semana Santa, Feria, Navidad, Nochevieja, Reyes… Está en la pestaña **Tarjet
 - **Tus viajes cuentan solos**: abre BusSev en la parada para ver cuánto le falta a tu bus, como siempre, y súbete.
   BusSev sigue el viaje unos minutos con la ubicación (solo el permiso «mientras usas la app») y, al bajarte, te
   dice si ha contado. Si solo mirabas desde casa o te vas sin subirte, se apaga sola sin decir nada. También
-  cuentan los viajes con **«Me he subido»** (en el aviso de llegada y el modo sensor) y con «Avísame al bajar».
+  cuentan los viajes con «Avísame al bajar» y, si activas **«Contar también con el aviso de llegada»** (con la
+  ubicación «todo el tiempo»), los de tus avisos aunque no abras la app.
   Se puede apagar en *Ajustes → Pasaporte de Sevilla → Contar mis viajes*.
 - Solo cuentan los **viajes verificados**. El móvil comprueba que TUSSAM daba **ese autobús llegando a tu parada**
   cuando saliste, que tu posición ha ido **por su recorrido a la par que él** (adivina en qué línea vas aunque
