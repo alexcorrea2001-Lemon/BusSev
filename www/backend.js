@@ -443,7 +443,11 @@
       if (seg[2] === 'tiempos') {
         try { return await tiempos(codigo, opciones.prioridad === 'baja' ? 'baja' : 'alta', opciones.maxEdad || CACHE_MS); } catch (e) {
           if (e.status === 429) throw e;
-          return { parada: codigo, nombre: p.nombre, latitud: p.latitud, longitud: p.longitud, tiempos: [], upstream_status: 'unavailable' };
+          // Por qué no responde (se enseña bajo «TUSSAM no responde» para saber qué pasa)
+          const m = String(e?.message || '').slice(0, 90);
+          const motivo = /auth|token|credencial/i.test(m) ? `no deja iniciar sesión${/\d{3}/.test(m) ? ` (${m.match(/\d{3}/)[0]})` : ''}`
+            : e?.status && e.status !== 502 ? `responde ${e.status}` : (window.textoError ? window.textoError(e, 'sin respuesta') : 'sin respuesta');
+          return { parada: codigo, nombre: p.nombre, latitud: p.latitud, longitud: p.longitud, tiempos: [], upstream_status: 'unavailable', motivo };
         }
       }
     }
