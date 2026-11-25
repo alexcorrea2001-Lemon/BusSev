@@ -319,10 +319,10 @@
     return tokenP;
   }
 
-  async function fetchApi(ruta, signal) {
+  async function fetchApi(ruta, signal, extra) {
     if (!accessToken) await pedirToken(signal);
     const llamar = () => fetch(`${API_TUSSAM}${ruta}`, {
-      headers: { Accept: 'application/json', Authorization: `Bearer ${accessToken}` }, signal,
+      headers: { Accept: 'application/json', ...(extra || {}), Authorization: `Bearer ${accessToken}` }, signal,
     });
     let res = await llamar();
     if (res.status === 401) { await pedirToken(signal); res = await llamar(); }
@@ -343,6 +343,40 @@
       }
       return await r.json();
     } finally { clearTimeout(t); }
+  }
+
+  /* 25-11-2026: TUSSAM responde 400 «Falta encabezado» sin decir cuál. Se prueba un conjunto amplio de
+     cabeceras plausibles a la vez; si una petición pasa, se reduce a las necesarias (mitades) y se recuerda. */
+  let sondeado = false, sondeFallido = false;
+  const cabTiempos = () => { try { return JSON.parse(localStorage.getItem('bussev.cabecerasTiempos') || 'null') || undefined; } catch { return undefined; } };
+  async function sondearCabeceras(ruta, signal) {
+    const f = fhTussam();
+    const id = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()));
+    const todas = {
+      'User-Agent': 'okhttp/4.12.0', 'Content-Type': 'application/json', 'Accept-Language': 'es-ES',
+      'X-Requested-With': 'XMLHttpRequest', 'Origin': 'https://reddelineas.tussam.es', 'Referer': 'https://reddelineas.tussam.es/',
+      'Idioma': 'es', 'Language': 'es', 'Lang': 'es',
+      'X-App-Version': '3.0', 'App-Version': '3.0', 'Version': '3.0', 'AppVersion': '3.0',
+      'X-Platform': 'android', 'Platform': 'android', 'Plataforma': 'android', 'SO': 'android', 'OS': 'android',
+      'Device-Id': id, 'X-Device-Id': id, 'Dispositivo': id, 'IdDispositivo': id,
+      'Fecha': f, 'FechaConcreta': f, 'Fecha-Concreta': f,
+    };
+    const prueba = async (nombres) => {
+      const h = {}; for (const n of nombres) h[n] = todas[n];
+      try { const r = await fetchApi(ruta, signal, h); return r.ok ? r : null; } catch { return null; }
+    };
+    let nombres = Object.keys(todas);
+    let ok = await prueba(nombres);
+    if (!ok) return null;
+    while (nombres.length > 1) {
+      const m = Math.ceil(nombres.length / 2), a = nombres.slice(0, m), b = nombres.slice(m);
+      const ra = await prueba(a); if (ra) { nombres = a; ok = ra; continue; }
+      const rb = await prueba(b); if (rb) { nombres = b; ok = rb; continue; }
+      break;
+    }
+    const h = {}; for (const n of nombres) h[n] = todas[n];
+    try { localStorage.setItem('bussev.cabecerasTiempos', JSON.stringify(h)); } catch { /* sin espacio */ }
+    return ok;
   }
 
   async function pedirUnaVez(codigo, prioridad) {
@@ -366,11 +400,17 @@
         ];
         let k = Number(localStorage.getItem('bussev.formaTiempos')) || 0;
         if (!(k >= 0 && k < formas.length)) k = 0;
-        res = await fetchApi(formas[k](), ctrl.signal);
+        const cab = cabTiempos();
+        res = await fetchApi(formas[k](), ctrl.signal, cab);
         for (let i = 0; (res.status === 400 || res.status === 404) && i < formas.length; i++) {
           if (i === k) continue;
-          const r2 = await fetchApi(formas[i](), ctrl.signal);
+          const r2 = await fetchApi(formas[i](), ctrl.signal, cab);
           if (r2.ok) { res = r2; try { localStorage.setItem('bussev.formaTiempos', String(i)); } catch { /* sin espacio */ } break; }
+        }
+        if (res.status === 400 && !sondeado) {
+          sondeado = true;
+          const r3 = await sondearCabeceras(formas[k](), ctrl.signal);
+          if (r3) res = r3; else sondeFallido = true;
         }
       } finally { clearTimeout(t); }
       if (res.status === 429) {
@@ -389,7 +429,7 @@
         let cab = '';
         try { res.headers.forEach((v, k) => { if (/^(www-authenticate|x-|error|message|mensaje)/i.test(k)) cab += ` ${k}=${v}`; }); } catch { /* sin cabeceras */ }
         det = (String(det || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim() + (cab ? ` |${cab}` : '')).slice(0, 300);
-        throw new HttpError(502, `TUSSAM respondió ${res.status}${det ? ` (${det})` : ''}`);
+        throw new HttpError(502, `TUSSAM respondió ${res.status}${det ? ` (${det})` : ''}${sondeFallido ? ' · probadas 24 cabeceras sin éxito' : ''}`);
       }
       const txt = await res.text();
       let json; try { json = JSON.parse(txt); } catch { throw new HttpError(502, 'Respuesta de TUSSAM no válida'); }
