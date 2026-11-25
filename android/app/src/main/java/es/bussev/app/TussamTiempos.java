@@ -98,6 +98,11 @@ class TussamTiempos {
             default: return API_TIEMPOS + enc(codigo);
         }
     }
+    /* TUSSAM exige la cabecera «deviceid» (25-11-2026), como la app oficial: «A<versión> - <UUID>».
+       Aquí no hay contexto a mano, así que el UUID sale siempre igual de las credenciales de esta compilación. */
+    private static String deviceId() {
+        return "A5.0.6 - " + java.util.UUID.nameUUIDFromBytes(("bussev|" + Claves.usuario()).getBytes(StandardCharsets.UTF_8));
+    }
     private static HttpURLConnection abrirTiempos(String url, String token) throws Exception {
         HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
         c.setRequestMethod("GET");
@@ -105,6 +110,7 @@ class TussamTiempos {
         c.setReadTimeout(12000);
         c.setRequestProperty("Accept", "application/json");
         c.setRequestProperty("Authorization", "Bearer " + token);
+        c.setRequestProperty("deviceid", deviceId());
         return c;
     }
 

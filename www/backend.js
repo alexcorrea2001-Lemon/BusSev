@@ -319,10 +319,21 @@
     return tokenP;
   }
 
+  /* 25-11-2026: TUSSAM exige en cada petición a INFOTUS la cabecera «deviceid», como la app oficial
+     (AppTUSSAM 5.0.6 la manda así: «A<versión> - <UUID aleatorio que guarda en el móvil>»). Sin ella: 400 «Falta encabezado». */
+  const deviceId = () => {
+    let u = '';
+    try { u = localStorage.getItem('bussev.uuid') || ''; } catch { /* sin almacenamiento */ }
+    if (!u) {
+      u = (crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => { const r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 3 | 8)).toString(16); }));
+      try { localStorage.setItem('bussev.uuid', u); } catch { /* sin espacio */ }
+    }
+    return `A5.0.6 - ${u}`;
+  };
   async function fetchApi(ruta, signal) {
     if (!accessToken) await pedirToken(signal);
     const llamar = () => fetch(`${API_TUSSAM}${ruta}`, {
-      headers: { Accept: 'application/json', Authorization: `Bearer ${accessToken}` }, signal,
+      headers: { Accept: 'application/json', Authorization: `Bearer ${accessToken}`, deviceid: deviceId() }, signal,
     });
     let res = await llamar();
     if (res.status === 401) { await pedirToken(signal); res = await llamar(); }
