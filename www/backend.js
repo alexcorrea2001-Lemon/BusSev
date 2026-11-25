@@ -355,7 +355,23 @@
       const t = setTimeout(() => ctrl.abort(), 12000);
       let res;
       try {
-        res = await fetchApi(`/INFOTUS/api/v2/tiempos/${encodeURIComponent(codigo)}`, ctrl.signal);
+        // TUSSAM a veces cambia lo que pide para los tiempos (25-11-2026: «400» a la petición de siempre).
+        // Se prueban las formas conocidas y se recuerda la que funciona.
+        const c = encodeURIComponent(codigo);
+        const formas = [
+          () => `/INFOTUS/api/v2/tiempos/${c}`,
+          () => `/INFOTUS/api/v2/tiempos/${c}?fecha=${encodeURIComponent(fhTussam())}`,
+          () => `/INFOTUS/api/v2/tiempos/${c}?fechaConcreta=${encodeURIComponent(fhTussam())}`,
+          () => `/INFOTUS/api/v3/tiempos/${c}`,
+        ];
+        let k = Number(localStorage.getItem('bussev.formaTiempos')) || 0;
+        if (!(k >= 0 && k < formas.length)) k = 0;
+        res = await fetchApi(formas[k](), ctrl.signal);
+        for (let i = 0; (res.status === 400 || res.status === 404) && i < formas.length; i++) {
+          if (i === k) continue;
+          const r2 = await fetchApi(formas[i](), ctrl.signal);
+          if (r2.ok) { res = r2; try { localStorage.setItem('bussev.formaTiempos', String(i)); } catch { /* sin espacio */ } break; }
+        }
       } finally { clearTimeout(t); }
       if (res.status === 429) {
         let ra = parseInt(res.headers.get('Retry-After') || '', 10);
@@ -365,7 +381,13 @@
         cupo = Math.min(cupo, 2);
         throw new HttpError(429);
       }
-      if (!res.ok) throw new HttpError(502, `TUSSAM respondió ${res.status}`);
+      if (!res.ok) {
+        // Lo que dice TUSSAM al rechazarlo (suele explicar qué falta): se enseña bajo «TUSSAM no responde»
+        let det = '';
+        try { const tx = await res.text(); try { const j = JSON.parse(tx); det = j?.mensaje || j?.message || j?.error || j?.detail || ''; } catch { det = tx; } } catch { /* sin cuerpo */ }
+        det = String(det || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 80);
+        throw new HttpError(502, `TUSSAM respondió ${res.status}${det ? ` (${det})` : ''}`);
+      }
       const txt = await res.text();
       let json; try { json = JSON.parse(txt); } catch { throw new HttpError(502, 'Respuesta de TUSSAM no válida'); }
       return normalizar(json, codigo);
@@ -446,6 +468,7 @@
           // Por qué no responde (se enseña bajo «TUSSAM no responde» para saber qué pasa)
           const m = String(e?.message || '').slice(0, 90);
           const motivo = /auth|token|credencial/i.test(m) ? `no deja iniciar sesión${/\d{3}/.test(m) ? ` (${m.match(/\d{3}/)[0]})` : ''}`
+            : /TUSSAM respondió/.test(m) ? String(e.message).slice(0, 130)
             : e?.status && e.status !== 502 ? `responde ${e.status}` : (window.textoError ? window.textoError(e, 'sin respuesta') : 'sin respuesta');
           return { parada: codigo, nombre: p.nombre, latitud: p.latitud, longitud: p.longitud, tiempos: [], upstream_status: 'unavailable', motivo };
         }

@@ -85,16 +85,43 @@ class TussamTiempos {
         }
     }
 
+    /* TUSSAM a veces cambia lo que pide para los tiempos (25-11-2026: «400» a la petición de siempre):
+       se prueban las formas conocidas y se recuerda la que funciona (igual que la parte web). */
+    private static int formaTiempos = 0;
+    private static String urlTiempos(int forma, String codigo) {
+        java.text.SimpleDateFormat f = new java.text.SimpleDateFormat("dd-MM-yyyy'T'HH:mm:ss", java.util.Locale.ROOT);
+        String ahora = enc(f.format(new java.util.Date()));
+        switch (forma) {
+            case 1: return API_TIEMPOS + enc(codigo) + "?fecha=" + ahora;
+            case 2: return API_TIEMPOS + enc(codigo) + "?fechaConcreta=" + ahora;
+            case 3: return "https://api.tussam.es/INFOTUS/api/v3/tiempos/" + enc(codigo);
+            default: return API_TIEMPOS + enc(codigo);
+        }
+    }
+    private static HttpURLConnection abrirTiempos(String url, String token) throws Exception {
+        HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
+        c.setRequestMethod("GET");
+        c.setConnectTimeout(12000);
+        c.setReadTimeout(12000);
+        c.setRequestProperty("Accept", "application/json");
+        c.setRequestProperty("Authorization", "Bearer " + token);
+        return c;
+    }
+
     static List<Llegada> tiempos(String codigo, String token) throws Exception {
-        HttpURLConnection c = (HttpURLConnection) new URL(API_TIEMPOS + enc(codigo)).openConnection();
+        HttpURLConnection c = abrirTiempos(urlTiempos(formaTiempos, codigo), token);
+        int cod = c.getResponseCode();
+        if (cod == 400 || cod == 404) {
+            for (int i = 0; i < 4; i++) {
+                if (i == formaTiempos) continue;
+                HttpURLConnection c2 = abrirTiempos(urlTiempos(i, codigo), token);
+                if (c2.getResponseCode() == 200) { c.disconnect(); c = c2; cod = 200; formaTiempos = i; break; }
+                c2.disconnect();
+            }
+        }
         List<Llegada> out = new ArrayList<>();
         try {
-            c.setRequestMethod("GET");
-            c.setConnectTimeout(12000);
-            c.setReadTimeout(12000);
-            c.setRequestProperty("Accept", "application/json");
-            c.setRequestProperty("Authorization", "Bearer " + token);
-            if (c.getResponseCode() != 200) throw new Exception("tiempos " + c.getResponseCode());
+            if (cod != 200) throw new Exception("tiempos " + cod);
             JSONObject r = new JSONObject(leer(c.getInputStream()));
             if (r.has("result") && r.opt("result") instanceof JSONObject) r = r.getJSONObject("result");
             JSONArray lineas = r.optJSONArray("lineasCoincidentes");
