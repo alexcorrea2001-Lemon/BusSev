@@ -59,6 +59,7 @@ public class LlegadaReceiver extends BroadcastReceiver {
         b.put(nuevo);
         guardar(c, b);
         programar(c);
+        try { AvisoService.siHaceFalta(c); } catch (Exception ignored) { }
     }
     static synchronized void quitar(Context c, int id) {
         JSONArray a = leer(c), b = new JSONArray();
@@ -212,7 +213,12 @@ public class LlegadaReceiver extends BroadcastReceiver {
         new Thread(new Runnable() {
             public void run() {
                 try { revisar(c); } catch (Exception ignored) { }
-                finally { programar(c); pr.finish(); }
+                finally {
+                    programar(c);
+                    // En los últimos minutos, como el modo sensor: servicio en primer plano (pantalla apagada e isla)
+                    try { AvisoService.siHaceFalta(c); } catch (Exception ignored) { }
+                    pr.finish();
+                }
             }
         }).start();
     }
@@ -227,7 +233,7 @@ public class LlegadaReceiver extends BroadcastReceiver {
     }
 
     /** Revisa todos los avisos: los que toca, pregunta a TUSSAM; avisa o reprograma. */
-    static void revisar(Context c) {
+    static synchronized void revisar(Context c) {
         long ahora = System.currentTimeMillis();
         JSONArray a = leer(c), quedan = new JSONArray();
         SharedPreferences cred = c.getSharedPreferences(BusSevWidgetProvider.PREFS, Context.MODE_PRIVATE);
@@ -327,6 +333,13 @@ public class LlegadaReceiver extends BroadcastReceiver {
     static void mostrarCuenta(Context c, JSONObject x, int min, long llega) {
         NotificationManager nm = (NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE);
         if (nm == null) return;
+        Notification n = construirCuenta(c, x, min, llega);
+        if (n != null) try { nm.notify(idCuenta(x.optInt("id")), n); } catch (SecurityException ignored) { }
+    }
+    /* La cuenta atrás del aviso (la usa también AvisoService como notificación del servicio en primer plano) */
+    static Notification construirCuenta(Context c, JSONObject x, int min, long llega) {
+        NotificationManager nm = (NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE);
+        if (nm == null) return null;
         // Android 16: canal de importancia normal y en silencio, como el del modo sensor (el de importancia baja no sale en la isla)
         final String canalCuenta = Build.VERSION.SDK_INT >= 36 ? CANAL_CUENTA_16 : CANAL_CUENTA;
         if (Build.VERSION.SDK_INT >= 26 && nm.getNotificationChannel(canalCuenta) == null) {
@@ -338,8 +351,7 @@ public class LlegadaReceiver extends BroadcastReceiver {
         }
         int id = x.optInt("id");
         String linea = x.optString("linea");
-        String titulo = Build.VERSION.SDK_INT >= 36 ? "Línea " + linea + (min <= 1 ? " · está llegando" : " · llega en " + min + " min")
-                : "Línea " + linea + (min <= 1 ? " · está llegando" : " · " + min + " min");
+        String titulo = "Línea " + linea + (min <= 1 ? " · está llegando" : " · " + min + " min");
         String p1 = "Aviso a " + x.optInt("antes", 5) + " min";
         int min0 = Math.max(x.optInt("min0", min), Math.max(min, 1));
         int prog = Math.max(0, Math.min(100, Math.round(100f * (min0 - min) / min0)));
@@ -354,7 +366,7 @@ public class LlegadaReceiver extends BroadcastReceiver {
         if (Build.VERSION.SDK_INT >= 21) b.setColor(0xFFD41C2B);
         disenoAviso(c, b, titulo, x.optString("parada"), p1, false, null, 0, prog, llega, min);
         SensorService.promocionar(b, min <= 1 ? "Llega" : min + " min");
-        try { nm.notify(idCuenta(id), b.build()); } catch (SecurityException ignored) { }
+        return b.build();
     }
 
     /* Diseño del aviso (el mismo con o sin Pasaporte): línea y minutos con cuenta atrás, parada, etiquetas
@@ -373,7 +385,9 @@ public class LlegadaReceiver extends BroadcastReceiver {
             b.setContentTitle(titulo);
             b.setContentText(p1 + (p2 != null ? " · " + p2 : ""));
             b.setSubText(parada);
-            b.setProgress(100, Math.max(0, Math.min(100, prog)), false);
+            // El diseño nuevo en versión nativa (la vista propia no puede salir en la isla): barra roja con el
+            // autobús avanzando y tu parada al final. Si el móvil no la tiene, la barra normal.
+            if (!estiloProgreso(c, b, prog)) b.setProgress(100, Math.max(0, Math.min(100, prog)), false);
             return;
         }
         if (Build.VERSION.SDK_INT < 24) { b.setProgress(100, prog, false); return; }
@@ -556,6 +570,7 @@ public class LlegadaReceiver extends BroadcastReceiver {
         ed.apply();
         NotificationManager nm = (NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE);
         if (nm != null) { nm.cancel(id); nm.cancel(idCuenta(id)); }
+        AvisoService.refrescar(c);
         ViajePlugin.emitir("bussevAvisoQuitado", String.valueOf(id));
         ViajeAutoService.refrescar(c);
     }

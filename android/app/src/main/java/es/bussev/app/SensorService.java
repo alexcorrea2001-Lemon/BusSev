@@ -148,7 +148,7 @@ public class SensorService extends Service {
     private void llegado() {
         terminado = true;
         ViajeAutoService.apuntarPrevisto(this, codigo, linea, System.currentTimeMillis());
-        actualizar("Llegando", "Tu autobús está llegando · si te subes, pulsa «Me he subido»");
+        actualizar("Llegando", "Tu autobús está llegando");
         h.removeCallbacksAndMessages(null);
         h.postDelayed(new Runnable() { public void run() { parar(); } }, 90_000L);
     }
@@ -183,18 +183,23 @@ public class SensorService extends Service {
 
     private Notification fija(String corto, String texto) {
         Notification.Builder b = Build.VERSION.SDK_INT >= 26 ? new Notification.Builder(this, CANAL) : new Notification.Builder(this);
+        String titulo = "Línea " + linea + (minutos < 0 ? " · buscándolo…" : minutos <= 1 ? " · está llegando" : " · " + minutos + " min");
         b.setSmallIcon(LlegadaReceiver.icono(this))
-                .setContentTitle("📳 " + linea + (destino.isEmpty() ? "" : " → " + destino) + " · " + corto)
+                .setContentTitle(titulo)
                 .setContentText(texto != null ? texto : parada)
-                .setSubText(parada)
                 .setOngoing(true).setOnlyAlertOnce(true)
                 .setCategory(Notification.CATEGORY_PROGRESS)
                 .setContentIntent(LlegadaReceiver.abrirParada(this, codigo, ID_FIJA))
                 .addAction(0, "Parar", piParar());
-        // Sin botón «Me he subido»: el viaje se detecta solo (abriendo la parada o con el aviso)
-        if (minutos >= 0) b.setProgress(Math.max(minMax, 1), Math.max(0, Math.max(minMax, 1) - minutos), false);
-        else b.setProgress(0, 0, true);
         if (Build.VERSION.SDK_INT >= 21) b.setColor(0xFFD41C2B);
+        // El mismo diseño que el aviso de llegada: etiquetas y barra con el autobús acercándose a tu parada
+        String p1 = minutos < 0 ? "📳 Modo sensor" : minutos <= 1 ? "📳 Llegando" : minutos > 5 ? "📳 Vibro a 5 min" : "📳 Vibro cada minuto";
+        boolean sinDatos = texto != null && texto.startsWith("Sin datos");
+        int max = Math.max(minMax, 1);
+        int prog = minutos < 0 ? 0 : Math.max(0, Math.min(100, Math.round(100f * (max - minutos) / max)));
+        long llega = System.currentTimeMillis() + (long) Math.max(0, minutos) * 60_000L;
+        LlegadaReceiver.disenoAviso(this, b, titulo, parada, p1, false, sinDatos ? "Sin datos de TUSSAM" : null, 1, prog, llega,
+                minutos < 0 ? 0 : minutos);
         promocionar(b, corto);
         return b.build();
     }

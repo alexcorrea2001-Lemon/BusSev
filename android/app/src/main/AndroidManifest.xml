@@ -194,6 +194,12 @@
             android:exported="false"
             android:foregroundServiceType="location" />
 
+        <!-- Aviso de llegada: en sus últimos minutos va en primer plano (pantalla apagada e isla dinámica) -->
+        <service
+            android:name=".AvisoService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+
         <!-- Modo sensor: vibra según se acerca tu autobús (con notificación fija y chip en la barra) -->
         <service
             android:name=".SensorService"
