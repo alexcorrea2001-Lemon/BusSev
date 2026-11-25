@@ -60,7 +60,15 @@ public class LlegadaReceiver extends BroadcastReceiver {
             if (x == null) continue;
             if (x.optInt("id") != id) { b.put(x); continue; }
             // La app corrige la hora: la barra sigue desde donde empezó y no se repite el aviso ya dado
-            try { for (String k : new String[]{"seg0", "min0", "llega", "avisado", "hasta", "segUlt"}) if (x.has(k)) nuevo.put(k, x.get(k)); } catch (Exception ignored) { }
+            try {
+                for (String k : new String[]{"seg0", "min0", "llega", "avisado", "hasta", "segUlt"}) if (x.has(k)) nuevo.put(k, x.get(k));
+                // Si Android ya está siguiendo el autobús, la app no le retrasa la siguiente consulta a TUSSAM
+                // (antes, con la app abierta, cada refresco la mandaba a dentro de 1 min y el aviso iba por detrás)
+                if (x.has("segUlt")) {
+                    if (x.has("revisar")) nuevo.put("revisar", Math.min(nuevo.optLong("revisar"), x.optLong("revisar")));
+                    if (x.has("at")) nuevo.put("at", x.optLong("at"));
+                }
+            } catch (Exception ignored) { }
         }
         b.put(nuevo);
         guardar(c, b);
@@ -446,21 +454,9 @@ public class LlegadaReceiver extends BroadcastReceiver {
         // subtexto y barra de progreso normal; sin cronómetro, sin estilo ni vista propia.
         if (Build.VERSION.SDK_INT >= 36) {
             b.setContentTitle(titulo);
-            // Las etiquetas del diseño, en su color (verde; ámbar o rojo si toca)
-            final int verde = 0xFF8FD6B4, ambar = 0xFFF2B53A, rojo = 0xFFF07A7A;
-            android.text.SpannableStringBuilder t = new android.text.SpannableStringBuilder();
-            t.append(p1, new android.text.style.ForegroundColorSpan(p1Ambar ? ambar : verde), 0);
-            if (p2 != null) {
-                t.append("  ·  ");
-                t.append(p2, new android.text.style.ForegroundColorSpan(p2Color == 1 ? ambar : p2Color == 2 ? rojo : verde), 0);
-            }
-            b.setContentText(t);
+            b.setContentText(p1 + (p2 != null ? " · " + p2 : ""));   // HyperOS no respeta colores en el texto
             b.setSubText(parada);
-            // Cuenta atrás con segundos arriba a la derecha (05:10), como en el diseño
-            if (llega > ahora + 1000L) {
-                b.setWhen(llega).setShowWhen(true).setUsesChronometer(true);
-                b.setChronometerCountDown(true);
-            }
+            b.setShowWhen(false);   // sin contador ni hora
             // El diseño nuevo en versión nativa (la vista propia no puede salir en la isla): barra roja con el
             // autobús avanzando y tu parada al final. Si el móvil no la tiene, la barra normal.
             if (!estiloProgreso(c, b, prog)) b.setProgress(100, Math.max(0, Math.min(100, prog)), false);
