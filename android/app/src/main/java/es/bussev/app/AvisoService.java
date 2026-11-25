@@ -81,6 +81,7 @@ public class AvisoService extends Service {
         terminado = false;
         h.removeCallbacksAndMessages(null);
         h.post(vuelta);
+        h.postDelayed(pintar, PINTAR_MS);
         return START_STICKY;
     }
 
@@ -97,12 +98,26 @@ public class AvisoService extends Service {
         }
     };
 
+    /* Repinta la cuenta atrás cada pocos segundos (sin preguntar a TUSSAM): la barra avanza poco a poco */
+    static final long PINTAR_MS = 4_000L;
+    private final Runnable pintar = new Runnable() {
+        public void run() {
+            if (terminado) return;
+            try { primerPlano(); } catch (Exception ignored) { }
+            h.postDelayed(this, PINTAR_MS);
+        }
+    };
+
     private void despues() {
         if (terminado) return;
         if (primero(this) == null || System.currentTimeMillis() - inicio > MAX_MS) { parar(); return; }
         primerPlano();
+        // La siguiente consulta, justo cuando toca (p. ej. cuando falten tus minutos), entre 3 y 20 s
+        long ahora = System.currentTimeMillis(), prox = ahora + 20_000L;
+        JSONArray a = LlegadaReceiver.leer(this);
+        for (int i = 0; i < a.length(); i++) { JSONObject x = a.optJSONObject(i); if (x != null && x.has("revisar")) prox = Math.min(prox, x.optLong("revisar")); }
         h.removeCallbacks(vuelta);
-        h.postDelayed(vuelta, 20_000L);
+        h.postDelayed(vuelta, Math.max(3_000L, Math.min(20_000L, prox - ahora)));
     }
 
     /* Mantiene el servicio en primer plano con la cuenta atrás del aviso más próximo (la misma notificación,
