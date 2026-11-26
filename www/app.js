@@ -1160,7 +1160,11 @@ function groupArrivals(tiempos) {
   return out.sort((a, b) => a.buses[0].tiempo_minutos - b.buses[0].tiempo_minutos);
 }
 const minutesHTML = (m) => (m <= 0 ? '<span class="t-now">Llegando</span>' : `<span class="t-main">${m}<small>min</small></span>`);
-function boardHTML(tiempos, status, { limit = 99, filtrado = false, codigo = null, vacioExtra = '' } = {}) {
+const ARR_IC = {
+  campana: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15Z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></svg>',
+  sensor: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="3" width="8" height="18" rx="2"/><path d="M4.5 8.5v7M19.5 8.5v7"/></svg>',
+};
+function boardHTML(tiempos, status, { limit = 99, filtrado = false, codigo = null, vacioExtra = '', fav = false } = {}) {
   const groups = groupArrivals(tiempos);
   if (!groups.length) {
     const msg = status && status !== 'ok'
@@ -1177,12 +1181,18 @@ function boardHTML(tiempos, status, { limit = 99, filtrado = false, codigo = nul
     const sub = (!first.distancia_metros || distIncoherente) ? '' : `a ${fmtDist(first.distancia_metros)}`;
     const label = `Línea ${g.linea} hacia ${g.destino}: ${first.tiempo_minutos <= 0 ? 'llegando' : first.tiempo_minutos + ' minutos'}${next ? `, el siguiente en ${next.tiempo_minutos} minutos` : ''}`;
     const av = codigo ? ` data-av="${esc(JSON.stringify([codigo, g.linea, g.destino, first.tiempo_minutos, safeColor(g.color, '#555555')]))}" role="button" tabindex="0"` : '';
-    const bell = codigo && window.avisos?.find?.(codigo, g.linea, g.destino) ? '<span class="bell" title="Aviso activo">🔔</span>' : '';
-    const vib = codigo && window.sensorBus?.es?.(codigo, g.linea, g.destino) ? '<span class="bell sensor-mk" title="Modo sensor activo">📳</span>' : '';
+    const conAviso = codigo && window.avisos?.find?.(codigo, g.linea, g.destino);
+    const conSensor = codigo && window.sensorBus?.es?.(codigo, g.linea, g.destino);
+    // Campana: encendida si ya hay aviso; en las favoritas sale siempre, para ponerlo de un toque
+    const bell = conAviso ? `<span class="bell on" title="Aviso activo">${ARR_IC.campana}</span>` : fav && codigo && !conSensor ? `<span class="bell" title="Poner aviso de llegada">${ARR_IC.campana}</span>` : '';
+    const vib = conSensor ? `<span class="bell on sensor-mk" title="Modo sensor activo">${ARR_IC.sensor}</span>` : '';
+    // Barrita que se llena según se acerca (llena = llegando; vacía = a 20 min o más)
+    const lleno = Math.round(Math.max(0.05, Math.min(1, 1 - first.tiempo_minutos / 20)) * 100);
+    const barra = fav ? `<i class="arr-bar${first.tiempo_minutos <= 1 ? ' ya' : ''}" aria-hidden="true"><b style="width:${lleno}%"></b></i>` : '';
     return `<li class="arr${codigo ? ' tappable' : ''}" aria-label="${esc(label)}${codigo ? '. Toca para crear un aviso de llegada' : ''}"${av}>
       ${badge(g.linea, g.color)}
       <div class="arr-dest"><b>${esc(g.destino || 'Sin destino')}</b>${sub ? `<span>${sub}</span>` : ''}</div>
-      <div class="arr-times" aria-hidden="true">${vib}${bell}${minutesHTML(first.tiempo_minutos)}${next ? `<span class="t-next">${next.tiempo_minutos}′</span>` : ''}</div>
+      <div class="arr-times" aria-hidden="true">${minutesHTML(first.tiempo_minutos)}${next ? `<span class="t-next">${next.tiempo_minutos}′</span>` : ''}${vib}${bell}</div>${barra}
     </li>`;
   }).join('');
   const more = groups.length > limit ? `<div class="board-empty">y ${groups.length - limit} más…</div>` : '';
@@ -1240,7 +1250,11 @@ function iconoSitioSVG(v, cls = 'ico-sitio') {
 }
 function stopCardHTML(p, { tiempos, status, distancia, limit = 4, fav = null, orden = 0 }) {
   const ocultar = !!fav?.ocultarDir;
-  const sub = [distancia != null ? `🚶 ${Math.max(1, Math.round(distancia * 1.25 / 75))} min (${fmtDist(distancia)})` : '', ocultar ? '' : (p.direccion_completa || p.calle || '')].filter(Boolean).join(' · ');
+  if (fav && distancia == null && settings.favsAndar !== false && window.cercaniaFavs?.pos) {
+    const d = window.cercaniaFavs.dist(fav);
+    if (d <= 60) distancia = 0; else if (d < 1500) distancia = d;   // más lejos no interesa andando
+  }
+  const sub = [distancia === 0 ? '📍 Estás aquí' : '',distancia ? `🚶 ${Math.max(1, Math.round(distancia * 1.25 / 75))} min (${fmtDist(distancia)})` : '', ocultar ? '' : (p.direccion_completa || p.calle || '')].filter(Boolean).join(' · ');
   const color = fav?.color ? safeColor(fav.color) : null;
   const filtered = fav?.lineas?.length ? filtrarLineas(tiempos, fav) : tiempos;
   const estilo = fav ? (ESTILOS_FAV.some(([k]) => k === fav.estilo) ? fav.estilo : 'clasico') : '';
@@ -1264,7 +1278,7 @@ function stopCardHTML(p, { tiempos, status, distancia, limit = 4, fav = null, or
       ${fav ? '' : ICON.chev}
     </a>${fav ? editar : ''}
     ${fav && settings.avisosTarjetas !== false ? (window.avisosTussam?.favAvisoHTML?.(p.codigo, fav.lineas) || '') : ''}
-    ${tiempos === undefined ? esqueletoTiempos() : boardHTML(filtered, status, { limit, filtrado: !!fav?.lineas?.length, codigo: p.codigo })}
+    ${tiempos === undefined ? esqueletoTiempos() : boardHTML(filtered, status, { limit, filtrado: !!fav?.lineas?.length, codigo: p.codigo, fav: !!fav })}
     ${fav && settings.voz ? `<div class="card-tools"><button type="button" data-speak="${esc(p.codigo)}">🔊 Escuchar</button></div>` : ''}
   </article>`;
 }
@@ -2339,7 +2353,7 @@ const cercania = {
   pos: null, t: 0, pidiendo: false,
   activa: () => settings.favsCerca === true,
   async actualizar(alCambiar) {
-    if (!this.activa() || this.pidiendo || Date.now() - this.t < 60_000) return;
+    if ((!this.activa() && settings.favsAndar === false) || this.pidiendo || Date.now() - this.t < 60_000) return;
     this.pidiendo = true;
     try {
       let p = null;
@@ -3458,6 +3472,7 @@ const AJ_CORTO = {
   'Icono de la app': 'Al cambiarlo hay que volver a ponerlo en la pantalla de inicio.',
   'Consejos': 'Como mucho, un truco de la app al día en Favoritas.',
   'La más cercana, arriba': 'Tus favoritas se ordenan solas según dónde estés.',
+  'Lo que tardas andando': 'Los minutos andando hasta cada favorita.',
   'Contar mis viajes': 'Si abres una parada estando en ella, tu viaje cuenta.',
   'Contar también con el aviso de llegada': 'Cuenta el viaje aunque no abras la app.',
   'Actualizar los tiempos': 'Menos a menudo gasta menos batería y datos.',
@@ -3555,7 +3570,7 @@ views.ajustes = (el, cat) => {
       ${isNative() && window.Capacitor?.isPluginAvailable?.('BusSevApariencia') ? `<div class="set-group"><h3>Icono de la app</h3>
         <div class="iconos-app">${ICONOS_APP.map(([k, n]) => `<button type="button" class="icono-app" data-icono="${k}" aria-pressed="${iconoActual === k}">${iconoAppSVG(k)}<small>${n}</small><span class="sel-ok" aria-hidden="true"></span></button>`).join('')}</div>
         <p>Ojo: al cambiarlo, Android quita BusSev de la pantalla de inicio y hay que volver a ponerlo (la app sigue en el cajón de aplicaciones). Es cosa de Android y no se puede evitar.</p></div>` : ''}`,
-      favoritas: () => `<div class="set-group"><h3>Favoritas</h3>${sw('consejos', settings.consejos !== false, 'Consejos', 'De vez en cuando (como mucho uno al día) una tarjetita en Favoritas con algo que la app hace y quizá no sabes.')}${sw('favsCerca', settings.favsCerca === true, 'La más cercana, arriba', 'Tus favoritas se ordenan solas según dónde estés: en casa sale primero «Casa» y en el trabajo, «Trabajo». Si una está en un grupo, sube el grupo entero. Usa la última ubicación del móvil, sin preguntar; si no la hay, se queda tu orden.')}</div>
+      favoritas: () => `<div class="set-group"><h3>Favoritas</h3>${sw('consejos', settings.consejos !== false, 'Consejos', 'De vez en cuando (como mucho uno al día) una tarjetita en Favoritas con algo que la app hace y quizá no sabes.')}${sw('favsAndar', settings.favsAndar !== false, 'Lo que tardas andando', 'En cada favorita, los minutos andando hasta ella (o «Estás aquí»). Usa la última ubicación del móvil, sin preguntar, y no sale de tu móvil.')}${sw('favsCerca', settings.favsCerca === true, 'La más cercana, arriba', 'Tus favoritas se ordenan solas según dónde estés: en casa sale primero «Casa» y en el trabajo, «Trabajo». Si una está en un grupo, sube el grupo entero. Usa la última ubicación del móvil, sin preguntar; si no la hay, se queda tu orden.')}</div>
       <div class="set-group"><h3>Pasaporte de Sevilla</h3>${sw('contarViajes', settings.contarViajes !== false, 'Contar mis viajes', 'Al abrir una parada estando en ella (o yendo hacia ella), BusSev sigue tu viaje unos minutos con la ubicación: la notificación te enseña cuánto le falta a tu bus y si llegas andando, y si te subes, el viaje cuenta para el Pasaporte. Solo usa el permiso de ubicación «mientras usas la app» y todo se queda en tu móvil.')}${settings.contarViajes !== false && plugin('BusSevViaje') ? `${sw('contarConAviso', settings.contarConAviso === true, 'Contar también con el aviso de llegada', 'Cuando falten pocos minutos para el autobús de tu aviso, BusSev empieza a seguir el viaje aunque no abras la app: si te subes, cuenta. Si estás lejos de la parada, se para solo en un minuto. Necesita la ubicación «Permitir todo el tiempo».')}<div id="perm-siempre"></div>` : ''}</div>`,
       mapa: () => mapaAjustesHTML(),
       avisos: () => `<div class="set-group"><h3>Actualizar los tiempos</h3>${segBtns('refresh', [[30, 'Cada 30 s'], [60, 'Cada minuto'], [0, 'Al pulsar ⟳']], settings.refresh)}

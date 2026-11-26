@@ -1848,3 +1848,19 @@ a.t-acc { text-decoration: none; }
 .av2-rep { cursor: pointer; }
 .av2 .sensor-on .av2-ic { width: 38px; height: 38px; }
 .av2 .actions { margin-top: 0; }
+
+/* Favoritas: campana para poner el aviso de un toque y barrita que se llena según se acerca el bus */
+.arr-times .bell { align-self: center; display: inline-grid; place-items: center; width: 30px; height: 30px; margin: 0 -4px 0 0; border-radius: 50%; color: var(--muted); border: 1px solid var(--line); font-size: 0; }
+.arr-times .bell svg { width: 16px; height: 16px; }
+.arr-times .bell.on { color: var(--on-accent); background: var(--accent); border-color: var(--accent); }
+.arr-bar { grid-column: 2 / -1; display: block; height: 4px; margin-top: -6px; border-radius: 2px; background: color-mix(in srgb, var(--muted) 22%, transparent); overflow: hidden; }
+.arr-bar b { display: block; height: 100%; border-radius: inherit; background: var(--fc, var(--accent)); transition: width .6s ease; }
+.arr-bar.ya b { background: var(--albero); }
+.card.fav.est-panel .arr-bar { background: rgb(255 255 255 / .12); }
+.card.fav.est-panel .arr-bar b { background: #ffb627; }
+.card.fav.est-azulejo .arr-bar b { background: #1f4fa0; }
+.card.fav.est-retro .arr-bar b { background: #8a3b12; }
+.card.fav.est-semanasanta .arr-bar b, .card.fav.est-feria .arr-bar b { background: #ffe08a; }
+.card.fav.est-degradado .arr-bar b { background: #fff; }
+.card.fav.est-degradado .arr-bar, .card.fav.est-feria .arr-bar, .card.fav.est-semanasanta .arr-bar { background: rgb(255 255 255 / .22); }
+:root.a-quieto .arr-bar b { transition: none; }
