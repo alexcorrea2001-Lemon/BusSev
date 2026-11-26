@@ -236,26 +236,29 @@ function avisoModal({ codigo, parada, linea, destino, minutos, color }) {
     ${ya ? `<div class="alert av2-alerta">${AV_ICONOS.una}<span>Tienes un aviso para cuando falten ${ya.antes} min (sobre las ${new Date(ya.at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}).</span></div>` : ''}
     <h3 class="av2-tit">¿Cómo quieres que te avise?</h3>
     <div class="av2-modos" role="radiogroup" aria-label="Forma de avisarte">${modos.map(([k, t, d]) => `<button type="button" class="av2-modo" role="radio" data-modo="${k}" aria-checked="${k === modo0}"><span class="av2-ic">${AV_ICONOS[k]}</span><b>${t}</b><small>${d}</small></button>`).join('')}</div>
-    ${opciones.length ? `<section class="av2-panel" data-panel="una"${modo0 === 'una' ? '' : ' hidden'}>
+    <div class="av2-paneles">
+    ${opciones.length ? `<section class="av2-panel" data-panel="una" data-on="${modo0 === 'una'}">
       <h3 class="av2-tit">Cuando le falten</h3>
       <div class="av2-mins" role="radiogroup" aria-label="Minutos">${opciones.map((n) => `<button type="button" role="radio" data-min="${n}" aria-checked="${n === minSel}">${n}<small> min</small></button>`).join('')}</div>
       <p class="help">${plugin('BusSevViaje') ? 'Aunque cierres la app, en los últimos minutos el móvil vuelve a mirar a TUSSAM y corrige el aviso si el autobús se adelanta o se retrasa.' : 'El aviso se calcula con el tiempo de ahora y se corrige cada vez que abres la app.'}</p>
       ${plugin('BusSevViaje') ? `${repes.map((r) => `<div class="av2-fila rep-on">${AV_ICONOS.repetir}<span>${esc(repetidos.texto(r))}</span><button class="btn ghost sm" type="button" data-rep-del="${r.id}">Quitar</button></div>`).join('')}
         <button type="button" class="av2-fila av2-rep" id="av-rep">${AV_ICONOS.repetir}<span><b>Repetir cada día</b><small>A la misma hora, sin tener que ponerlo</small></span>${ICON.chev}</button>` : ''}
       <button class="btn block" type="button" id="av-poner">Avisarme a ${minSel} minutos</button></section>` : ''}
-    ${conSensor || sensorActivo ? `<section class="av2-panel" data-panel="sensor"${modo0 === 'sensor' ? '' : ' hidden'}>
+    ${conSensor || sensorActivo ? `<section class="av2-panel" data-panel="sensor" data-on="${modo0 === 'sensor'}">
       ${sensorActivo ? `<div class="sensor-on"><span class="av2-ic">${AV_ICONOS.sensor}</span><div><b>Modo sensor activo</b><p>Vibrará cada minuto desde que falten 5</p></div><button class="btn ghost" type="button" id="av-sensor-parar">Parar</button></div>`
         : `<p class="help">Guárdate el móvil: vibra cada minuto desde que falten 5, y más fuerte cuanto más cerca esté. No hace falta mirar la pantalla.</p>
       <button class="btn block" type="button" id="av-sensor">Activar modo sensor</button>`}</section>` : ''}
-    <section class="av2-panel" data-panel="subo"${modo0 === 'subo' ? '' : ' hidden'}>
+    <section class="av2-panel" data-panel="subo" data-on="${modo0 === 'subo'}">
       <p class="help">Cuando te subas, elige tu parada de bajada y te aviso un poco antes de llegar.</p>
       <button class="btn block" type="button" id="av-bajar">Me subo a este: avísame al bajar</button></section>
+    </div>
     <div class="actions">${ya ? '<button class="btn danger" type="button" id="av-del">Quitar aviso</button>' : ''}<button class="btn ghost" type="button" id="av-x">Cerrar</button></div></div>`,
   (m, close) => {
     $('#av-x', m).onclick = close;
+    m.querySelectorAll('[data-panel]').forEach((p) => { p.inert = p.dataset.on !== 'true'; });
     m.querySelectorAll('[data-modo]').forEach((b) => { b.onclick = () => {
       m.querySelectorAll('[data-modo]').forEach((x) => x.setAttribute('aria-checked', String(x === b)));
-      m.querySelectorAll('[data-panel]').forEach((p) => { p.hidden = p.dataset.panel !== b.dataset.modo; });
+      m.querySelectorAll('[data-panel]').forEach((p) => { const on = p.dataset.panel === b.dataset.modo; p.dataset.on = String(on); p.inert = !on; });
       vibrar(8);
     }; });
     let antes = Number(m.querySelector('[data-min][aria-checked="true"]')?.dataset.min) || 0;

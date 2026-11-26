@@ -1832,8 +1832,11 @@ a.t-acc { text-decoration: none; }
 :root[data-theme="dark"] .av2-ic { background: color-mix(in srgb, var(--accent) 18%, var(--surface-2)); }
 .av2-modo[aria-checked="true"] .av2-ic { background: var(--accent); color: var(--on-accent); }
 .av2-ic svg { width: 22px; height: 22px; }
-.av2-panel { display: grid; gap: 12px; }
-.av2-panel[hidden] { display: none; }
+.av2-paneles { display: grid; }
+.av2-panel { grid-area: 1 / 1; display: flex; flex-direction: column; gap: 12px; transition: opacity .18s ease; }
+.av2-panel[data-on="false"] { visibility: hidden; opacity: 0; pointer-events: none; }
+.av2-panel > .btn.block { margin-top: auto; }   /* el botón de confirmar, siempre en el mismo sitio */
+:root.a-quieto .av2-panel { transition: none; }
 .av2-panel .help { margin: 0; }
 .av2-mins { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 8px; }
 .av2-mins button { height: 52px; border-radius: 14px; border: 0; background: var(--surface); box-shadow: var(--shadow); color: var(--ink); font: 700 24px/1 var(--font-board); cursor: pointer; }
@@ -1864,3 +1867,16 @@ a.t-acc { text-decoration: none; }
 .card.fav.est-degradado .arr-bar b { background: #fff; }
 .card.fav.est-degradado .arr-bar, .card.fav.est-feria .arr-bar, .card.fav.est-semanasanta .arr-bar { background: rgb(255 255 255 / .22); }
 :root.a-quieto .arr-bar b { transition: none; }
+
+/* Gráfica del saldo: burbuja encima del dedo con el saldo y el día, y línea más visible */
+.saldo-graf { position: relative; }
+.sg-burbuja { position: absolute; top: 0; transform: translate(-50%, calc(-100% - 6px)); pointer-events: none; background: var(--ink); color: var(--bg); border-radius: 10px; padding: 6px 10px; font: 700 15px/1.2 var(--font-body); white-space: nowrap; box-shadow: 0 4px 14px rgb(0 0 0 / .35); text-align: center; z-index: 2; }
+.sg-burbuja small { display: block; font-weight: 400; font-size: 12px; opacity: .8; }
+.sg-burbuja[hidden] { display: none; }
+.sg-cl { stroke-width: 2; opacity: .9; stroke-dasharray: none; }
+.sg-cc { r: 6.5; stroke-width: 3; }
+.sg-prev { margin: 10px 0 0; padding: 12px 14px; border-radius: 12px; background: var(--surface-2); color: var(--ink); font-size: 16px; line-height: 1.45; }
+.sg-prev.mal { background: color-mix(in srgb, #c62828 14%, var(--surface-2)); }
+.saldo-hist > p.small.muted { font-size: 14px !important; line-height: 1.4; }
+/* Cerca: mapa más grande */
+.cerca-mapa .map-box { height: 290px; }

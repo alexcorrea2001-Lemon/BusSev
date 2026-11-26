@@ -384,7 +384,7 @@ function graficaSaldoHTML(h, color) {
         ? `<g class="sg-recarga"><circle cx="${X(x[0]).toFixed(1)}" cy="${Y(x[1]).toFixed(1)}" r="3.6"/><text x="${X(x[0]).toFixed(1)}" y="${(Y(x[1]) - 7).toFixed(1)}" text-anchor="middle">+${Math.round(dif)} €</text></g>`
         : `<circle class="sg-gasto" cx="${X(x[0]).toFixed(1)}" cy="${Y(x[1]).toFixed(1)}" r="2.6"/>`).join('')}
       <circle class="sg-hoy" cx="${X(ahora).toFixed(1)}" cy="${Y(pts.at(-1)[1]).toFixed(1)}" r="4"/>
-      <g class="sg-cursor" hidden><line class="sg-cl" y1="${T - 6}" y2="${H - B}"/><circle class="sg-cc" r="5"/></g></svg></figure>`;
+      <g class="sg-cursor" hidden><line class="sg-cl" y1="${T - 6}" y2="${H - B}"/><circle class="sg-cc" r="6.5"/></g></svg><div class="sg-burbuja" hidden></div></figure>`;
 }
 /* Dedo sobre la gráfica: el saldo de ese día y, si estás encima de un cambio, la recarga o el gasto */
 function tocarGrafica(fig) {
@@ -393,6 +393,7 @@ function tocarGrafica(fig) {
   let g; try { g = JSON.parse(fig.dataset.sg); } catch { return; }
   const svg = fig.querySelector('svg'), cur = fig.querySelector('.sg-cursor'), cl = fig.querySelector('.sg-cl'), cc = fig.querySelector('.sg-cc');
   const val = fig.querySelector('.sg-val'), dia = fig.querySelector('.sg-dia'), que = fig.querySelector('.sg-que');
+  const burbuja = fig.querySelector('.sg-burbuja');
   const X = (t) => g.L + ((t - g.t0) / Math.max(1, g.ahora - g.t0)) * (g.W - g.L - g.R);
   const Y = (v) => g.T + (1 - v / g.max) * (g.H - g.T - g.B);
   const precio = Number(fig.closest('[data-precio]')?.dataset.precio) || 0;
@@ -402,9 +403,17 @@ function tocarGrafica(fig) {
     const t = Math.min(g.ahora, Math.max(g.t0, g.t0 + ((px - g.L) / (g.W - g.L - g.R)) * (g.ahora - g.t0)));
     let i = 0; while (i + 1 < g.pts.length && g.pts[i + 1][0] <= t) i++;
     const v = g.pts[i][1];
-    cur.hidden = false;
+    cur.removeAttribute('hidden');
     cl.setAttribute('x1', X(t)); cl.setAttribute('x2', X(t)); cc.setAttribute('cx', X(t)); cc.setAttribute('cy', Y(v));
     val.textContent = fmtEuro(v); dia.textContent = fechaCorta(t);
+    // Burbuja encima del punto (el dedo tapa la gráfica): saldo y día, sin salirse por los lados
+    const fr = fig.getBoundingClientRect();
+    const bx = r.left - fr.left + (X(t) / g.W) * r.width, by = r.top - fr.top + (Y(v) / g.H) * r.height;
+    burbuja.hidden = false;
+    burbuja.innerHTML = `${fmtEuro(v)}<small>${fechaCorta(t)}</small>`;
+    const mitad = burbuja.offsetWidth / 2;
+    burbuja.style.left = `${Math.min(fr.width - mitad, Math.max(mitad, bx))}px`;
+    burbuja.style.top = `${Math.max(0, by - 14)}px`;
     const k = g.pts.findIndex((p, j) => j > 0 && Math.abs(X(p[0]) - X(t)) < 6 && Math.abs(p[1] - g.pts[j - 1][1]) > 0.005);
     que.className = 'sg-que';
     if (k > 0) {
@@ -414,7 +423,7 @@ function tocarGrafica(fig) {
         : `Gastaste ${fmtEuro(-dif)}${precio ? ` (unos ${Math.max(1, Math.round(-dif / precio))} viajes)` : ''} hasta el ${fechaCorta(g.pts[k][0])}`;
     } else que.textContent = 'Saldo de ese día';
   };
-  const fin = () => { cur.hidden = true; val.textContent = fmtEuro(g.pts.at(-1)[1]); dia.textContent = 'Hoy'; que.className = 'sg-que'; que.textContent = 'Pasa el dedo por la gráfica'; };
+  const fin = () => { burbuja.hidden = true; cur.setAttribute('hidden', ''); val.textContent = fmtEuro(g.pts.at(-1)[1]); dia.textContent = 'Hoy'; que.className = 'sg-que'; que.textContent = 'Pasa el dedo por la gráfica'; };
   svg.addEventListener('pointerdown', (e) => { try { svg.setPointerCapture(e.pointerId); } catch { /* nada */ } mover(e); });
   svg.addEventListener('pointermove', (e) => { if (e.pointerType === 'mouse' || svg.hasPointerCapture?.(e.pointerId)) mover(e); });
   svg.addEventListener('pointerup', (e) => { if (e.pointerType !== 'mouse') fin(); });
