@@ -503,9 +503,9 @@ views.tarjeta = (el) => {
   }
   function nfcEstadoHTML(st) {
     nfcUltimo = st;
-    if (st === 'on') return `<div class="nfc-on"><span class="nfc-scan">${ICON.nfc}<i></i><i></i><i></i></span><div><b>Acerca tu tarjeta</b><small>Apóyala en la parte de atrás del móvil para ver su saldo.</small></div></div>`;
-    if (st === 'off') return `<div class="nfc-off">${ICON.nfc}<div><b>El NFC está apagado</b><small>Enciéndelo y BusSev lo notará sola: no tienes que hacer nada más.</small></div><button class="btn sm" type="button" id="nfc-ajustes">Activar NFC</button></div>`;
-    return `<div class="nfc-off">${ICON.nfc}<div><b>Este móvil no tiene NFC</b><small>Añade tu tarjeta escribiendo su número.</small></div></div>`;
+    if (st === 'on') return `<div class="nfc-pill on"><span class="nfc-ic nfc-scan">${ICON.nfc}<i></i><i></i><i></i></span><div><b>Acerca tu tarjeta</b><small>Apóyala detrás del móvil para ver su saldo</small></div></div>`;
+    if (st === 'off') return `<div class="nfc-pill"><span class="nfc-ic">${ICON.nfc}</span><div><b>NFC apagado</b><small>Actívalo y acerca tu tarjeta</small></div><button class="nfc-act" type="button" id="nfc-ajustes">Activar</button></div>`;
+    return '';   // sin NFC: nada que decir (se añade por su número)
   }
 
   async function consultar(num, { visible = false } = {}) {
@@ -638,19 +638,58 @@ views.tarjeta = (el) => {
     if (!grupoSaldo && !grupoCad) return '';
     return `<div class="tc-avisos"><h2 class="section-title">Avisos</h2>${grupoSaldo}${grupoCad}</div>`;
   }
+  let activa = 0;   // tarjeta que se ve en la portada
+  /* Recuadros con lo más importante de la tarjeta que tienes delante */
+  function resumenHTML(c) {
+    if (!c) return '';
+    const u = c.ultimo;
+    if (!u?.fecha) return `<button type="button" class="t-res-vacio" data-open="${esc(c.num)}">Toca para consultarla</button>`;
+    const tipoId = tipoDeTarjeta(c, u);
+    const precio = window.tarifas?.viaje?.(tipoId)?.precio || 0;
+    const conSaldo = llevaSaldo(tipoId, u.saldo) && u.saldo != null && !u.sinSaldoWeb;
+    const viajes = conSaldo && precio ? Math.max(0, Math.floor(u.saldo / precio + 1e-9)) : null;
+    const t1 = viajes != null ? ['Viajes que quedan', String(viajes)] : conSaldo ? ['Saldo', fmtEuro(u.saldo)] : ['Tipo', tipoPorId(tipoId)?.nombre || u.titulo || 'Tarjeta TUSSAM'];
+    const t2 = ['Caduca', u.sinCaducidad ? 'No caduca' : (u.caducidad || '—')];
+    const bajo = c.avisoSaldo?.on && u.saldo != null && u.saldo < Number(c.avisoSaldo.importe);
+    return `<div class="t-res">${[t1, t2].map(([k, v]) => `<div><small>${k}</small><b>${esc(v)}</b></div>`).join('')}</div>
+      <p class="t-res-pie">${bajo ? '<b class="t-bajo">⚠ Saldo bajo</b> · ' : ''}Actualizada ${haceCuanto(u.fecha)}</p>
+      ${gastoMesHTML(c, precio)}`;
+  }
+  /* Lo que llevas gastado este mes, con una barrita por semana */
+  function gastoMesHTML(c, precio) {
+    const h = historialDe(c);
+    if (h.length < 2) return '';
+    const hoy = new Date(), ini = new Date(hoy.getFullYear(), hoy.getMonth(), 1).getTime();
+    const sem = [0, 0, 0, 0, 0];
+    let total = 0;
+    for (let i = 1; i < h.length; i++) {
+      const d = h[i - 1][1] - h[i][1];
+      if (d <= 0.005 || h[i][0] < ini) continue;
+      total += d;
+      sem[Math.min(4, Math.floor((new Date(h[i][0]).getDate() - 1) / 7))] += d;
+    }
+    const semanas = Math.ceil(new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0).getDate() / 7);
+    const max = Math.max(...sem, 0.01), estaSem = Math.floor((hoy.getDate() - 1) / 7);
+    const mes = hoy.toLocaleDateString('es-ES', { month: 'long' });
+    return `<div class="t-mes"><div class="t-mes-cab"><b>Este mes</b><span>${total > 0.005 ? `−${fmtEuro(total)}${precio ? ` · unos ${Math.round(total / precio)} viajes` : ''}` : `Sin gastos en ${mes}`}</span></div>
+      <div class="t-mes-barras" aria-hidden="true">${sem.slice(0, semanas).map((v, i) => `<div class="${i === estaSem ? 'ahora' : ''}"><i style="height:${Math.max(4, Math.round((v / max) * 100))}%${v <= 0.005 ? ';opacity:.35' : ''}"></i><small>Sem ${i + 1}</small></div>`).join('')}</div></div>`;
+  }
   function inicioHTML() {
     const cards = tarjeta.list();
     const cf = store.get('cfPendiente', false);
+    if (activa >= cards.length) activa = 0;
+    const acc = (id, ic, t, href) => href ? `<a class="t-acc" href="${href}"><i aria-hidden="true">${ic}</i>${t}</a>` : `<button class="t-acc" type="button" id="${id}"><i aria-hidden="true">${ic}</i>${t}</button>`;
+    const euro = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 6.5a6.5 6.5 0 1 0 0 11M5 10.5h8M5 13.5h8"/></svg>';
+    const mas = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>';
     return `<div class="page-head"><h1>Tarjeta</h1><p>Saldo y caducidad de tus tarjetas TUSSAM.</p></div>
       ${tarjeta.nfc() ? `<div id="nfc-estado" class="nfc-box">${nfcUltimo ? nfcEstadoHTML(nfcUltimo) : ''}</div>` : ''}
       ${cf ? '<div class="alert warn">TUSSAM pidió una comprobación la última vez. Abre una tarjeta y pulsa «Hacer la comprobación».</div>' : ''}
-      ${cards.length ? `<div class="row-between"><h2 class="section-title">Mis tarjetas</h2><span class="small muted">${cards.length > 1 ? 'Desliza para ver más' : ''}</span></div>
-        <div class="carrusel">${cards.map((c) => `<button class="card-btn" type="button" data-open="${esc(c.num)}" aria-label="${esc(c.name || 'Tarjeta')} ${esc(tarjeta.fmt(c.num))}">
-          ${tcardHTML(c.num, c, null, { mini: true })}
-          <span class="card-btn-sub">${c.ultimo?.fecha ? `${c.avisoSaldo?.on && c.ultimo.saldo != null && c.ultimo.saldo < Number(c.avisoSaldo.importe) ? '⚠ Saldo bajo · ' : ''}Actualizada ${haceCuanto(c.ultimo.fecha)}` : 'Toca para consultar'}</span></button>`).join('')}</div>`
+      ${cards.length ? `<div class="carrusel t-cartera">${cards.map((c) => `<button class="card-btn" type="button" data-open="${esc(c.num)}" aria-label="${esc(c.name || 'Tarjeta')} ${esc(tarjeta.fmt(c.num))}">
+          ${tcardHTML(c.num, c, null, { mini: true })}</button>`).join('')}</div>
+        ${cards.length > 1 ? `<div class="t-puntos" aria-hidden="true">${cards.map((_, i) => `<i class="${i === activa ? 'on' : ''}"></i>`).join('')}<span>${activa + 1} de ${cards.length}</span></div>` : ''}
+        <div id="t-resumen">${resumenHTML(cards[activa])}</div>`
       : `<div class="empty" style="padding:16px">${ICON.nfc}<h2>Añade tu tarjeta</h2><p>${tarjeta.nfc() ? 'Acércala al móvil o escribe su número.' : 'Escribe el número que tiene detrás.'}</p></div>`}
-      <button class="btn ghost block" type="button" id="t-add">+ Añadir tarjeta por su número</button>
-      <a class="btn ghost block" href="#tarifas">💶 Tarifas y títulos de viaje</a>
+      <div class="t-acciones">${acc('t-add', mas, 'Añadir')}${acc('', euro, 'Tarifas', '#tarifas')}${cards.length ? acc('t-act', ICON.actualizar, 'Actualizar') : ''}</div>
       ${window.pasaporte?.entradaHTML?.() || ''}`;
   }
   function pintar() {
@@ -661,6 +700,24 @@ views.tarjeta = (el) => {
       if (tarjeta.nfc()) { if (lectorActivo) $('#nfc-estado', el).innerHTML = nfcEstadoHTML('on'); else armarLector(); }
       bindNfc();
       el.querySelectorAll('[data-open]').forEach((b) => { b.onclick = () => abrir(b.dataset.open); });
+      // Al deslizar: los puntos y los datos de abajo son los de la tarjeta que se ve
+      const car = $('.t-cartera', el);
+      if (car) {
+        const cards = tarjeta.list();
+        if (activa) car.scrollLeft = car.children[activa]?.offsetLeft - car.offsetLeft || 0;
+        let raf = 0;
+        car.addEventListener('scroll', () => { if (raf) return; raf = requestAnimationFrame(() => {
+          raf = 0;
+          const w = car.children[0]?.getBoundingClientRect().width || 1;
+          const i = Math.max(0, Math.min(cards.length - 1, Math.round(car.scrollLeft / (w + 12))));
+          if (i === activa) return;
+          activa = i;
+          el.querySelectorAll('.t-puntos i').forEach((p, k) => p.classList.toggle('on', k === i));
+          const n = $('.t-puntos span', el); if (n) n.textContent = `${i + 1} de ${cards.length}`;
+          const r = $('#t-resumen', el); if (r) { r.innerHTML = resumenHTML(cards[i]); r.querySelectorAll('[data-open]').forEach((b) => { b.onclick = () => abrir(b.dataset.open); }); }
+        }); }, { passive: true });
+      }
+      $('#t-act', el)?.addEventListener('click', () => { const c = tarjeta.list()[activa]; if (c) abrir(c.num, { consultar: true }); });
       $('#t-add', el).onclick = anadirManual;
       return;
     }

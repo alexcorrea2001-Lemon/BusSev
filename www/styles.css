@@ -1763,3 +1763,38 @@ html[data-vt="atras"]::view-transition-new(root) { animation-name: vt-entra-izq;
 .movs .mv-g i { background: color-mix(in srgb, #e5484d 16%, transparent); color: #e5484d; }
 :root[data-theme="dark"] .movs .mv-r i, :root[data-theme="dark"] .movs .mv-r b { color: #4cc785; }
 .movs .btn { margin-top: 6px; }
+
+/* Tarjeta: franja del NFC (color de la app), cartera que se desliza, datos de la que ves y gasto del mes */
+.nfc-box > .nfc-pill { display: flex; align-items: center; gap: 10px; padding: 8px 8px 8px 10px; border-radius: 14px; color: var(--ink);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 24%, var(--surface)), var(--surface)); border: 1px solid color-mix(in srgb, var(--accent) 38%, transparent); box-shadow: none; }
+.nfc-pill > div { flex: 1; min-width: 0; }
+.nfc-box .nfc-pill b { font-size: 15px; }
+.nfc-box .nfc-pill small { font-size: 13px; color: var(--muted); opacity: 1; }
+.nfc-ic { flex: none; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: var(--on-accent); }
+.nfc-box .nfc-ic svg { width: 20px; height: 20px; }
+.nfc-ic.nfc-scan i { color: var(--accent); inset: -3px; }
+.nfc-act { flex: none; border: 0; border-radius: 999px; padding: 0 16px; height: 36px; background: var(--accent); color: var(--on-accent); font: 700 14px/1 var(--font-body); cursor: pointer; }
+.carrusel.t-cartera { grid-auto-columns: min(86%, 360px); margin-inline: calc(-1 * var(--gutter-l)) calc(-1 * var(--gutter-r)); padding-inline: var(--gutter-l) var(--gutter-r); scroll-padding-inline: var(--gutter-l); }
+.carrusel.t-cartera:has(> :only-child) { grid-auto-columns: 100%; }
+.t-puntos { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: -4px; }
+.t-puntos i { width: 7px; height: 7px; border-radius: 4px; background: var(--line); transition: width .2s, background .2s; }
+.t-puntos i.on { width: 20px; background: var(--ink); }
+.t-puntos span { margin-left: 6px; font-size: 13px; color: var(--muted); }
+#t-resumen { display: grid; gap: 10px; }
+.t-res { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.t-res > div { background: var(--surface); border-radius: 14px; box-shadow: var(--shadow); padding: 10px 12px; min-width: 0; }
+.t-res small { display: block; font-size: 13px; color: var(--muted); }
+.t-res b { display: block; font: 700 24px/1.15 var(--font-board); overflow-wrap: anywhere; }
+.t-res-pie { margin: -2px 4px 0; font-size: 13px; color: var(--muted); }
+.t-bajo { color: var(--warn); }
+.t-res-vacio { width: 100%; border: 1.5px dashed var(--line); background: none; border-radius: 14px; padding: 14px; color: var(--muted); font: 700 15px/1.2 var(--font-body); cursor: pointer; }
+.t-mes { background: var(--surface); border-radius: 14px; box-shadow: var(--shadow); padding: 12px; display: grid; gap: 10px; }
+.t-mes-cab { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.t-mes-cab b { font-size: 15px; }
+.t-mes-cab span { font-size: 14px; color: var(--muted); text-align: right; }
+.t-mes-barras { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 8px; height: 64px; }
+.t-mes-barras > div { display: grid; grid-template-rows: 1fr auto; gap: 4px; justify-items: center; min-width: 0; }
+.t-mes-barras i { align-self: end; width: 100%; max-width: 34px; border-radius: 5px 5px 2px 2px; background: color-mix(in srgb, var(--accent) 55%, transparent); }
+.t-mes-barras .ahora i { background: var(--accent); }
+.t-mes-barras small { font-size: 12px; color: var(--muted); }
+a.t-acc { text-decoration: none; }
