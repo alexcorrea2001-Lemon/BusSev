@@ -1880,3 +1880,40 @@ a.t-acc { text-decoration: none; }
 .saldo-hist > p.small.muted { font-size: 14px !important; line-height: 1.4; }
 /* Cerca: mapa más grande */
 .cerca-mapa .map-box { height: 290px; }
+
+/* ¿Dónde te bajas?: mapa con el recorrido que queda y lista; la elegida se marca en los dos */
+.bj2 { display: grid; gap: 12px; }
+.bj2-cab { display: flex; align-items: center; gap: 12px; }
+.bj2-cab h2 { margin: 0; }
+.bj2-cab span { color: var(--muted); font-size: 14px; }
+.bj2-map { height: 220px; }
+.bj2 .help { margin: 0; }
+.bj2 .bj-lista { display: grid; gap: 6px; }
+.bj2 .bj-op { width: 100%; padding: 10px 12px; border-radius: 14px; border: 2px solid transparent; background: var(--surface); box-shadow: var(--shadow); color: var(--ink); font: inherit; text-align: left; cursor: pointer; }
+.bj2 .bj-txt { flex: 1; min-width: 0; }
+.bj2 .bj-txt b { display: block; font-size: 15px; line-height: 1.25; }
+.bj2 .bj-txt small { display: block; font-size: 13px; color: var(--muted); }
+.bj2 .bj-op[aria-pressed="true"] { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--surface)); }
+.bj-ok-ic { flex: none; width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--line); }
+.bj-op[aria-pressed="true"] .bj-ok-ic { border-color: var(--accent); background: var(--accent) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='m6 12 4 4 8-8' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 14px no-repeat; }
+.bj2 .actions { position: sticky; bottom: -18px; background: var(--bg); padding: 8px 0 4px; margin: 0; }
+.bj2 #bj-ok:disabled { opacity: .55; }
+.bj-pin { width: 16px; height: 16px; border-radius: 50%; border: 3px solid var(--accent); background: #fff; padding: 0; cursor: pointer; box-shadow: 0 1px 4px rgb(0 0 0 / .4); }
+.bj-pin.yo { width: 20px; height: 20px; background: #2f7cf6; border-color: #fff; }
+.bj-pin.on { width: 26px; height: 26px; background: var(--accent); border-color: #fff; }
+
+/* Cerca: más hueco entre paradas y una franja de color a la izquierda de cada una */
+#c-lista { gap: 18px; }
+.card.cerca { border-left: 5px solid var(--accent); }
+
+/* Favoritas: tus avisos en una lista, cada uno con un anillo que se cierra al acercarse el bus */
+.fav-av-cab { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.fav-av-lista { display: grid; }
+.fav-av { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); }
+.fav-av:first-child { border-top: 0; padding-top: 2px; }
+.fav-av .av-ll-link { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; color: inherit; text-decoration: none; }
+.fav-av .help { margin: 2px 0 0; }
+.fav-av-anillo { flex: none; width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; background: conic-gradient(var(--accent) var(--p), color-mix(in srgb, var(--muted) 22%, transparent) 0); }
+.fav-av-anillo b { width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; background: var(--surface); font: 700 18px/1 var(--font-board); }
+.fav-av-x { flex: none; width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--line); background: none; color: var(--muted); display: grid; place-items: center; cursor: pointer; }
+.fav-av-x svg { width: 16px; height: 16px; }

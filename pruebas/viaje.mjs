@@ -221,6 +221,8 @@ const ops2 = [...a.w.document.querySelectorAll('.modal .bj-op')];
 assert.ok(ops2.length >= 3, 'lista de paradas donde bajarse');
 llamadas.length = 0;
 ops2.find((b) => b.dataset.c === seq29[6] && b.dataset.k === '29|1').click();
+assert.match(a.$('.modal #bj-ok').textContent, /Bajarme en la \d+/, 'al tocar se elige y el botón dice dónde');
+a.$('.modal #bj-ok').click();
 await a.espera(300);
 const emp = llamadas.find(([p, m]) => p === 'BusSevViaje' && m === 'empezarBajada');
 assert.ok(emp, 'empieza el aviso en Android');

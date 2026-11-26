@@ -379,12 +379,64 @@ const bajada = {
     const nd = norm(destinoTxt);
     const coincide = (g) => nd && (norm(g.fin).includes(nd) || nd.includes(norm(g.fin)) || norm(g.fin).split(/\s+/).some((w) => w.length > 4 && nd.includes(w)));
     if (grupos.some(coincide)) grupos = grupos.filter(coincide);
-    openModal(`<h2>¿Dónde te bajas?</h2>
-      <p class="help">Línea ${esc(etiquetaLinea(num))}. Te aviso con vibración al pasar por la parada anterior, aunque tengas el móvil en el bolsillo.</p>
-      ${grupos.map((g) => `${grupos.length > 1 ? `<h3 class="bj-tit">Hacia ${esc(g.fin)}</h3>` : ''}<div class="bj-lista">${g.resto.map((c, n) => `<button type="button" class="row-flat bj-op" data-k="${esc(g.k)}" data-c="${esc(c)}"><span class="stop-num">${esc(c)}</span><span class="bj-nom"><b>${esc(nombre(c))}</b><small>${n + 1} parada${n ? 's' : ''}</small></span></button>`).join('')}</div>`).join('')}
-      <div class="actions"><button class="btn ghost" type="button" id="bj-x">Cancelar</button></div>`, (m, close) => {
+    const pos = (c) => { const p = cache.paradaByCode.get(c) || (window.BUSSEV_DATA?.paradas || []).find((x) => x.codigo === c); return p?.latitud ? [p.latitud, p.longitud] : null; };
+    const color = safeColor(lineaFor(num)?.color, '#1f45a8');
+    openModal(`<div class="bj2">
+      <div class="bj2-cab">${badge(num, lineaFor(num)?.color)}<div><h2>¿Dónde te bajas?</h2><span>${grupos.length === 1 ? `Hacia ${esc(grupos[0].fin)}` : `Línea ${esc(etiquetaLinea(num))}`}</span></div></div>
+      ${window.maplibregl || window.cargarMapa ? '<div class="map-box bj2-map" id="bj-map"></div>' : ''}
+      <p class="help">Toca tu parada en el mapa o en la lista. Te aviso con vibración al pasar por la anterior, aunque lleves el móvil en el bolsillo.</p>
+      ${grupos.map((g) => `${grupos.length > 1 ? `<h3 class="bj-tit">Hacia ${esc(g.fin)}</h3>` : ''}<div class="bj-lista">${g.resto.map((c, n) => `<button type="button" class="row-flat bj-op" data-k="${esc(g.k)}" data-c="${esc(c)}" aria-pressed="false"><span class="stop-num">${esc(c)}</span><span class="bj-txt"><b>${esc(nombre(c))}</b><small>${n === 0 ? 'La próxima' : `${n + 1} paradas`}</small></span><i class="bj-ok-ic" aria-hidden="true"></i></button>`).join('')}</div>`).join('')}
+      <div class="actions"><button class="btn ghost" type="button" id="bj-x">Cancelar</button><button class="btn" type="button" id="bj-ok" disabled>Elige tu parada</button></div></div>`, (m, close) => {
       $('#bj-x', m).onclick = close;
-      m.querySelectorAll('.bj-op').forEach((b) => { b.onclick = async () => { close(); await this.empezar({ k: b.dataset.k, desde: codigo, hasta: b.dataset.c }); }; });
+      let sel = null, bm = null, marcas = null, gMapa = null;
+      const pintarMapa = async (g) => {
+        const box = $('#bj-map', m);
+        if (!box) return;
+        if (!bm) {
+          const ok = await window.cargarMapa?.();
+          if (!m.isConnected) return;
+          if (!ok) { box.remove(); return; }
+          bm = window.crearMapa?.(box, pos(String(codigo)) || [37.39, -5.98], 14);
+          if (!bm) { box.remove(); return; }
+          bm.layer({ id: 'bj-linea-borde', type: 'line', source: 'bj-linea', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#000', 'line-opacity': 0.35, 'line-width': 9 } });
+          bm.layer({ id: 'bj-linea', type: 'line', source: 'bj-linea', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': color, 'line-width': 5 } });
+          marcas = new window.MarkerSetMapa(bm);
+        }
+        if (gMapa === g.k) return;
+        gMapa = g.k;
+        const cods = [String(codigo), ...g.resto], pts = cods.map(pos).filter(Boolean);
+        bm.source('bj-linea', { type: 'FeatureCollection', features: [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: pts.map(([la, lo]) => [lo, la]) } }] });
+        marcas.clear();
+        cods.forEach((c, i) => {
+          const p = pos(c); if (!p) return;
+          const e = document.createElement('button');
+          e.type = 'button'; e.className = `bj-pin${i === 0 ? ' yo' : ''}`; e.dataset.c = c;
+          e.setAttribute('aria-label', i === 0 ? `Estás en ${nombre(c)}` : `Bajarme en ${nombre(c)}`);
+          if (i) e.onclick = (ev) => { ev.stopPropagation(); elegirP(g.k, c, true); };
+          marcas.add(p, e);
+        });
+        bm.fit(pts, { padding: 30, maxZoom: 16 });
+        marcarPins();
+      };
+      const marcarPins = () => m.querySelectorAll('.bj-pin').forEach((p) => p.classList.toggle('on', !!sel && p.dataset.c === sel.c));
+      const elegirP = (k, c, desdeMapa = false) => {
+        sel = { k, c };
+        m.querySelectorAll('.bj-op').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.k === k && b.dataset.c === c)));
+        const b = m.querySelector(`.bj-op[aria-pressed="true"]`);
+        const ok = $('#bj-ok', m);
+        ok.disabled = false;
+        ok.textContent = `Bajarme en la ${c}`;
+        if (desdeMapa) b?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        const g = grupos.find((x) => x.k === k);
+        if (g) pintarMapa(g).then(marcarPins);
+        if (bm && pos(c) && !desdeMapa) bm.m.easeTo({ center: [pos(c)[1], pos(c)[0]], duration: 300 });
+        vibrar(8);
+      };
+      m.querySelectorAll('.bj-op').forEach((b) => { b.onclick = () => elegirP(b.dataset.k, b.dataset.c); });
+      $('#bj-ok', m).onclick = async () => { if (!sel) return; close(); await this.empezar({ k: sel.k, desde: codigo, hasta: sel.c }); };
+      const cerrarMapa = () => { try { marcas?.clear(); bm?.remove(); } catch { /* */ } };
+      new MutationObserver((_, o) => { if (!m.isConnected) { o.disconnect(); cerrarMapa(); } }).observe(document.body, { childList: true, subtree: true });
+      pintarMapa(grupos[0]);
     });
   },
 };

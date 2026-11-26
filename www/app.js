@@ -1258,7 +1258,7 @@ function stopCardHTML(p, { tiempos, status, distancia, limit = 4, fav = null, or
   const color = fav?.color ? safeColor(fav.color) : null;
   const filtered = fav?.lineas?.length ? filtrarLineas(tiempos, fav) : tiempos;
   const estilo = fav ? (ESTILOS_FAV.some(([k]) => k === fav.estilo) ? fav.estilo : 'clasico') : '';
-  const clases = `card${fav ? ` fav est-${estilo}` : ''}${fav?.compacta ? ' compacta' : ''}${fav?.animar ? ' animar-llegando' : ''}`;
+  const clases = `card${orden ? ' cerca' : ''}${fav ? ` fav est-${estilo}` : ''}${fav?.compacta ? ' compacta' : ''}${fav?.animar ? ' animar-llegando' : ''}`;
   const ico = iconoSitioSVG(fav?.emoji);
   const etiqueta = fav?.alias || ico ? `<div class="fav-alias">${ico}${esc(fav.alias || '')}</div>` : '';
   const editar = `<button type="button" class="fav-edit" data-edit-fav="${esc(p.codigo)}" aria-label="Personalizar esta parada">${ICON.edit}</button>`;
@@ -2377,6 +2377,8 @@ const cercania = {
   },
 };
 window.cercaniaFavs = cercania;
+/* Para otras pantallas (p. ej. «¿Dónde te bajas?» en extras.js) */
+window.cargarMapa = cargarMapa; window.crearMapa = createMap; window.MarkerSetMapa = MarkerSet;
 
 /* Consejos: como mucho uno al día en Favoritas, de lo que la app hace y quizá no sabes. «Entendido» y no vuelve. */
 const CONSEJOS = [
@@ -2468,7 +2470,15 @@ views.favoritas = (el) => {
       <div id="fav-bajada">${window.bajadaHTML?.() || ''}</div>
       <div id="fav-offline">${offlineHTML()}</div>
       ${servicioHoyHTML()}
-      ${avs.length ? `<div class="set-group"><h3>Avisos de llegada</h3>${avs.map((a) => `<div class="row-flat"><a class="av-ll-link" href="#parada-${esc(a.codigo)}">${badge(a.linea, lineaFor(a.linea)?.color, { sm: true })}<div style="flex:1;min-width:0"><b>${esc(a.parada)}</b><p class="help">Cuando falten ${a.antes} min · sobre las ${new Date(a.at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}</p></div></a><button class="back-btn" type="button" data-av-del="${a.id}" aria-label="Quitar aviso">${ICON.close}</button></div>`).join('')}</div>` : ''}
+      ${avs.length ? `<div class="set-group fav-avisos"><div class="fav-av-cab"><h3>Tus avisos</h3>${avs.length > 1 ? '<button type="button" class="btn ghost sm" data-av-todos>Quitar todos</button>' : ''}</div>
+        <div class="fav-av-lista">${avs.map((a) => {
+          // Anillo: los minutos que le faltan al autobús y cuánto se ha cerrado (lleno = llegando)
+          const falta = Math.max(0, Math.round((a.at + a.antes * 60000 - Date.now()) / 60000));
+          const lleno = Math.round(Math.max(0.04, Math.min(1, 1 - falta / 20)) * 100);
+          return `<div class="fav-av"><span class="fav-av-anillo" style="--p:${lleno}%" aria-label="Le faltan ${falta} minutos"><b>${falta}′</b></span>
+            <a class="av-ll-link" href="#parada-${esc(a.codigo)}">${badge(a.linea, lineaFor(a.linea)?.color, { sm: true })}<div style="flex:1;min-width:0"><b>${esc(a.parada)}</b><p class="help">Te aviso a ${a.antes} min · ${new Date(a.at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}</p></div></a>
+            <button class="fav-av-x" type="button" data-av-del="${a.id}" aria-label="Quitar aviso">${ICON.close}</button></div>`;
+        }).join('')}</div></div>` : ''}
       <div id="fav-fiesta">${saludoFiestaHTML()}</div>
       <div id="fav-noche">${nocturnasHTML()}</div>
       <div id="fav-avisos"></div>
@@ -2479,6 +2489,7 @@ views.favoritas = (el) => {
       <p class="small muted" style="text-align:center;margin:0">Toca un autobús para que te avise cuando esté llegando.</p></div>`;
     $('#fav-cards', el).__h = cards;
     el.querySelectorAll('[data-av-del]').forEach((b) => { b.onclick = async () => { await avisos.cancelar(Number(b.dataset.avDel)); toast('Aviso quitado'); paint(); }; });
+    $('[data-av-todos]', el)?.addEventListener('click', async () => { for (const x of avisos.list()) await avisos.cancelar(x.id); toast('Avisos quitados'); paint(); });
     pintarAvisos();
     return true;
   }
