@@ -1798,3 +1798,13 @@ html[data-vt="atras"]::view-transition-new(root) { animation-name: vt-entra-izq;
 .t-mes-barras .ahora i { background: var(--accent); }
 .t-mes-barras small { font-size: 12px; color: var(--muted); }
 a.t-acc { text-decoration: none; }
+
+/* Líneas: cada línea en su propia tarjeta, con un hueco entre ellas */
+.list.lin-sep { background: none; box-shadow: none; overflow: visible; display: grid; gap: 8px; }
+.list.lin-sep > .row { background: var(--surface); border-top: 0; border-radius: 16px; box-shadow: var(--shadow); }
+.list.lin-sep > .row:active { background: var(--surface-2); }
+
+/* Cerca: minimapa con las paradas numeradas; el mismo número va en su tarjeta */
+.cerca-mapa .map-box { height: 210px; }
+.cerca-pin { width: 30px; height: 30px; border-radius: 50%; border: 2.5px solid #fff; background: var(--accent); color: var(--on-accent); font: 700 16px/1 var(--font-board); display: grid; place-items: center; box-shadow: 0 2px 6px rgb(0 0 0 / .35); cursor: pointer; padding: 0; }
+.cerca-n { flex: none; width: 28px; height: 28px; border-radius: 50%; background: var(--accent); color: var(--on-accent); font: 700 16px/1 var(--font-board); display: grid; place-items: center; }

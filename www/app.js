@@ -1238,7 +1238,7 @@ function iconoSitioSVG(v, cls = 'ico-sitio') {
   if (!k) return '';
   return `<span class="${cls}" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONOS_SITIO[k][1]}</svg></span>`;
 }
-function stopCardHTML(p, { tiempos, status, distancia, limit = 4, fav = null }) {
+function stopCardHTML(p, { tiempos, status, distancia, limit = 4, fav = null, orden = 0 }) {
   const ocultar = !!fav?.ocultarDir;
   const sub = [distancia != null ? `🚶 ${Math.max(1, Math.round(distancia * 1.25 / 75))} min (${fmtDist(distancia)})` : '', ocultar ? '' : (p.direccion_completa || p.calle || '')].filter(Boolean).join(' · ');
   const color = fav?.color ? safeColor(fav.color) : null;
@@ -1258,7 +1258,7 @@ function stopCardHTML(p, { tiempos, status, distancia, limit = 4, fav = null }) 
   }
   return `<article class="${clases}" ${color ? `style="--fc:${color}"` : ''}>
     <a class="card-head" href="#parada-${esc(p.codigo)}">
-      <span class="stop-num" aria-label="Parada número ${esc(p.codigo)}">${esc(p.codigo)}</span>
+      ${orden ? `<span class="cerca-n" aria-label="En el mapa, la ${orden}">${orden}</span>` : ''}<span class="stop-num" aria-label="Parada número ${esc(p.codigo)}">${esc(p.codigo)}</span>
       <div class="card-title">${etiqueta}<h3>${esc(p.nombre)}</h3>${sub ? `<p>${esc(sub)}</p>` : ''}
         ${fav?.lineas?.length && !ocultar ? `<p>Solo líneas ${fav.lineas.map(esc).join(', ')}</p>` : ''}</div>
       ${fav ? '' : ICON.chev}
@@ -2919,7 +2919,7 @@ views.lineas = (el) => {
             <div class="row-main"><b>${esc(l.nombre)}</b><span>${(() => { const h = horasHoy(l); return h.ini && h.fin ? (textoUltimo(h).todaNoche ? `Hoy circula toda la noche` : `Primer y último bus${NOMBRE_TIPO[h.tipo] ? ` (${NOMBRE_TIPO[h.tipo].toLowerCase()})` : ''}: ${esc(h.ini)}–${esc(h.fin)}`) : h.noHoy ? `Hoy no circula` : 'Consulta el recorrido'; })()}</span></div>${ICON.chev}</a>`).join('');
         el.innerHTML = `<div class="stack"><div class="page-head"><h1>Líneas</h1><p>Recorrido, horario y autobuses en directo.</p></div>
           <div class="filters desliza" role="group" aria-label="Tipo de línea">${FAMILIAS.map((x) => `<button class="chip" type="button" data-fam="${x.id}" aria-pressed="${x.id === fam}">${x.label}</button>`).join('')}</div>
-          <div class="list">${rows || '<div class="board-empty">No hay líneas en este grupo.</div>'}</div>
+          <div class="list lin-sep">${rows || '<div class="board-empty">No hay líneas en este grupo.</div>'}</div>
           <p class="updated">${lineas.length} líneas de TUSSAM</p></div>`;
         const fila = $('.filters', el);
         fila.scrollLeft = filaX;
@@ -3299,7 +3299,32 @@ views.parada = (el, codigo) => {
 
 /* ---------- Cerca ---------- */
 views.cerca = (el) => {
-  let pos = null, stop = null, loading = false, dead = false;
+  let pos = null, stop = null, loading = false, dead = false, bm = null, marcas = null, encuadrado = false;
+  /* Minimapa: tú (punto azul) y las paradas con su número, el mismo que su tarjeta de abajo */
+  async function pintarMapa(paradas) {
+    if (!$('#c-map', el) || !pos) return;
+    if (!bm) {
+      await cargarMapa();
+      if (dead || bm || !$('#c-map', el)) return;
+      bm = createMap($('#c-map', el), pos, 16);
+      if (!bm) return;
+      marcas = new MarkerSet(bm);
+      encuadrado = false;
+    }
+    marcas.clear();
+    marcas.add(pos, meEl());
+    const pts = [pos];
+    paradas.forEach((p, i) => {
+      if (!(p.latitud && p.longitud)) return;
+      const e = document.createElement('button');
+      e.type = 'button'; e.className = 'cerca-pin'; e.textContent = String(i + 1);
+      e.setAttribute('aria-label', `Parada ${p.codigo}, ${p.nombre}`);
+      e.onclick = (ev) => { ev.stopPropagation(); location.hash = `parada-${p.codigo}`; };
+      marcas.add([p.latitud, p.longitud], e);
+      pts.push([p.latitud, p.longitud]);
+    });
+    if (!encuadrado) { bm.fit(pts, { padding: 36, maxZoom: 17 }); encuadrado = true; }
+  }
   /* ¿Está encendida la ubicación del móvil? Se pregunta al sistema: la respuesta es instantánea */
   const ubicacionActiva = async () => {
     if (!window.Capacitor?.isPluginAvailable?.('TarjetaNfc')) return true;
@@ -3332,15 +3357,22 @@ views.cerca = (el) => {
       const [lat, lon] = pos;
       const d = await api(`/cercanas?lat=${lat.toFixed(6)}&lon=${lon.toFixed(6)}&radio=600&max_paradas=6`);
       if (!d.paradas?.length) { el.innerHTML = emptyHTML(ICON.pin, 'No hay paradas a menos de 600 m', 'Prueba a buscar una parada por su nombre o número, o mira el mapa.', '<a class="btn" href="#mapa">Ver el mapa</a>'); return; }
-      el.innerHTML = `<div class="stack"><div class="page-head row-between"><div><h1>Cerca de ti</h1><p>Paradas a menos de 600 m.</p></div><a class="btn ghost sm" href="#ruta">${ICON.route}Cómo llegar</a></div>
-        ${d.paradas.map((p) => stopCardHTML(p, { tiempos: p.tiempos || [], status: p.tiempos_status, distancia: p.distancia })).join('')}
-        <p class="updated">Actualizado a las ${fmtClock()} · ${refreshNote()}</p></div>`;
+      // La página se monta una vez (con el minimapa) y luego solo se cambian la lista y los puntos
+      if (!$('#c-lista', el)) {
+        el.innerHTML = `<div class="stack"><div class="page-head row-between"><div><h1>Cerca de ti</h1><p>Paradas a menos de 600 m.</p></div><a class="btn ghost sm" href="#ruta">${ICON.route}Cómo llegar</a></div>
+          ${settings.modoSencillo ? '' : '<div class="map-wrap cerca-mapa"><div class="map-box" id="c-map"></div></div>'}
+          <div id="c-lista" class="stack"></div><p class="updated" id="c-upd"></p></div>`;
+        bm?.remove(); bm = null; marcas = null;
+      }
+      $('#c-lista', el).innerHTML = d.paradas.map((p, i) => stopCardHTML(p, { tiempos: p.tiempos || [], status: p.tiempos_status, distancia: p.distancia, orden: settings.modoSencillo ? 0 : i + 1 })).join('');
+      $('#c-upd', el).textContent = `Actualizado a las ${fmtClock()} · ${refreshNote()}`;
+      pintarMapa(d.paradas);
     } catch (e) {
       if (!quiet) { el.innerHTML = errorHTML(e, 'retry-cerca'); $('#retry-cerca', el).onclick = () => load(); } else toast(textoError(e));
     } finally { loading = false; spin(false); }
   }
   if (store.get('geoOk', false)) locate(); else intro();
-  return { cleanup: () => { dead = true; stop?.(); resumeHandlers.delete(alVolver); }, refresh: () => (pos ? load() : locate()) };
+  return { cleanup: () => { dead = true; stop?.(); resumeHandlers.delete(alVolver); marcas?.clear(); bm?.remove(); }, refresh: () => (pos ? load() : locate()) };
 };
 
 /* ---------- Ajustes ---------- */
