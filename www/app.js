@@ -1047,8 +1047,15 @@ const actualizaciones = {
       // Repositorio privado: la app lleva un permiso de SOLO LECTURA de este repositorio (lo mete GitHub al compilar)
       const token = this.token();
       const r = await fetch(`https://api.github.com/repos/${v.repo}/releases/latest`, { headers: { Accept: 'application/vnd.github+json', ...(token ? { Authorization: `Bearer ${token}` } : {}) }, signal: ctrl.signal, credentials: 'omit' });
-      if ([401, 403, 404].includes(r.status)) return { estado: 'privado' };   // repositorio privado: GitHub no deja mirarlo sin entrar
-      if (!r.ok) throw new Error(`GitHub ha respondido con un error (${r.status}).`);
+      if (!r.ok) {
+        // La API de GitHub deja solo 60 consultas por hora a cada conexión (en datos móviles se comparte con mucha
+        // gente), y entonces contesta 403 aunque el repositorio sea público. Se mira la página de la última versión.
+        const web = await this.buscarEnWeb(v, ctrl.signal).catch(() => null);
+        if (web) return web;
+        if (r.status === 404 || r.status === 401) return { estado: 'privado' };   // de verdad privado: hay que entrar
+        if (r.status === 403 || r.status === 429) throw new Error('GitHub ha recibido demasiadas consultas desde tu conexión. Prueba otra vez en un rato.');
+        throw new Error(`GitHub ha respondido con un error (${r.status}).`);
+      }
       const j = await r.json();
       const tag = String(j.tag_name || '');
       // Cada versión publicada lleva escondido su número de compilación: así se sabe si es más nueva
@@ -1067,6 +1074,21 @@ const actualizaciones = {
       store.set('ultimaRevisionVersion', Date.now());
       return { estado: hay ? 'nueva' : 'al-dia', nueva: pr ? `v${pr.join('.')}` : tag, mismoNombre, clave: `${tag}#${buildRemota}`, url, fecha: j.published_at || '', novedades: novedades.deTexto(j.body) };
     } finally { clearTimeout(t); }
+  },
+  /* Sin la API: la página pública de la última versión dice su nombre (v1.3.9) y su número de compilación */
+  async buscarEnWeb(v, signal) {
+    const r = await fetch(`https://github.com/${v.repo}/releases/latest`, { headers: { Accept: 'text/html' }, signal, credentials: 'omit' });
+    if (!r.ok) return null;
+    const html = await r.text();
+    const tag = (String(r.url || '').match(/\/releases\/tag\/([\w.-]+)/) || html.match(/\/releases\/tag\/(v?\d+\.\d+\.\d+)/))?.[1] || '';
+    const pr = this.partes(tag);
+    if (!pr) return null;
+    const buildRemota = Number(html.match(/Compilaci(?:ó|&oacute;|&#243;)n (\d+)/)?.[1]) || 0;
+    const pm = this.partes(v.version);
+    const hay = buildRemota && v.build ? buildRemota > v.build : pm ? this.comparar(pr, pm) > 0 : false;
+    store.set('ultimaRevisionVersion', Date.now());
+    return { estado: hay ? 'nueva' : 'al-dia', nueva: `v${pr.join('.')}`, mismoNombre: !!pm && this.comparar(pr, pm) === 0, clave: `${tag}#${buildRemota}`,
+      url: this.enlaceSeguro(`https://github.com/${v.repo}/releases/latest/download/BusSev.apk`) || this.paginaVersiones(), fecha: '', novedades: null };
   },
   /* Al abrir la app y cada vez que vuelves a ella: si hay versión nueva, te avisa.
      - Se consulta a GitHub como mucho cada 15 minutos, y solo cuenta si ha contestado (sin conexión, se

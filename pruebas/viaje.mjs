@@ -4,8 +4,10 @@ import { arrancar } from './humo.mjs';
 process.on('uncaughtException', (e) => { console.log('EXCEPCIÓN', String(e.stack).split('\n').slice(0, 6).join(' | ')); process.exit(1); });
 
 // TUSSAM simulado: la parada «vacía» no tiene autobuses; Photon devuelve un hospital
-let paradaVacia = null, ghAuth, seviciEst = [];
+let paradaVacia = null, ghAuth, seviciEst = [], ghLimite = false;
 const red = async (url, resp, o) => {
+  if (/^https:\/\/github\.com\/.*\/releases\/latest$/.test(url)) return resp('<a href="/yo/BusSev-app/releases/tag/v1.2.0">v1.2.0</a><p>Compilación 9.</p>');
+  if (ghLimite && /api\.github\.com/.test(url)) return resp({ message: 'API rate limit exceeded' }, 403);
   if (/api\.github\.com/.test(url)) { ghAuth = o?.headers?.Authorization ?? null; return resp({ tag_name: 'v1.2.0', body: 'bussev-build:9', assets: [{ name: 'BusSev.apk', url: 'https://api.github.com/repos/yo/BusSev-app/releases/assets/123', browser_download_url: 'https://github.com/yo/BusSev-app/releases/download/v1.2.0/BusSev.apk' }] }); }
   if (/photon\.komoot\.io/.test(url)) return resp({ features: [
     { geometry: { coordinates: [-5.9805, 37.3610] }, properties: { name: 'Hospital Virgen del Rocío', street: 'Avenida Manuel Siurot', district: 'Bellavista', city: 'Sevilla' } },
@@ -251,6 +253,12 @@ ev(`window.BUSSEV_GH = { token: 'mal token con espacios' }`);
 const r2 = JSON.parse(await ev(`actualizaciones.buscar().then((x) => JSON.stringify(x))`));
 assert.equal(ghAuth, null, 'un permiso raro no se manda'); assert.match(r2.url, /releases\/download/);
 ev(`window.BUSSEV_GH = undefined`);
+// Público, pero la API de GitHub ha llegado a su límite de consultas (403): no dice «privado», mira la página de la versión
+ghLimite = true;
+const r3 = JSON.parse(await ev(`actualizaciones.buscar().then((x) => JSON.stringify(x))`));
+assert.equal(r3.estado, 'nueva', 'con la API limitada, encuentra la versión en la página: ' + JSON.stringify(r3));
+assert.equal(r3.url, 'https://github.com/yo/BusSev-app/releases/latest/download/BusSev.apk');
+ghLimite = false;
 
 // Cerca: minutos andando
 assert.match(ev(`stopCardHTML({ codigo: '1', nombre: 'X' }, { tiempos: [], status: 'ok', distancia: 300 })`), /🚶 5 min \(300 m\)/);
