@@ -22,7 +22,7 @@ assert.equal(ev(`FONDOS.negro.bg`), '#000000', 'fondo Negro puro');
 await espera(900);
 assert.equal(ev(`PALETTES.movil?.light[0]`), '#3D5BC4', 'color del sistema');
 assert.equal(ev(`JSON.parse(localStorage.getItem('bussev.colorMovil') || 'null')?.dark?.[0]`), '#B6C6FF', 'se guarda para no parpadear');
-await a.ir('#ajustes', 500);
+await a.ir('#ajustes-apariencia', 500);
 const sw = a.$('.swatches .swatch');
 assert.ok(sw.classList.contains('swatch-movil') && sw.dataset.color === 'movil', 'el primero es «Como mi móvil»');
 assert.ok(a.$('[data-fondo="negro"]'), 'botón Negro puro');

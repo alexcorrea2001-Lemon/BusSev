@@ -25,7 +25,7 @@ process.on('uncaughtException', (e) => { console.log('EXCEPCIÓN', String(e.stac
   assert.match(a.$('#p-board').textContent, /PRADO/, 'tiempos guardados al instante');
   await a.espera(1500); assert.equal(a.errores.length, 0, a.errores.join('\n').slice(0, 600));
   // 4) Botón de buscar actualización con icono dibujado
-  await a.ir('#ajustes', 300);
+  await a.ir('#ajustes-datos', 300);
   const b = a.$('#s-ver'); assert.ok(b.querySelector('svg.ico-upd') && !/🔄/.test(b.textContent), 'icono nuevo');
   a.cerrar(); }
 console.log('OK app (animaciones, parada, icono)');

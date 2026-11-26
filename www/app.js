@@ -784,6 +784,7 @@ function descargarApp(url) {
 }
 
 const ICON = {
+  lupa: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="m16 16 4.5 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
   chev: '<svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   back: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5 8 12l7 7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   close: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>',
@@ -3280,7 +3281,29 @@ const ICONOS_APP_ARTE = {
 /* ICONOS_APP_ARTE:FIN */
 // Miniatura del icono (los mismos dibujos que los iconos de Android: scripts/iconos_app.py)
 const iconoAppSVG = (k) => `<svg viewBox="18 18 72 72" aria-hidden="true">${ICONOS_APP_ARTE[k] || ICONOS_APP_ARTE.Clasico}</svg>`;
-views.ajustes = (el) => {
+/* Ajustes por categorías: la portada enseña la lista y cada una abre su página (#ajustes-apariencia…) */
+const AJ_IC = (d) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
+const AJ_CATS = [
+  { id: 'apariencia', nombre: 'Apariencia', pista: 'Tema, color, fondo, icono, fiestas y cielo', ic: AJ_IC('<circle cx="12" cy="12" r="8.5"/><circle cx="8.5" cy="10" r="1.2"/><circle cx="12" cy="7.5" r="1.2"/><circle cx="15.5" cy="10" r="1.2"/><path d="M12 20.5a2.5 2.5 0 0 1 0-5h2.5"/>') },
+  { id: 'favoritas', nombre: 'Favoritas y Pasaporte', pista: 'Consejos, la más cercana arriba y contar viajes', ic: AJ_IC('<path d="m12 3.5 2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9Z"/>') },
+  { id: 'mapa', nombre: 'Mapa', pista: 'Estilo, paradas, recorridos, Metro, Cercanías y Sevici', ic: AJ_IC('<path d="m3 6 6-2.5 6 2.5 6-2.5v14.5L15 20.5 9 18l-6 2.5Z M9 3.5V18M15 6v14.5"/>') },
+  { id: 'avisos', nombre: 'Tiempos y avisos', pista: 'Actualizar, batería, datos, sonido y avisos de TUSSAM', ic: AJ_IC('<path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15Z"/><path d="M10 20.5a2 2 0 0 0 4 0"/>') },
+  { id: 'accesibilidad', nombre: 'Accesibilidad', pista: 'Voz, tamaño del texto, contraste y vibración', ic: AJ_IC('<circle cx="12" cy="4.5" r="1.8"/><path d="M5 8.5l7 1.5 7-1.5M12 10v4.5l-3 6M12 14.5l3 6"/>') },
+  { id: 'datos', nombre: 'Datos y versión', pista: 'Actualizaciones, copia de seguridad y privacidad', ic: AJ_IC('<ellipse cx="12" cy="6" rx="7" ry="2.8"/><path d="M5 6v12c0 1.5 3.1 2.8 7 2.8s7-1.3 7-2.8V6M5 12c0 1.5 3.1 2.8 7 2.8s7-1.3 7-2.8"/>') },
+];
+let buscarAj = '', irAjuste = '';
+/* Títulos de todos los ajustes (para el buscador de la portada) */
+function indiceAjustes(S) {
+  const out = [], vistos = new Set();
+  for (const k of AJ_CATS) {
+    for (const m of S[k.id]().matchAll(/<h3[^>]*>([\s\S]*?)<\/h3>/g)) {
+      const t = m[1].replace(/<[^>]+>/g, '').replace(/&[a-z]+;/g, ' ').trim();
+      if (t && !t.includes('${') && !vistos.has(t)) { vistos.add(t); out.push({ t, cat: k.id }); }
+    }
+  }
+  return out;
+}
+views.ajustes = (el, cat) => {
   if (isNative() && window.Capacitor?.isPluginAvailable?.('BusSevApariencia')) {
     window.Capacitor.nativePromise('BusSevApariencia', 'getIcono', {}).then((r) => { if (r?.icono && r.icono !== iconoActual) { iconoActual = r.icono; el.__repintar?.(); } if (r?.icono && r.icono !== settings.iconoApp) { settings.iconoApp = r.icono; saveSettings(); applyTheme(); } }).catch(() => null);
   }
@@ -3294,10 +3317,8 @@ views.ajustes = (el) => {
     const F = fechasTematicas(y), F2 = fechasTematicas(y + 1);
     const prox = (k) => { const [i, f] = F[k][1] >= new Date() ? F[k] : F2[k]; return `${fechaCorta(i)} – ${fechaCorta(f)}`; };
     const dc = window.BusSevBackend?.caduca ? new Date(window.BusSevBackend.caduca + 'T12:00') : null;
-    el.innerHTML = `<div class="stack view-anim">
-      ${backHead('<div class="grow"><h2>Ajustes</h2></div>')}
-      <h2 class="section-title">Apariencia</h2>
-      <div class="set-group"><h3>Tema</h3>${segBtns('theme', [['auto', 'Automático'], ['light', 'Claro'], ['dark', 'Oscuro']], settings.theme)}
+    const S = {
+      apariencia: () => `<div class="set-group"><h3>Tema</h3>${segBtns('theme', [['auto', 'Automático'], ['light', 'Claro'], ['dark', 'Oscuro']], settings.theme)}
         <p>Automático sigue el modo claro u oscuro de tu móvil. El oscuro gasta menos batería en pantallas OLED.</p></div>
       <div class="set-group">
         ${sw('tematicaAuto', settings.tematicaAuto, 'Temáticas en fechas festivas', `Cambia sola en Navidad, Semana Santa, Feria y Halloween, con sorpresas el día de Navidad, Nochevieja, Año Nuevo y Reyes. Ahora: <b>${esc(TEMATICAS[tem].nombre)}</b>.`)}
@@ -3312,9 +3333,6 @@ views.ajustes = (el) => {
         <div class="swatches">${Object.entries(PALETTES).sort(([a], [b]) => (b === 'movil') - (a === 'movil')).map(([k, p]) => `<button class="swatch${p.movil ? ' swatch-movil' : ''}" type="button" data-color="${k}" aria-pressed="${settings.color === k}" aria-label="${p.label}" style="background:${p[resolvedTheme][0]};color:${p[resolvedTheme][2]}">${settings.color === k ? ICON.check : ''}</button>`).join('')}</div>
         ${PALETTES.movil ? '<p>El primero (📱) es <b>«Como mi móvil»</b>: el color sale de tu fondo de pantalla y cambia si lo cambias.</p>' : ''}
         ${tem !== 'normal' ? '<p>Mientras haya una temática puesta, la app usa sus colores. Con la temática Normal vuelve tu color.</p>' : '<p>Los pasteles llevan el texto oscuro encima para que se lea bien.</p>'}</div>
-      ${(window.repetidos?.list() || []).length ? `<div class="set-group"><h3>Avisos que se repiten</h3>${window.repetidos.list().map((r) => `<div class="row-flat rep-fila">${badge(r.linea, lineaFor(r.linea)?.color, { sm: true })}<div><b>${esc(r.parada)}</b><p class="help">${esc(window.repetidos.texto(r))}</p></div><button class="btn ghost sm" type="button" data-rep-quitar="${r.id}">Quitar</button></div>`).join('')}</div>` : ''}
-      <div class="set-group"><h3>Favoritas</h3>${sw('consejos', settings.consejos !== false, 'Consejos', 'De vez en cuando (como mucho uno al día) una tarjetita en Favoritas con algo que la app hace y quizá no sabes.')}${sw('favsCerca', settings.favsCerca === true, 'La más cercana, arriba', 'Tus favoritas se ordenan solas según dónde estés: en casa sale primero «Casa» y en el trabajo, «Trabajo». Si una está en un grupo, sube el grupo entero. Usa la última ubicación del móvil, sin preguntar; si no la hay, se queda tu orden.')}</div>
-      <div class="set-group"><h3>Pasaporte de Sevilla</h3>${sw('contarViajes', settings.contarViajes !== false, 'Contar mis viajes', 'Al abrir una parada estando en ella (o yendo hacia ella), BusSev sigue tu viaje unos minutos con la ubicación: la notificación te enseña cuánto le falta a tu bus y si llegas andando, y si te subes, el viaje cuenta para el Pasaporte. Solo usa el permiso de ubicación «mientras usas la app» y todo se queda en tu móvil.')}${settings.contarViajes !== false && plugin('BusSevViaje') ? `${sw('contarConAviso', settings.contarConAviso === true, 'Contar también con el aviso de llegada', 'Cuando falten pocos minutos para el autobús de tu aviso, BusSev empieza a seguir el viaje aunque no abras la app: si te subes, cuenta. Si estás lejos de la parada, se para solo en un minuto. Necesita la ubicación «Permitir todo el tiempo».')}<div id="perm-siempre"></div>` : ''}</div>
       <div class="set-group"><h3>Cielo de Sevilla</h3>${sw('cieloSevilla', settings.cieloSevilla === true, 'El cielo de Sevilla arriba', 'La barra de arriba se pinta con el cielo real de Sevilla: amanecer, día, atardecer o noche con la luna, y nubes o lluvia si las hay. Con una temática (Feria, Navidad…) manda la temática.')}</div>
       <div class="set-group"><h3>Color de fondo</h3>
         <div class="fondos">
@@ -3324,11 +3342,10 @@ views.ajustes = (el) => {
         <p>Los cuatro primeros son claros y el resto oscuros: al elegir uno, el tema cambia solo a claro u oscuro.</p></div>
       ${isNative() && window.Capacitor?.isPluginAvailable?.('BusSevApariencia') ? `<div class="set-group"><h3>Icono de la app</h3>
         <div class="iconos-app">${ICONOS_APP.map(([k, n]) => `<button type="button" class="icono-app" data-icono="${k}" aria-pressed="${iconoActual === k}">${iconoAppSVG(k)}<small>${n}</small><span class="sel-ok" aria-hidden="true"></span></button>`).join('')}</div>
-        <p>Ojo: al cambiarlo, Android quita BusSev de la pantalla de inicio y hay que volver a ponerlo (la app sigue en el cajón de aplicaciones). Es cosa de Android y no se puede evitar.</p></div>` : ''}
-      <div class="set-group"><h3>Sonido del aviso de llegada</h3>${segBtns('sonidoAviso', SONIDOS_AVISO, settings.sonidoAviso || 'sistema')}
-        ${isNative() && settings.sonidoAviso && !['sistema', 'vibrar'].includes(settings.sonidoAviso) ? '<button class="btn ghost" type="button" id="s-oir">🔊 Escuchar</button>' : ''}
-        <p>El que suena cuando tu autobús está a punto de llegar. «Solo vibrar» no hace ruido.</p></div>
-      <div class="set-group"><h3>Mapa</h3>${segBtns('mapStyle', [['oscuro', 'Oscuro'], ['claro', 'Claro'], ['tema', 'Como el tema'], ['satelite', 'Satélite']], settings.mapStyle)}
+        <p>Ojo: al cambiarlo, Android quita BusSev de la pantalla de inicio y hay que volver a ponerlo (la app sigue en el cajón de aplicaciones). Es cosa de Android y no se puede evitar.</p></div>` : ''}`,
+      favoritas: () => `<div class="set-group"><h3>Favoritas</h3>${sw('consejos', settings.consejos !== false, 'Consejos', 'De vez en cuando (como mucho uno al día) una tarjetita en Favoritas con algo que la app hace y quizá no sabes.')}${sw('favsCerca', settings.favsCerca === true, 'La más cercana, arriba', 'Tus favoritas se ordenan solas según dónde estés: en casa sale primero «Casa» y en el trabajo, «Trabajo». Si una está en un grupo, sube el grupo entero. Usa la última ubicación del móvil, sin preguntar; si no la hay, se queda tu orden.')}</div>
+      <div class="set-group"><h3>Pasaporte de Sevilla</h3>${sw('contarViajes', settings.contarViajes !== false, 'Contar mis viajes', 'Al abrir una parada estando en ella (o yendo hacia ella), BusSev sigue tu viaje unos minutos con la ubicación: la notificación te enseña cuánto le falta a tu bus y si llegas andando, y si te subes, el viaje cuenta para el Pasaporte. Solo usa el permiso de ubicación «mientras usas la app» y todo se queda en tu móvil.')}${settings.contarViajes !== false && plugin('BusSevViaje') ? `${sw('contarConAviso', settings.contarConAviso === true, 'Contar también con el aviso de llegada', 'Cuando falten pocos minutos para el autobús de tu aviso, BusSev empieza a seguir el viaje aunque no abras la app: si te subes, cuenta. Si estás lejos de la parada, se para solo en un minuto. Necesita la ubicación «Permitir todo el tiempo».')}<div id="perm-siempre"></div>` : ''}</div>`,
+      mapa: () => `<div class="set-group"><h3>Mapa</h3>${segBtns('mapStyle', [['oscuro', 'Oscuro'], ['claro', 'Claro'], ['tema', 'Como el tema'], ['satelite', 'Satélite']], settings.mapStyle)}
         <h3 style="margin-top:14px">Qué ver en el mapa</h3>
         ${sw('mapaParadas', settings.mapaParadas !== false, 'Paradas', 'Los puntos de las paradas.')}
         ${sw('mapaRecorridos', settings.mapaRecorridos !== false, 'Recorridos', 'La línea del autobús cuando eliges una.')}
@@ -3337,31 +3354,20 @@ views.ajustes = (el) => {
         ${sw('mapaRenfe', settings.mapaRenfe === true, 'Cercanías Renfe', 'Las líneas C1 a C5 y sus estaciones, con los próximos trenes.')}
         ${sw('mapaSevici', settings.mapaSevici === true, 'Bicis Sevici', 'Las estaciones con las bicis y los huecos libres en este momento.')}
         <p class="help">Los autobuses en directo se encienden con el botón <img class="lg-busimg" src="${busImg()}" alt="autobús" style="height:18px;vertical-align:-4px"> del mapa.</p></div>
-
-      <h2 class="section-title">Accesibilidad</h2>
-      <div class="set-group">
-        ${sw('voz', settings.voz, 'Leer en voz alta', 'Muestra el botón «Escuchar» en las paradas.')}
-        ${settings.voz ? sw('vozAuto', settings.vozAuto, 'Leer al abrir una parada', 'Lee los tiempos nada más abrirla.') : ''}
-        ${sw('modoSencillo', settings.modoSencillo, 'Modo sencillo', 'Todo más grande y sin adornos: pensado para quien quiere lo justo y claro.')}
-        <div class="switch-row"><div><h3>Tamaño del texto</h3><p>Agranda la letra de toda la app.</p></div></div>
-        ${segBtns('escalaTexto', [[1, 'Normal'], [1.22, 'Grande'], [1.35, 'Más'], [1.5, 'Máximo']], settings.letraGrande ? settings.escalaTexto : 1)}
-        ${sw('botonesGrandes', settings.botonesGrandes, 'Botones más grandes', 'Más fáciles de tocar.')}
-        ${sw('altoContraste', settings.altoContraste, 'Alto contraste', 'Textos y bordes más marcados.')}
-        ${sw('menosAnimaciones', settings.menosAnimaciones, 'Reducir animaciones', 'Sin movimientos ni transiciones; también ahorra batería.')}
-        ${sw('vibrar', settings.vibrar, 'Vibración', 'Al guardar favoritas y al leer la tarjeta.')}
-      </div>
-
-      <h2 class="section-title">Tiempos y avisos</h2>
-      <div class="set-group"><h3>Actualizar los tiempos</h3>${segBtns('refresh', [[30, 'Cada 30 s'], [60, 'Cada minuto'], [0, 'Al pulsar ⟳']], settings.refresh)}
+      <div class="set-group">${sw('liveLines', settings.liveLines, 'Autobuses en directo en el mapa', 'Muestra dónde va cada autobús (en las líneas y en la zona del mapa que miras). También se activa con el botón ' + busIco() + ' del mapa.')}</div>`,
+      avisos: () => `<div class="set-group"><h3>Actualizar los tiempos</h3>${segBtns('refresh', [[30, 'Cada 30 s'], [60, 'Cada minuto'], [0, 'Al pulsar ⟳']], settings.refresh)}
         <p>Cuanto menos a menudo, menos batería y datos. Con la app en segundo plano nunca se actualiza, y si la dejas abierta sin tocarla va más despacio (cada 2 min, y pasado un cuarto de hora cada 5): en cuanto la tocas, se actualiza al momento.</p></div>
       <div class="set-group"><h3>Ahorro de batería</h3>${segBtns('ahorroBateria', [['auto', 'Automático'], ['siempre', 'Siempre'], ['nunca', 'Nunca']], settings.ahorroBateria || 'auto')}
         <p>${energia.bateria() ? `<b>🔋 Ahorrando ahora${energia.motivo() ? ` (${esc(energia.motivo())})` : ''}.</b> ` : ''}En automático se pone solo cuando el móvil está en ahorro de batería o le queda un 15 % o menos sin cargar. Los tiempos se piden como mucho cada minuto, el cielo de la barra y el brillo de la tarjeta al inclinarla se quedan quietos, y el widget y el GPS de los viajes gastan menos. El resto de animaciones siguen igual.</p></div>
       <div class="set-group"><h3>Ahorro de datos</h3>${segBtns('ahorroDatos', [['auto', 'Automático'], ['siempre', 'Siempre'], ['nunca', 'Nunca']], settings.ahorroDatos || 'auto')}
         <p>${energia.datos() ? '<b>📶 Ahorrando datos ahora.</b> ' : ''}En automático sigue al «Ahorro de datos» de Android. Los tiempos se piden como mucho cada 45 s, el cielo y Sevici se consultan menos, y la versión nueva se busca solo con wifi.</p>
         ${energia.resumenDatos() ? `<p class="datos-mes">📊 ${energia.resumenDatos()}</p>` : ''}</div>
-      <div class="set-group">${sw('liveLines', settings.liveLines, 'Autobuses en directo en el mapa', 'Muestra dónde va cada autobús (en las líneas y en la zona del mapa que miras). También se activa con el botón ' + busIco() + ' del mapa.')}</div>
       <div class="set-group"><h3>Revisar al abrir la app</h3>${segBtns('revisarCada', [[0, 'Nunca'], [1, 'Cada hora'], [3, 'Cada 3 h'], [6, 'Cada 6 h']], settings.revisarCada)}
         <p>Comprueba el saldo y la caducidad de tus tarjetas guardadas al abrir la app, como mucho con esta frecuencia, y te avisa si el saldo está bajo.</p></div>
+      <div class="set-group"><h3>Sonido del aviso de llegada</h3>${segBtns('sonidoAviso', SONIDOS_AVISO, settings.sonidoAviso || 'sistema')}
+        ${isNative() && settings.sonidoAviso && !['sistema', 'vibrar'].includes(settings.sonidoAviso) ? '<button class="btn ghost" type="button" id="s-oir">🔊 Escuchar</button>' : ''}
+        <p>El que suena cuando tu autobús está a punto de llegar. «Solo vibrar» no hace ruido.</p></div>
+      ${(window.repetidos?.list() || []).length ? `<div class="set-group"><h3>Avisos que se repiten</h3>${window.repetidos.list().map((r) => `<div class="row-flat rep-fila">${badge(r.linea, lineaFor(r.linea)?.color, { sm: true })}<div><b>${esc(r.parada)}</b><p class="help">${esc(window.repetidos.texto(r))}</p></div><button class="btn ghost sm" type="button" data-rep-quitar="${r.id}">Quitar</button></div>`).join('')}</div>` : ''}
       <div class="set-group"><h3>Avisos de TUSSAM (desvíos, obras, horarios especiales)</h3>${segBtns('avisosTussam', [['mias', 'De mis líneas'], ['todas', 'Todos'], ['no', 'No avisar']], settings.avisosTussam)}
         <p>Notificaciones: al abrir la app (como mucho una vez por hora) mira la web de TUSSAM y te avisa si hay un aviso nuevo. «Mis líneas» son las que paran en tus favoritas.</p>
         ${settings.avisosTussam !== 'no' ? `${sw('avisosSilencio', settings.avisosSilencio !== false, '🌙 Silencio de noche', 'Los avisos de TUSSAM que salgan de noche no suenan: te llegan por la mañana, a la hora en que acaba el silencio.')}
@@ -3372,19 +3378,19 @@ views.ajustes = (el) => {
         ${sw('avisosParada', settings.avisosParada !== false, 'Al abrir una parada', 'El aviso arriba del todo si afecta a esa parada.')}
         ${sw('avisosLinea', settings.avisosLinea !== false, 'Al abrir una línea', 'El aviso arriba del recorrido de la línea.')}
         <a class="btn ghost" href="#avisos">Ver los avisos</a></div>
-      <div class="set-group"><h3>Tarifas y títulos de viaje</h3><p>Los precios actuales de TUSSAM, leídos de su web (se actualizan solos).</p><a class="btn ghost" href="#tarifas">Ver las tarifas</a></div>
-
-      <h2 class="section-title">Tus datos</h2>
-      <div class="set-group"><h3>Tu servidor: saldo y tiempos (avanzado)</h3>
-        <p>Si has montado tu propio servidor (carpeta <i>servidor-saldo</i>), pega aquí su dirección y BusSev te enseñará el saldo de la tarjeta. Déjalo vacío para no usarlo.</p>
-        <div class="field"><input id="s-saldo-url" class="mini-input" style="width:100%" inputmode="url" autocomplete="off" placeholder="https://tu-servidor.deno.dev" value="${esc(settings.saldoURL || '')}"></div>
-        <div class="btn-row"><button class="btn ghost" type="button" id="s-saldo-save">Guardar</button>${settings.saldoURL ? '<button class="btn ghost" type="button" id="s-saldo-test">Probar</button>' : ''}</div>${settings.saldoURL ? sw('tiemposServidor', settings.tiemposServidor === true, 'Pedir también los tiempos a mi servidor', 'Normalmente NO funciona: TUSSAM bloquea a los servidores de internet con Cloudflare. Actívalo solo si tu servidor está en un sitio que TUSSAM deja pasar (pulsa «Probar»).') : ''}</div>
-      <div class="set-group"><h3>Copia de seguridad</h3>
-        <p>Guarda tus favoritas, tarjetas y ajustes en un archivo para no perderlos si cambias de móvil.</p>
-        <div class="btn-row"><button class="btn ghost" type="button" id="s-exp">Guardar copia</button><label class="btn ghost" for="s-imp" style="cursor:pointer">Recuperar copia</label></div>
-        <input type="file" id="s-imp" accept="application/json,.json" hidden></div>
-      <h2 class="section-title">Actualizaciones</h2>
-      <div class="set-group">
+      <div class="set-group"><h3>Tarifas y títulos de viaje</h3><p>Los precios actuales de TUSSAM, leídos de su web (se actualizan solos).</p><a class="btn ghost" href="#tarifas">Ver las tarifas</a></div>`,
+      accesibilidad: () => `<div class="set-group">
+        ${sw('voz', settings.voz, 'Leer en voz alta', 'Muestra el botón «Escuchar» en las paradas.')}
+        ${settings.voz ? sw('vozAuto', settings.vozAuto, 'Leer al abrir una parada', 'Lee los tiempos nada más abrirla.') : ''}
+        ${sw('modoSencillo', settings.modoSencillo, 'Modo sencillo', 'Todo más grande y sin adornos: pensado para quien quiere lo justo y claro.')}
+        <div class="switch-row"><div><h3>Tamaño del texto</h3><p>Agranda la letra de toda la app.</p></div></div>
+        ${segBtns('escalaTexto', [[1, 'Normal'], [1.22, 'Grande'], [1.35, 'Más'], [1.5, 'Máximo']], settings.letraGrande ? settings.escalaTexto : 1)}
+        ${sw('botonesGrandes', settings.botonesGrandes, 'Botones más grandes', 'Más fáciles de tocar.')}
+        ${sw('altoContraste', settings.altoContraste, 'Alto contraste', 'Textos y bordes más marcados.')}
+        ${sw('menosAnimaciones', settings.menosAnimaciones, 'Reducir animaciones', 'Sin movimientos ni transiciones; también ahorra batería.')}
+        ${sw('vibrar', settings.vibrar, 'Vibración', 'Al guardar favoritas y al leer la tarjeta.')}
+      </div>`,
+      datos: () => `<div class="set-group">
         <div class="ver-fila"><div><h3>BusSev ${esc(actualizaciones.nombre())}</h3>
           <p>${actualizaciones.version().fecha ? `Compilada el ${new Date(actualizaciones.version().fecha + 'T12:00').toLocaleDateString('es-ES')}. ` : ''}Paradas y recorridos oficiales de TUSSAM${dc ? `, válidos hasta el <b>${dc.toLocaleDateString('es-ES')}</b>` : ''}.</p></div></div>
         <div id="s-ver-res"></div>
@@ -3392,6 +3398,14 @@ views.ajustes = (el) => {
         <p>Cada versión nueva lleva ya los horarios y recorridos oficiales más recientes (GitHub los descarga solo del Punto de Acceso Nacional de Transportes, y el día 1 de cada mes revisa si TUSSAM ha publicado otros). Se instala encima, sin perder nada.</p>
         ${sw('avisarVersion', settings.avisarVersion, 'Avisarme si hay una versión nueva', 'Lo mira al abrir la app y cada vez que vuelves a ella.')}
       </div>
+      <div class="set-group"><h3>Copia de seguridad</h3>
+        <p>Guarda tus favoritas, tarjetas y ajustes en un archivo para no perderlos si cambias de móvil.</p>
+        <div class="btn-row"><button class="btn ghost" type="button" id="s-exp">Guardar copia</button><label class="btn ghost" for="s-imp" style="cursor:pointer">Recuperar copia</label></div>
+        <input type="file" id="s-imp" accept="application/json,.json" hidden></div>
+      <div class="set-group"><h3>Tu servidor: saldo y tiempos (avanzado)</h3>
+        <p>Si has montado tu propio servidor (carpeta <i>servidor-saldo</i>), pega aquí su dirección y BusSev te enseñará el saldo de la tarjeta. Déjalo vacío para no usarlo.</p>
+        <div class="field"><input id="s-saldo-url" class="mini-input" style="width:100%" inputmode="url" autocomplete="off" placeholder="https://tu-servidor.deno.dev" value="${esc(settings.saldoURL || '')}"></div>
+        <div class="btn-row"><button class="btn ghost" type="button" id="s-saldo-save">Guardar</button>${settings.saldoURL ? '<button class="btn ghost" type="button" id="s-saldo-test">Probar</button>' : ''}</div>${settings.saldoURL ? sw('tiemposServidor', settings.tiemposServidor === true, 'Pedir también los tiempos a mi servidor', 'Normalmente NO funciona: TUSSAM bloquea a los servidores de internet con Cloudflare. Actívalo solo si tu servidor está en un sitio que TUSSAM deja pasar (pulsa «Probar»).') : ''}</div>
       <div class="set-group"><h3>Privacidad y seguridad</h3>
         <p>BusSev solo se conecta con:</p>
         <ul class="priv-lista">
@@ -3406,8 +3420,41 @@ views.ajustes = (el) => {
         <p>No tiene anuncios ni seguimiento, y no envía a nadie tu ubicación ni tus viajes. Tus favoritas, tarjetas, viajes y medallas se guardan solo en este móvil (y en la copia de seguridad si la haces).</p>
         <p>Permisos: internet; ubicación (opcional, solo mientras usas la app; «todo el tiempo» solo si activas «Contar también con el aviso de llegada» en el Pasaporte, y solo en los minutos antes de tu aviso); NFC (solo con la pestaña Tarjeta abierta); notificaciones (solo si activas algún aviso); alarmas exactas (para que los avisos suenen a su hora) e instalar apps (solo para actualizar BusSev).</p></div>
       <div class="set-group"><h3>Datos de líneas y paradas</h3><p>Datos oficiales de TUSSAM ${dc ? `válidos hasta el ${dc.toLocaleDateString('es-ES')}` : ''}. ${window.BusSevBackend?.caducados?.() ? 'Ya han caducado: la app pide los recorridos a TUSSAM en directo.' : 'Cuando caduquen, la app pedirá los recorridos a TUSSAM en directo.'} Recorridos por calle: ${Object.keys(window.BUSSEV_RECORRIDOS || {}).length ? 'sí' : 'en línea recta'}. Mapas: © OpenStreetMap, OpenFreeMap, OpenMapTiles.</p>
-        <p>BusSev es una app personal, sin relación con TUSSAM.</p></div>
+        <p>BusSev es una app personal, sin relación con TUSSAM.</p></div>`,
+    };
+    const c = AJ_CATS.find((x) => x.id === cat);
+    if (!c) {
+      // Portada: las categorías, cada una con lo que lleva dentro, y un buscador de ajustes
+      const lista = () => {
+        const q = norm(buscarAj);
+        if (q.length < 2) return `<div class="list aj-cats">${AJ_CATS.map((k) => `<a class="row" href="#ajustes-${k.id}"><span class="aj-ic" aria-hidden="true">${k.ic}</span><div class="row-main"><b>${k.nombre}</b><span>${k.pista}</span></div>${ICON.chev}</a>`).join('')}</div>`;
+        const hits = indiceAjustes(S).filter((x) => norm(x.t).includes(q)).slice(0, 12);
+        return hits.length ? `<div class="list">${hits.map((x) => `<a class="row" href="#ajustes-${x.cat}" data-ir="${esc(x.t)}"><div class="row-main"><b>${esc(x.t)}</b><span>${esc(AJ_CATS.find((k) => k.id === x.cat).nombre)}</span></div>${ICON.chev}</a>`).join('')}</div>`
+          : '<p class="help" style="margin:0 2px">No hay ningún ajuste con ese nombre.</p>';
+      };
+      el.innerHTML = `<div class="stack view-anim">
+      ${backHead('<div class="grow"><h2>Ajustes</h2></div>')}
+      <label class="search aj-buscar" for="aj-q">${ICON.lupa}<input id="aj-q" type="search" autocomplete="off" enterkeyhint="search" placeholder="Buscar un ajuste" value="${esc(buscarAj)}"></label>
+      <div id="aj-res">${lista()}</div>
     </div>`;
+      $('.back-btn', el).onclick = goBack;
+      const res = $('#aj-res', el);
+      const marcar = () => res.querySelectorAll('[data-ir]').forEach((a) => { a.addEventListener('click', () => { irAjuste = a.dataset.ir; }); });
+      $('#aj-q', el).oninput = (e) => { buscarAj = e.target.value; res.innerHTML = lista(); marcar(); };
+      marcar();
+      return;
+    }
+    el.innerHTML = `<div class="stack view-anim">
+      ${backHead(`<div class="grow"><h2>${c.nombre}</h2></div>`)}
+      ${S[c.id]()}
+    </div>`;
+    if (irAjuste) {
+      // Desde el buscador: se baja hasta ese ajuste y se marca un momento
+      const t = irAjuste; irAjuste = '';
+      const h = [...el.querySelectorAll('h3')].find((x) => x.textContent.trim() === t);
+      const caja = h?.closest('.switch-row') || h?.closest('.set-group');
+      if (caja) requestAnimationFrame(() => { caja.scrollIntoView({ block: 'center' }); caja.classList.add('aj-marca'); setTimeout(() => caja.classList.remove('aj-marca'), 1600); });
+    }
     $('.back-btn', el).onclick = goBack;
     el.querySelectorAll('[data-set]').forEach((b) => { b.onclick = () => {
       const k = b.dataset.set; settings[k] = ['refresh', 'revisarCada', 'escalaTexto'].includes(k) ? Number(b.dataset.v) : b.dataset.v;
@@ -3464,7 +3511,7 @@ views.ajustes = (el) => {
       if (FONDOS[settings.fondo]) settings.theme = FONDOS[settings.fondo].base;
       saveSettings(); applyTheme(); render();
     }; });
-    $('#s-ver', el).onclick = async () => {
+    if ($('#s-ver', el)) $('#s-ver', el).onclick = async () => {
       const box = $('#s-ver-res', el), b = $('#s-ver', el);
       b.disabled = true; b.classList.add('buscando');
       box.innerHTML = cargandoHTML('Buscando versiones nuevas…');
@@ -3484,7 +3531,7 @@ views.ajustes = (el) => {
         box.innerHTML = `<div class="ver-res"><b>No se ha podido comprobar</b><span>${esc(e.name === 'AbortError' ? 'GitHub está tardando demasiado.' : (e.message || 'Revisa la conexión.'))}</span></div>`;
       } finally { b.disabled = false; b.classList.remove('buscando'); }
     };
-    $('#s-saldo-save', el).onclick = () => {
+    if ($('#s-saldo-save', el)) $('#s-saldo-save', el).onclick = () => {
       const v = $('#s-saldo-url', el).value.trim().replace(/\/+$/, '');
       if (v && !/^https:\/\/[^\s/]+\.[^\s/]+/.test(v)) { toast('Pon una dirección que empiece por https://'); return; }
       settings.saldoURL = v; saveSettings(); toast(v ? 'Servidor del saldo guardado' : 'Servidor del saldo quitado'); render();
@@ -3505,8 +3552,8 @@ views.ajustes = (el) => {
     });
     window.horaPicker?.(el, 'sil-desde', (v) => { if (v) { settings.silencioDesde = v; saveSettings(); } });
     window.horaPicker?.(el, 'sil-hasta', (v) => { if (v) { settings.silencioHasta = v; saveSettings(); } });
-    $('#s-exp', el).onclick = () => copia.exportar().catch(() => toast('No se ha podido guardar la copia.'));
-    $('#s-imp', el).onchange = async (e) => {
+    if ($('#s-exp', el)) $('#s-exp', el).onclick = () => copia.exportar().catch(() => toast('No se ha podido guardar la copia.'));
+    if ($('#s-imp', el)) $('#s-imp', el).onchange = async (e) => {
       try {
         const d = await copia.importar(e.target.files?.[0]);
         openModal(`<h2>Recuperar copia</h2><p class="help">Contiene ${d.favs.length} paradas favoritas y ${d.cards.length} tarjetas. Sustituirá lo que tienes ahora en BusSev.</p>
@@ -3792,6 +3839,7 @@ function route() {
   if ((m = h.match(/^parada-(\d{1,7})$/))) return show('parada', m[1]);
   if ((m = h.match(/^linea-([A-Za-z0-9]{1,8})$/))) return show('linea', m[1]);
   if (h === 'ajustes') return show('ajustes');
+  if ((m = h.match(/^ajustes-([a-z]{3,15})$/)) && AJ_CATS.some((k) => k.id === m[1])) return show('ajustes', m[1]);
   if (h === 'ruta') return show('ruta');
   if (h === 'avisos') return show('avisos');
   if (h === 'viaje') return show('viaje');

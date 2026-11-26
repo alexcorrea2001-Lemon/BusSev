@@ -51,7 +51,7 @@ ev(`avisoModal({ codigo: '2', parada: 'Menéndez Pelayo', linea: '27', destino: 
 await espera(100);
 assert.ok(a.$('.rep-on') && a.$('[data-rep-del]'));
 a.$('.modal #av-x').click();
-await a.ir('#ajustes', 500);
+await a.ir('#ajustes-avisos', 500);
 assert.ok(a.$('[data-rep-quitar]'), 'lista en Ajustes');
 a.$('[data-rep-quitar]').click();
 await espera(150);

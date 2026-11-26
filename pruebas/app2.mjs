@@ -16,7 +16,7 @@ console.log("bloque 1"); // --- 1) Nocturnos desde las 23:50; azul más claro; o
   for (const h of ['#lineas', '#parada-194', '#linea-29', '#favoritas']) { await a.ir(h, 900); assert.ok(!/000d6f/i.test(a.w.document.body.innerHTML), `queda azul marino en ${h}`); }
   await a.ir('#parada-194', 1600); const m = a.mapas.at(-1); const cols = new Set((m.fuentes['bs-paths']?.features || []).map((f) => f.properties.color));
   assert.ok(cols.size && ![...cols].some((c) => /000d6f/i.test(c)), 'el camino en el mapa usa el azul nuevo: ' + [...cols]);
-  await a.ir('#ajustes', 400);
+  await a.ir('#ajustes-mapa', 400);
   const sat = a.w.document.querySelector('[data-k="mapStyle"][data-v="satelite"], [data-set="mapStyle"][data-v="satelite"]') || [...a.w.document.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Satélite');
   assert.ok(sat, 'botón Satélite en Ajustes'); sat.click(); await a.espera(100);
   assert.equal(JSON.parse(a.w.localStorage.getItem('bussev.settings')).mapStyle, 'satelite'); assert.equal(ev('styleUrl()'), '/map/satelite.json'); assert.match(ev('creditoMapa()'), /Instituto Geográfico Nacional/);

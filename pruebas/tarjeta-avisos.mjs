@@ -55,7 +55,7 @@ ev(`settings.silencioDesde = '14:00'; settings.silencioHasta = '16:30'`);
 assert.equal(fin(15, 0), '20 16:30');
 ev(`settings.avisosSilencio = false`); assert.equal(fin(23, 30), null, 'apagado');
 ev(`settings.avisosSilencio = true; settings.silencioDesde = '23:00'; settings.silencioHasta = '08:00'`);
-await a.ir('#ajustes', 500);
+await a.ir('#ajustes-avisos', 500);
 assert.ok(a.$('[data-hora-pick="sil-desde"]') && a.$('[data-hora-pick="sil-hasta"]'), 'horas en Ajustes');
 a.$('[data-hora-pick="sil-hasta"] [data-hp="15"]').click(); await espera(50);
 assert.equal(ev('settings.silencioHasta'), '08:15');

@@ -67,7 +67,7 @@ assert.equal(e.fija, '1'); assert.deepEqual(e.lineas.map((x) => x.linea), ['01']
 assert.match(a.w.location.hash, /parada-2/);
 
 // Apagado en Ajustes: no empieza, y al apagarlo se para el que haya
-await a.ir('#ajustes', 500);
+await a.ir('#ajustes-favoritas', 500);
 const sw = a.$('[data-sw="contarViajes"]');
 assert.ok(sw && sw.checked, 'el ajuste existe y viene encendido');
 sw.checked = false; sw.dispatchEvent(new a.w.Event('change', { bubbles: true }));

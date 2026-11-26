@@ -57,7 +57,7 @@ assert.equal(ev('energia.mb(42_000_000)'), '42 MB');
 
 // Ajustes
 est.ahorroSistema = true; await leer();
-await a.ir('#ajustes', 600);
+await a.ir('#ajustes-avisos', 600);
 const txt = a.$('.view:not([hidden])').textContent;
 assert.ok(txt.includes('Ahorro de batería') && txt.includes('Ahorro de datos'));
 assert.ok(txt.includes('Ahorrando ahora'), 'dice que está ahorrando');

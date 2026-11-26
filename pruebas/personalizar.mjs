@@ -80,7 +80,7 @@ assert.equal(ev(`nombreSevici('_GLORIETA BIZCO AMATE')`), 'Glorieta Bizco Amate'
 assert.equal(ev(`nombreSevici('123_AVENIDA DE LA BUHAIRA')`), 'Avenida de la Buhaira');
 assert.equal(ev(`[settings.mapaMetro, settings.mapaRenfe, settings.mapaSevici, settings.rutaMetro, settings.rutaRenfe, settings.rutaBici].some((v) => v === true)`), false);
 // Ajustes: sonido del aviso
-await a.ir('#ajustes', 600);
+await a.ir('#ajustes-avisos', 600);
 assert.ok(a.$('[data-set="sonidoAviso"][data-v="campana"]'), 'elegir sonido');
 assert.equal(a.errores.length, 0, a.errores.join('\n').slice(0, 2000));
 console.log('OK personalizar favoritas, tarjetas y pantalla de parada');
