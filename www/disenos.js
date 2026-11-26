@@ -13,16 +13,6 @@ const rg = (id, cx, cy, r, stops) => `<radialGradient id="${id}" cx="${cx}" cy="
 const velo = (u, c = '#000', a = 0.38) => `${lg(u('v'), 1, 0, [[0, c, a], [0.55, c, a * 0.35], [1, c, 0]])}`;
 const veloRect = (u) => `<rect width="400" height="250" fill="url(#${u('v')})"/>`;
 const estrellas = (pts, c = '#fff') => pts.map(([x, y, r = 1]) => `<circle cx="${x}" cy="${y}" r="${r}" fill="${c}" opacity="${0.5 + (x % 5) / 10}"/>`).join('');
-// Bombillas repartidas a lo largo de un camino de puntos (para la portada)
-function bombillas(pts, paso, r, c) {
-  let s = '';
-  for (let i = 0; i < pts.length - 1; i++) {
-    const [x0, y0] = pts[i], [x1, y1] = pts[i + 1];
-    const L = Math.hypot(x1 - x0, y1 - y0), k = Math.max(1, Math.round(L / paso));
-    for (let j = 0; j < k; j++) { const t = j / k; s += `<circle cx="${(x0 + (x1 - x0) * t).toFixed(1)}" cy="${(y0 + (y1 - y0) * t).toFixed(1)}" r="${r}" fill="${c}"/>`; }
-  }
-  return s;
-}
 // Guirnalda de farolillos de feria
 function farolillos(x0, x1, y0, caida, num, escala = 1) {
   const cols = [['#fff', '#e11d48'], ['#e11d48', '#fff'], ['#16a34a', '#fff'], ['#facc15', '#e11d48']];
@@ -38,10 +28,6 @@ function farolillos(x0, x1, y0, caida, num, escala = 1) {
   }
   return s;
 }
-// Palmera
-const palmera = (x, y, h, c) => `<g fill="none" stroke="${c}" stroke-linecap="round"><path d="M${x} ${y} q${h * 0.08} ${-h * 0.5} ${-h * 0.04} ${-h}" stroke-width="${h * 0.06}"/>
-  <g stroke-width="${h * 0.05}"><path d="M${x - h * 0.04} ${y - h} q${-h * 0.3} ${-h * 0.12} ${-h * 0.5} ${h * 0.12}"/><path d="M${x - h * 0.04} ${y - h} q${h * 0.3} ${-h * 0.14} ${h * 0.5} ${h * 0.1}"/>
-  <path d="M${x - h * 0.04} ${y - h} q${-h * 0.2} ${-h * 0.3} ${-h * 0.42} ${-h * 0.18}"/><path d="M${x - h * 0.04} ${y - h} q${h * 0.22} ${-h * 0.3} ${h * 0.42} ${-h * 0.2}"/><path d="M${x - h * 0.04} ${y - h} q${h * 0.02} ${-h * 0.3} ${h * 0.05} ${-h * 0.36}"/></g></g>`;
 
 /* Estilo «tarjeta de lujo»: fondo con un dibujo ornamental muy suave y el monumento en trazo fino (dorado o crema),
    con un halo de luz detrás. Todos comparten el mismo estilo, como el azulejo. */

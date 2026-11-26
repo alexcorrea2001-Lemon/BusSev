@@ -223,13 +223,6 @@ main { position: relative; overflow: hidden; min-height: 0; }
 .sheet-actions { display: flex; gap: 8px; margin-top: 10px; }
 .sheet-actions .btn { flex: 1; height: 42px; font-size: 15px; }
 
-.leaflet-container { font-family: var(--font-body); background: var(--surface-2); }
-.leaflet-popup-content-wrapper, .leaflet-popup-tip { background: var(--surface); color: var(--ink); }
-.leaflet-popup-content { margin: 12px 14px; font-size: 14px; }
-.leaflet-popup-content .btn { height: 38px; margin-top: 8px; font-size: 14px; }
-.leaflet-control-attribution { font-size: 10px; }
-:root[data-theme="dark"] .leaflet-control-attribution { background: rgb(28 29 33 / .75) !important; color: var(--muted); }
-:root[data-theme="dark"] .leaflet-bar a { background: var(--surface); color: var(--ink); border-color: var(--line); }
 
 .busmk { position: relative; width: 46px; height: 44px; }
 .busmk-l { position: absolute; left: 50%; top: 0; transform: translateX(-50%); min-width: 26px; height: 18px; padding: 0 4px; border-radius: 5px; display: grid; place-items: center; font: 700 13px/1 var(--font-board); box-shadow: 0 1px 3px rgb(0 0 0 / .4); white-space: nowrap; }
@@ -266,17 +259,10 @@ main { position: relative; overflow: hidden; min-height: 0; }
 .tcard .tc-top { display: flex; justify-content: space-between; align-items: center; font: 700 18px/1 var(--font-board); letter-spacing: .04em; }
 .tcard .tc-top svg { width: 30px; height: 30px; opacity: .9; }
 .tcard .tc-num { align-self: end; font: 700 clamp(22px, 7vw, 30px)/1 var(--font-board); letter-spacing: .08em; font-variant-numeric: tabular-nums; }
-.tcard .tc-name { font-size: 14px; opacity: .85; }
 .field { display: grid; gap: 6px; }
 .field label { font-size: 14px; font-weight: 700; }
 .field input { height: 48px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); padding: 0 14px; font-size: 18px; font-variant-numeric: tabular-nums; letter-spacing: .04em; }
 .scan-overlay { position: fixed; inset: 0; z-index: 2000; background: rgb(0 0 0 / .6); display: grid; place-items: end center; padding: 16px; }
-.scan-box { background: var(--surface); border-radius: 22px; padding: 24px 20px; width: min(100%, 440px); display: grid; gap: 14px; justify-items: center; text-align: center; margin-bottom: env(safe-area-inset-bottom, 0px); }
-.scan-box svg { width: 72px; height: 72px; color: var(--accent); }
-.scan-box h3 { margin: 0; font-size: 20px; }
-.scan-box p { margin: 0; color: var(--muted); }
-.pulse { animation: pulse 1.4s ease-in-out infinite; }
-@keyframes pulse { 50% { transform: scale(1.08); opacity: .7; } }
 /* #5 Animación de escaneo de la tarjeta NFC: ondas que salen del icono mientras espera la tarjeta */
 .nfc-scan { position: relative; display: inline-grid; place-items: center; width: 40px; height: 40px; flex: none; }
 .nfc-scan svg { position: relative; z-index: 1; width: 34px; height: 34px; }
@@ -334,8 +320,6 @@ main { position: relative; overflow: hidden; min-height: 0; }
 .fav-btn[aria-pressed="true"] svg { fill: var(--albero); stroke: var(--albero); }
 .fav-btn.pop svg { animation: pop .45s cubic-bezier(.3, 1.6, .5, 1); }
 @keyframes pop { 0% { transform: scale(1); } 40% { transform: scale(1.45) rotate(-12deg); } 100% { transform: scale(1); } }
-.fav-tools { display: flex; gap: 8px; flex-wrap: wrap; }
-.fav-tools .btn { height: 38px; font-size: 14px; padding: 0 14px; }
 .card.fav { border-left: 6px solid var(--fc, var(--accent)); }
 /* El número de la parada toma el color personalizado de la favorita (si tiene) */
 .card.fav .stop-num { background: color-mix(in srgb, var(--fc, var(--accent)) 20%, transparent); color: var(--fc, var(--accent)); }
@@ -373,10 +357,6 @@ body[data-view="ajustes"] .search { display: none; }
 .kv span { color: var(--muted); }
 .kv b { text-align: right; overflow-wrap: anywhere; }
 .raw { white-space: pre-wrap; font-size: 12px; background: var(--surface); border-radius: 10px; padding: 10px; max-height: 240px; overflow: auto; color: var(--muted); }
-.info-list { display: grid; gap: 10px; }
-.info-list div { background: var(--surface); border-radius: 12px; padding: 12px 14px; box-shadow: var(--shadow); }
-.info-list b { display: block; font-size: 15px; }
-.info-list p { margin: 4px 0 0; font-size: 14px; color: var(--muted); }
 select.input, .field select { height: 48px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); padding: 0 12px; font-size: 16px; }
 
 /* ================= v4: pulido general ================= */
@@ -392,8 +372,6 @@ select.input, .field select { height: 48px; border-radius: 12px; border: 1px sol
 .link-btn { border: 0; background: none; color: var(--accent); font: 700 13px/1 var(--font-body); padding: 4px 0; cursor: pointer; margin-left: auto; }
 .alert { background: var(--accent-soft); color: var(--ink); border-radius: 12px; padding: 12px 14px; font-size: 14px; }
 .alert.warn { background: color-mix(in srgb, var(--albero) 22%, var(--surface)); }
-.loading-row { display: flex; align-items: center; gap: 10px; justify-content: center; color: var(--muted); font-size: 14px; padding: 6px; }
-.spinner { width: 18px; height: 18px; border-radius: 50%; border: 3px solid var(--line); border-top-color: var(--accent); animation: spin .8s linear infinite; }
 .row-flat { display: flex; align-items: center; gap: 12px; }
 .row-flat p { margin: 2px 0 0; }
 .card { transition: transform .12s; }
@@ -427,13 +405,8 @@ details.set-group[open] > summary::after { transform: rotate(-90deg); }
 .tcard.mini .tc-num { font-size: 15px; }
 .tcard.mini .tc-brand { font-size: 14px; }
 .tcard.mini .tc-top svg { width: 22px; height: 22px; }
-.cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr)); gap: 12px; }
 .card-btn { border: 0; background: none; padding: 0; text-align: left; font: inherit; color: inherit; cursor: pointer; display: grid; gap: 6px; }
 .card-btn-sub { font-size: 12px; color: var(--muted); padding-left: 4px; }
-.scan-cta { display: flex; align-items: center; gap: 14px; width: 100%; border: 0; cursor: pointer; text-align: left; padding: 16px; border-radius: 16px; background: var(--accent); color: var(--on-accent); box-shadow: var(--shadow); font: inherit; }
-.scan-cta svg { width: 34px; height: 34px; }
-.scan-cta b { display: block; font-size: 18px; }
-.scan-cta small { display: block; font-size: 13px; opacity: .9; }
 
 /* cómo llegar */
 .plan-field { position: relative; }
@@ -536,10 +509,6 @@ details.set-group[open] > summary::after { transform: rotate(-90deg); }
 .carrusel > * { scroll-snap-align: start; }
 .carrusel:has(> :only-child) { grid-auto-columns: 100%; }
 .tcard.con-foto .tc-mid { padding-left: 34%; }
-.tc-retrato { position: absolute; left: 6%; top: 26%; width: 24%; aspect-ratio: 3 / 4; background: #fff; border-radius: 8px; z-index: 1; display: grid; place-items: center; overflow: hidden; box-shadow: 0 2px 8px rgb(0 0 0 / .25); }
-.tc-retrato span { color: #9a9ca6; font-size: 12px; text-shadow: none; }
-.tc-retrato img { width: 100%; height: 100%; object-fit: cover; }
-.tcard.mini.con-foto .tc-retrato { top: 30%; width: 22%; }
 .mini-input { width: 84px; height: 34px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); padding: 0 12px; font-size: 14px; }
 .btn[disabled] { opacity: .5; pointer-events: none; }
 
@@ -547,7 +516,6 @@ details.set-group[open] > summary::after { transform: rotate(-90deg); }
 .av-card, .av-banner { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); padding: 12px 14px; display: grid; gap: 4px; border-left: 4px solid var(--warn); }
 .av-card h3, .av-banner h3 { margin: 0; font-size: 15px; }
 .av-card .row-between { gap: 8px; flex-wrap: wrap; }
-.av-tranqui { border-left-color: var(--ok); font-size: 14px; }
 .av-list { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); padding: 4px 12px; }
 .av-row { all: unset; box-sizing: border-box; width: 100%; display: flex; align-items: center; gap: 10px; padding: 10px 0; cursor: pointer; border-top: 1px solid var(--line); }
 .av-list .av-row:first-child, .av-card .row-between + .av-row, .av-banner h3 + .av-row { border-top: 0; }
@@ -576,7 +544,6 @@ details.set-group[open] > summary::after { transform: rotate(-90deg); }
 .av-boton .chev { width: 18px; height: 18px; color: var(--muted); flex: none; }
 .av-punto { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); flex: none; }
 /* Filtro de líneas en la parada */
-.lfiltro { display: grid; gap: 6px; }
 .lf-tit { font-size: 13px; color: var(--muted); font-weight: 600; }
 .lf-chips { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
 .lf-chips::-webkit-scrollbar { display: none; }
@@ -745,10 +712,6 @@ html.oculta .topbar::before { animation-play-state: paused; }
 @keyframes mecer-caer { 0% { transform: translate3d(0, 0, 0) rotate(calc(var(--r) * -1)); } 25% { transform: translate3d(var(--dx), 28vh, 0) rotate(var(--r)); } 50% { transform: translate3d(0, 56vh, 0) rotate(calc(var(--r) * -1)); } 75% { transform: translate3d(var(--dx), 84vh, 0) rotate(var(--r)); } 100% { transform: translate3d(0, 112vh, 0) rotate(0); } }
 
 /* ================= v6 Parada ================= */
-.p-info { padding: 12px 14px; display: grid; gap: 8px; }
-.p-info-tit { margin: 0; font-size: 14px; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
-.p-info #p-avisos:empty { display: none; }
-.p-info .av-banner { box-shadow: none; padding: 10px 12px; background: var(--surface-2); }
 .map-wrap { position: relative; }
 /* #56 Desvíos: pastilla de aviso sobre el mapa de la línea (el recorrido se pinta discontinuo) */
 .map-desvio { position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); z-index: 6; max-width: calc(100% - 24px); display: flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 999px; background: #c2410c; color: #fff; font-size: 13px; font-weight: 700; text-decoration: none; box-shadow: 0 2px 10px rgb(0 0 0 / .35); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -777,8 +740,6 @@ html.con-mapa-completo .tabbar, html.con-mapa-completo .topbar { visibility: hid
 .btn-mas { flex: none; width: 44px; height: 44px; border-radius: 50%; border: 1.5px solid var(--line); background: var(--surface-2); color: var(--ink); display: grid; place-items: center; cursor: pointer; }
 .btn-mas svg { width: 22px; height: 22px; fill: currentColor; }
 .btn-mas:active { transform: scale(.94); }
-.tipo-fijo { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 14px; border-radius: 12px; background: var(--surface-2); }
-.tipo-fijo span { font-size: 13px; color: var(--muted); }
 .tc-sinsaldo { font-size: 20px !important; }
 .alert.info { background: var(--surface-2); border-radius: 12px; padding: 10px 12px; font-size: 14px; }
 /* Tarifas */
@@ -998,9 +959,9 @@ html.oculta #fiesta-cielo .f-cruza, html.oculta #fiesta-cielo .f-cruza svg, html
 .ver-fila > div { min-width: 0; flex: 1 1 10em; }
 /* Cajas de una columna (grupos de Ajustes, avisos, tarjetas de información…): la columna se ajusta al ancho
    disponible, en vez de ensancharse con la pieza más ancha cuando la letra es muy grande */
-.set-group, .field, .info-list, .page-head, .p-info, .av-det, .lfiltro, .saludo-fiesta, .tf-grupo, .orden-box, .ver-res, .dia-prueba, .tl-txt { grid-template-columns: minmax(0, 1fr); }
+.set-group, .field, .page-head, .av-det, .saludo-fiesta, .tf-grupo, .orden-box, .ver-res, .dia-prueba, .tl-txt { grid-template-columns: minmax(0, 1fr); }
 /* Palabras largas que no caben (con letra muy grande): se parten por sílabas, con guion («Torre-blanca») */
-.detail-head h2, .page-head h1, .card h3, .p-info-tit, .saludo-fiesta b { hyphens: auto; -webkit-hyphens: auto; }
+.detail-head h2, .page-head h1, .card h3, .saludo-fiesta b { hyphens: auto; -webkit-hyphens: auto; }
 /* Si con la letra del móvil muy grande los nombres de las pestañas no caben, se quedan solo los iconos (más grandes)
    en vez de palabras cortadas («Favo…») */
 .tabbar.solo-iconos a span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
