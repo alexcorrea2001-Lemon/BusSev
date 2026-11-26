@@ -400,6 +400,9 @@ function aplicarConsulta(num, res) {
 }
 
 /* ---------- Vista ---------- */
+/* Último estado del NFC que se ha visto: al volver a la pestaña (p. ej. desde Tarifas) su aviso sale ya pintado
+   desde el principio, así la pantalla no da un salto cuando aparece y vuelve a su sitio a la primera */
+let nfcUltimo = null;
 views.tarjeta = (el) => {
   let ultIncl = null;   // última inclinación del móvil (para el brillo holográfico)
   let detalle = null;   // { num, res, loading, err, code }
@@ -441,6 +444,7 @@ views.tarjeta = (el) => {
     setTimeout(armarLector, 600);
   }
   function nfcEstadoHTML(st) {
+    nfcUltimo = st;
     if (st === 'on') return `<div class="nfc-on"><span class="nfc-scan">${ICON.nfc}<i></i><i></i><i></i></span><div><b>Acerca tu tarjeta</b><small>Apóyala en la parte de atrás del móvil para ver su saldo.</small></div></div>`;
     if (st === 'off') return `<div class="nfc-off">${ICON.nfc}<div><b>El NFC está apagado</b><small>Enciéndelo y BusSev lo notará sola: no tienes que hacer nada más.</small></div><button class="btn sm" type="button" id="nfc-ajustes">Activar NFC</button></div>`;
     return `<div class="nfc-off">${ICON.nfc}<div><b>Este móvil no tiene NFC</b><small>Añade tu tarjeta escribiendo su número.</small></div></div>`;
@@ -570,7 +574,7 @@ views.tarjeta = (el) => {
     const cards = tarjeta.list();
     const cf = store.get('cfPendiente', false);
     return `<div class="page-head"><h1>Tarjeta</h1><p>Saldo y caducidad de tus tarjetas TUSSAM.</p></div>
-      ${tarjeta.nfc() ? '<div id="nfc-estado" class="nfc-box"></div>' : ''}
+      ${tarjeta.nfc() ? `<div id="nfc-estado" class="nfc-box">${nfcUltimo ? nfcEstadoHTML(nfcUltimo) : ''}</div>` : ''}
       ${cf ? '<div class="alert warn">TUSSAM pidió una comprobación la última vez. Abre una tarjeta y pulsa «Hacer la comprobación».</div>' : ''}
       ${cards.length ? `<div class="row-between"><h2 class="section-title">Mis tarjetas</h2><span class="small muted">${cards.length > 1 ? 'Desliza para ver más' : ''}</span></div>
         <div class="carrusel">${cards.map((c) => `<button class="card-btn" type="button" data-open="${esc(c.num)}" aria-label="${esc(c.name || 'Tarjeta')} ${esc(tarjeta.fmt(c.num))}">
