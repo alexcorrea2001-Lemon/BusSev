@@ -209,24 +209,71 @@ document.addEventListener('click', async (e) => {
 });
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') sensorBus.revisar(); });
 
+const AV_IC = (d) => `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
+const AV_ICONOS = {
+  una: AV_IC('<path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15Z"/><path d="M10 20.5a2 2 0 0 0 4 0"/>'),
+  sensor: AV_IC('<rect x="8" y="3" width="8" height="18" rx="2"/><path d="M11 17.5h2M4.5 8.5v7M2 10.5v3M19.5 8.5v7M22 10.5v3"/>'),
+  subo: AV_IC('<rect x="5" y="3" width="14" height="13" rx="3"/><path d="M5 10h14M8 19.5v-3.5M16 19.5v-3.5M9 13h.01M15 13h.01"/><path d="M12 21.5v-2"/>'),
+  repetir: AV_IC('<path d="M17 2.5l3 3-3 3"/><path d="M4 11.5v-1a5 5 0 0 1 5-5h11"/><path d="M7 21.5l-3-3 3-3"/><path d="M20 12.5v1a5 5 0 0 1-5 5H4"/>'),
+};
 function avisoModal({ codigo, parada, linea, destino, minutos, color }) {
   const ya = avisos.find(codigo, linea, destino);
-  const opciones = [2, 5, 10, 15].filter((n) => n < minutos);
-  openModal(`<h2>Aviso de llegada</h2>
-    <div class="row-flat">${badge(linea, color)}<div><b>${esc(destino)}</b><p class="help">${esc(parada)} · ahora a ${minutos <= 0 ? 'punto de llegar' : minutos + ' min'}</p></div></div>
-    ${ya ? `<div class="alert">Tienes un aviso para cuando falten ${ya.antes} min (sobre las ${new Date(ya.at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}).</div>` : ''}
-    ${opciones.length ? `<p class="help">Te mandaré una notificación cuando a este autobús le falten:</p>
-      <div class="btn-row">${opciones.map((n) => `<button class="btn ghost" type="button" data-antes="${n}">${n} min</button>`).join('')}</div>
-      <p class="help">${plugin('BusSevViaje') ? 'Aunque cierres la app, en los últimos minutos el móvil vuelve a mirar a TUSSAM y corrige el aviso si el autobús se adelanta o se retrasa.' : 'El aviso se calcula con el tiempo de ahora y se corrige cada vez que abres la app. Si el autobús se retrasa mucho con la app cerrada, puede llegar un poco antes o después.'}</p>`
-    : '<p class="help">Este autobús está a punto de llegar; no hace falta aviso.</p>'}
-    ${plugin('BusSevViaje') && sensorBus.es(codigo, linea, destino) ? `<div class="sensor-on"><span class="sensor-ico" aria-hidden="true">📳</span><div><b>Modo sensor activo</b><p>Vibrará cada minuto desde que falten 5</p></div><button class="btn ghost" type="button" id="av-sensor-parar">Parar</button></div>`
-      : plugin('BusSevViaje') && minutos > 0 ? `<button class="btn ghost bj-btn sensor-btn" type="button" id="av-sensor"><span>📳 Modo sensor</span><small>Guárdate el móvil: vibra cada minuto desde que falten 5 (más fuerte cuanto más cerca)</small></button>` : ''}
-    <button class="btn ghost bj-btn" type="button" id="av-bajar">🚌 Me subo a este: avísame al bajar</button>
-    ${plugin('BusSevViaje') ? `${repetidos.de(codigo, linea, destino).map((r) => `<div class="rep-on"><span aria-hidden="true">🔁</span><p>${esc(repetidos.texto(r))}</p><button class="btn ghost" type="button" data-rep-del="${r.id}">Quitar</button></div>`).join('')}
-      <button class="btn ghost bj-btn sensor-btn" type="button" id="av-rep"><span>🔁 Repetir este aviso</span><small>Cada día a la misma hora, sin tener que ponerlo</small></button>` : ''}
-    <div class="actions">${ya ? '<button class="btn danger" type="button" id="av-del">Quitar aviso</button>' : ''}<button class="btn ghost" type="button" id="av-x">Cerrar</button></div>`,
+  const opciones = [2, 3, 5, 10, 15].filter((n) => n < minutos).slice(0, 4);
+  const conSensor = plugin('BusSevViaje') && minutos > 0;
+  const sensorActivo = plugin('BusSevViaje') && sensorBus.es(codigo, linea, destino);
+  // Tres formas de avisarte: eliges una y debajo sale lo suyo
+  const modos = [
+    ...(opciones.length ? [['una', 'Una vez', 'Una notificación a los minutos que elijas']] : []),
+    ...(conSensor || sensorActivo ? [['sensor', 'Sensor', 'Vibra cada minuto desde que falten 5']] : []),
+    ['subo', 'Me subo', 'Te aviso cuando tengas que bajar'],
+  ];
+  const modo0 = sensorActivo ? 'sensor' : modos[0][0];
+  const minSel = ya && opciones.includes(ya.antes) ? ya.antes : opciones[0];
+  const repes = plugin('BusSevViaje') ? repetidos.de(codigo, linea, destino) : [];
+  openModal(`<div class="av2">
+    <div class="av2-cab">${badge(linea, color)}<div class="av2-dest"><b>${esc(destino)}</b><span>${esc(parada)}</span></div>
+      <div class="av2-min">${minutos <= 0 ? '<b class="av2-ya">Llegando</b>' : `<b>${minutos}<small>′</small></b><span>le falta${minutos === 1 ? '' : 'n'}</span>`}</div></div>
+    ${ya ? `<div class="alert av2-alerta">${AV_ICONOS.una}<span>Tienes un aviso para cuando falten ${ya.antes} min (sobre las ${new Date(ya.at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}).</span></div>` : ''}
+    <h3 class="av2-tit">¿Cómo quieres que te avise?</h3>
+    <div class="av2-modos" role="radiogroup" aria-label="Forma de avisarte">${modos.map(([k, t, d]) => `<button type="button" class="av2-modo" role="radio" data-modo="${k}" aria-checked="${k === modo0}"><span class="av2-ic">${AV_ICONOS[k]}</span><b>${t}</b><small>${d}</small></button>`).join('')}</div>
+    ${opciones.length ? `<section class="av2-panel" data-panel="una"${modo0 === 'una' ? '' : ' hidden'}>
+      <h3 class="av2-tit">Cuando le falten</h3>
+      <div class="av2-mins" role="radiogroup" aria-label="Minutos">${opciones.map((n) => `<button type="button" role="radio" data-min="${n}" aria-checked="${n === minSel}">${n}<small> min</small></button>`).join('')}</div>
+      <p class="help">${plugin('BusSevViaje') ? 'Aunque cierres la app, en los últimos minutos el móvil vuelve a mirar a TUSSAM y corrige el aviso si el autobús se adelanta o se retrasa.' : 'El aviso se calcula con el tiempo de ahora y se corrige cada vez que abres la app.'}</p>
+      ${plugin('BusSevViaje') ? `${repes.map((r) => `<div class="av2-fila rep-on">${AV_ICONOS.repetir}<span>${esc(repetidos.texto(r))}</span><button class="btn ghost sm" type="button" data-rep-del="${r.id}">Quitar</button></div>`).join('')}
+        <button type="button" class="av2-fila av2-rep" id="av-rep">${AV_ICONOS.repetir}<span><b>Repetir cada día</b><small>A la misma hora, sin tener que ponerlo</small></span>${ICON.chev}</button>` : ''}
+      <button class="btn block" type="button" id="av-poner">Avisarme a ${minSel} minutos</button></section>` : ''}
+    ${conSensor || sensorActivo ? `<section class="av2-panel" data-panel="sensor"${modo0 === 'sensor' ? '' : ' hidden'}>
+      ${sensorActivo ? `<div class="sensor-on"><span class="av2-ic">${AV_ICONOS.sensor}</span><div><b>Modo sensor activo</b><p>Vibrará cada minuto desde que falten 5</p></div><button class="btn ghost" type="button" id="av-sensor-parar">Parar</button></div>`
+        : `<p class="help">Guárdate el móvil: vibra cada minuto desde que falten 5, y más fuerte cuanto más cerca esté. No hace falta mirar la pantalla.</p>
+      <button class="btn block" type="button" id="av-sensor">Activar modo sensor</button>`}</section>` : ''}
+    <section class="av2-panel" data-panel="subo"${modo0 === 'subo' ? '' : ' hidden'}>
+      <p class="help">Cuando te subas, elige tu parada de bajada y te aviso un poco antes de llegar.</p>
+      <button class="btn block" type="button" id="av-bajar">Me subo a este: avísame al bajar</button></section>
+    <div class="actions">${ya ? '<button class="btn danger" type="button" id="av-del">Quitar aviso</button>' : ''}<button class="btn ghost" type="button" id="av-x">Cerrar</button></div></div>`,
   (m, close) => {
     $('#av-x', m).onclick = close;
+    m.querySelectorAll('[data-modo]').forEach((b) => { b.onclick = () => {
+      m.querySelectorAll('[data-modo]').forEach((x) => x.setAttribute('aria-checked', String(x === b)));
+      m.querySelectorAll('[data-panel]').forEach((p) => { p.hidden = p.dataset.panel !== b.dataset.modo; });
+      vibrar(8);
+    }; });
+    let antes = Number(m.querySelector('[data-min][aria-checked="true"]')?.dataset.min) || 0;
+    m.querySelectorAll('[data-min]').forEach((b) => { b.onclick = () => {
+      antes = Number(b.dataset.min);
+      m.querySelectorAll('[data-min]').forEach((x) => x.setAttribute('aria-checked', String(x === b)));
+      const p = $('#av-poner', m); if (p) p.textContent = `Avisarme a ${antes} minutos`;
+    }; });
+    $('#av-poner', m)?.addEventListener('click', async () => {
+      try {
+        await avisos.permiso();
+        if (ya) await avisos.cancelar(ya.id);
+        const at = await avisos.programar({ codigo, parada, linea, destino, minutos, antes });
+        close();
+        toast(`Te aviso sobre las ${new Date(at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}`);
+        active.rerender?.();
+      } catch (e) { toast(textoError(e)); }
+    });
     $('#av-bajar', m).onclick = () => { close(); bajada.elegir(codigo, linea, destino); };
     $('#av-rep', m)?.addEventListener('click', () => { close(); repetidos.abrir({ codigo, parada, linea, destino, color }); });
     m.querySelectorAll('[data-rep-del]').forEach((b) => { b.onclick = async () => { await repetidos.quitar(Number(b.dataset.repDel)); close(); toast('Aviso que se repetía, quitado'); active.rerender?.(); }; });
@@ -240,16 +287,6 @@ function avisoModal({ codigo, parada, linea, destino, minutos, color }) {
       } catch (e) { toast(e?.message || 'No se ha podido activar el modo sensor'); }
     });
     $('#av-del', m)?.addEventListener('click', async () => { await avisos.cancelar(ya.id); close(); toast('Aviso quitado'); active.rerender?.(); });
-    m.querySelectorAll('[data-antes]').forEach((b) => { b.onclick = async () => {
-      try {
-        await avisos.permiso();
-        if (ya) await avisos.cancelar(ya.id);
-        const at = await avisos.programar({ codigo, parada, linea, destino, minutos, antes: Number(b.dataset.antes) });
-        close();
-        toast(`Te aviso sobre las ${new Date(at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}`);
-        active.rerender?.();
-      } catch (e) { toast(textoError(e)); }
-    }; });
   });
 }
 document.addEventListener('click', (e) => {

@@ -1808,3 +1808,43 @@ a.t-acc { text-decoration: none; }
 .cerca-mapa .map-box { height: 210px; }
 .cerca-pin { width: 30px; height: 30px; border-radius: 50%; border: 2.5px solid #fff; background: var(--accent); color: var(--on-accent); font: 700 16px/1 var(--font-board); display: grid; place-items: center; box-shadow: 0 2px 6px rgb(0 0 0 / .35); cursor: pointer; padding: 0; }
 .cerca-n { flex: none; width: 28px; height: 28px; border-radius: 50%; background: var(--accent); color: var(--on-accent); font: 700 16px/1 var(--font-board); display: grid; place-items: center; }
+
+/* Aviso de llegada: cabecera con los minutos, tres formas de avisarte y lo de cada una debajo */
+.av2 { display: grid; gap: 14px; }
+.av2-cab { display: flex; align-items: center; gap: 12px; }
+.av2-dest { flex: 1; min-width: 0; }
+.av2-dest b { display: block; font-size: 18px; line-height: 1.2; }
+.av2-dest span { display: block; font-size: 14px; color: var(--muted); }
+.av2-min { text-align: right; flex: none; }
+.av2-min b { display: block; font: 700 40px/0.9 var(--font-board); }
+.av2-min b small { font-size: 26px; }
+.av2-min span { font-size: 12px; color: var(--muted); }
+.av2-min .av2-ya { font-size: 24px; color: var(--albero-ink); background: var(--albero); border-radius: 8px; padding: 6px 10px; }
+.av2-alerta { display: flex; gap: 10px; align-items: center; margin: 0; }
+.av2-alerta svg { width: 20px; height: 20px; flex: none; }
+.av2-tit { margin: 0; font-size: 15px; color: var(--muted); }
+.av2-modos { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 8px; }
+.av2-modo { display: grid; justify-items: center; align-content: start; gap: 6px; padding: 12px 6px; border-radius: 16px; border: 2px solid transparent; background: var(--surface); box-shadow: var(--shadow); color: var(--ink); font: inherit; text-align: center; cursor: pointer; }
+.av2-modo b { font-size: 15px; }
+.av2-modo small { font-size: 12px; line-height: 1.3; color: var(--muted); }
+.av2-modo[aria-checked="true"] { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--surface)); }
+.av2-ic { width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); flex: none; }
+:root[data-theme="dark"] .av2-ic { background: color-mix(in srgb, var(--accent) 18%, var(--surface-2)); }
+.av2-modo[aria-checked="true"] .av2-ic { background: var(--accent); color: var(--on-accent); }
+.av2-ic svg { width: 22px; height: 22px; }
+.av2-panel { display: grid; gap: 12px; }
+.av2-panel[hidden] { display: none; }
+.av2-panel .help { margin: 0; }
+.av2-mins { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 8px; }
+.av2-mins button { height: 52px; border-radius: 14px; border: 0; background: var(--surface); box-shadow: var(--shadow); color: var(--ink); font: 700 24px/1 var(--font-board); cursor: pointer; }
+.av2-mins button small { font: 700 13px var(--font-body); color: var(--muted); }
+.av2-mins button[aria-checked="true"] { background: var(--accent); color: var(--on-accent); }
+.av2-mins button[aria-checked="true"] small { color: inherit; opacity: .85; }
+.av2-fila { display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px; border-radius: 14px; border: 0; background: var(--surface); box-shadow: var(--shadow); color: var(--ink); font: inherit; text-align: left; }
+.av2-fila > svg:first-child { width: 22px; height: 22px; color: var(--accent); flex: none; }
+.av2-fila span { flex: 1; min-width: 0; }
+.av2-fila b { display: block; font-size: 15px; }
+.av2-fila small { display: block; font-size: 13px; color: var(--muted); }
+.av2-rep { cursor: pointer; }
+.av2 .sensor-on .av2-ic { width: 38px; height: 38px; }
+.av2 .actions { margin-top: 0; }
