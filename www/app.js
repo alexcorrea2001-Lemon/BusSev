@@ -1646,8 +1646,14 @@ function aplicarCapasMapa(bm) {
   for (const id of ['bs-renfe', 'bs-renfe-st', 'bs-renfe-hit']) vis(id, settings.mapaRenfe === true);
   for (const id of ['bs-sevici', 'bs-sevici-hit']) vis(id, settings.mapaSevici === true);
   if (settings.mapaSevici === true && !sevici.datos && bm === mapState.bm) mapState.seviciPintar?.();
-  // Nombres de calles y sitios = las capas de texto del mapa base
-  try { for (const l of m.getStyle()?.layers || []) if (l.type === 'symbol') m.setLayoutProperty(l.id, 'visibility', settings.mapaCalles !== false ? 'visible' : 'none'); } catch { /* */ }
+  // Etiquetas del mapa base: los nombres de calles (y sus flechas) por un lado y el resto de sitios por otro
+  try {
+    for (const l of m.getStyle()?.layers || []) {
+      if (l.type !== 'symbol' || l.id.startsWith('bs-')) continue;
+      const calle = /^(highway-name|road_one_way)/.test(l.id);
+      m.setLayoutProperty(l.id, 'visibility', (calle ? settings.mapaCalles !== false : capaMapaOn('mapaSitios')) ? 'visible' : 'none');
+    }
+  } catch { /* */ }
 }
 const fc = (features) => ({ type: 'FeatureCollection', features });
 const pointF = (pos, props = {}) => ({ type: 'Feature', geometry: { type: 'Point', coordinates: ll(pos) }, properties: props });
@@ -2730,31 +2736,66 @@ function mantenerPulsado(bm, cb) {
   for (const ev of ['touchend', 'touchcancel', 'dragstart', 'zoomstart', 'movestart']) bm.m.on(ev, parar);
   bm.m.on('contextmenu', (e) => { parar(); cb([e.lngLat.lat, e.lngLat.lng]); });
 }
-/* Ajustes del mapa a mano desde el propio mapa (lo mismo que en Ajustes → Mapa) */
+/* Ajustes del mapa: estilo con miniaturas y capas en mosaicos que se encienden al tocar.
+   Lo mismo en el botón del mapa y en Ajustes → Mapa. */
+const MAPA_ESTILOS = [
+  ['oscuro', 'Oscuro', '#22252c', '#363a44', '#2a3d52'],
+  ['claro', 'Claro', '#ece9e2', '#ffffff', '#bcd3e6'],
+  ['tema', 'Como el tema', null, null, null],
+  ['satelite', 'Satélite', '#4d5a39', '#8f8a74', '#33503f'],
+];
+const MI = (d) => `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
+const MAPA_CAPAS = [
+  ['Autobús', [
+    ['mapaParadas', 'Paradas', 'Los puntos de cada parada', MI('<circle cx="12" cy="12" r="3.5"/><circle cx="12" cy="12" r="8"/>')],
+    ['mapaRecorridos', 'Recorridos', 'La línea que eliges, dibujada', MI('<circle cx="6" cy="18" r="2"/><circle cx="18" cy="6" r="2"/><path d="M8 18h5a3 3 0 0 0 0-6h-2a3 3 0 0 1 0-6h5"/>')],
+    ['liveLines', 'En directo', 'Dónde va cada autobús ahora', MI('<rect x="5" y="3" width="14" height="14" rx="3"/><path d="M5 10h14M8 20v-3M16 20v-3"/>')],
+  ]],
+  ['Etiquetas', [
+    ['mapaCalles', 'Nombres de calles', 'El nombre de cada calle', MI('<path d="M4 7h16M4 12h11M4 17h14"/>')],
+    ['mapaSitios', 'Sitios del mapa', 'Barrios, parques y lugares', MI('<path d="M12 21s-6-5.8-6-10.5a6 6 0 0 1 12 0C18 15.2 12 21 12 21Z"/><circle cx="12" cy="10.5" r="2"/>')],
+  ]],
+  ['Otros transportes', [
+    ['mapaMetro', 'Metro', 'Línea 1 y próximos trenes', MI('<circle cx="12" cy="12" r="8.5"/><path d="M8 16V8l4 5 4-5v8"/>')],
+    ['mapaRenfe', 'Cercanías', 'C1 a C5 y próximos trenes', MI('<rect x="6" y="3" width="12" height="14" rx="3"/><path d="M6 10h12M9 21l1.5-4M15 21l-1.5-4"/>')],
+    ['mapaSevici', 'Sevici', 'Bicis y huecos libres', MI('<circle cx="6" cy="16" r="3.5"/><circle cx="18" cy="16" r="3.5"/><path d="M6 16l4-7h5l3 7M10 9 8.5 6H7M15 9l-3 7"/>')],
+  ]],
+];
+/* Encendida o apagada (cada capa tiene su valor de fábrica) */
+function capaMapaOn(k) {
+  if (k === 'liveLines') return !!settings.liveLines;
+  if (k === 'mapaSitios') return settings.mapaSitios ?? (settings.mapaCalles !== false);   // antes iban juntas con las calles
+  if (['mapaParadas', 'mapaRecorridos', 'mapaCalles'].includes(k)) return settings[k] !== false;
+  return settings[k] === true;
+}
+function miniMapaSVG(v) {
+  let [, , bg, calle, rio] = MAPA_ESTILOS.find((e) => e[0] === v);
+  if (v === 'tema') [bg, calle, rio] = resolvedTheme === 'dark' ? ['#22252c', '#363a44', '#2a3d52'] : ['#ece9e2', '#ffffff', '#bcd3e6'];
+  return `<svg viewBox="0 0 60 60" aria-hidden="true"><rect width="60" height="60" fill="${bg}"/><path d="M-5 40C15 30 25 52 65 34" stroke="${rio}" stroke-width="9" fill="none"/>
+    <path d="M0 18h60M22 0v60M0 50 60 8" stroke="${calle}" stroke-width="3.5" fill="none"/><circle cx="22" cy="18" r="4" fill="#fff" stroke="#e5303c" stroke-width="2.5"/></svg>`;
+}
+function mapaAjustesHTML() {
+  return `<section class="mt-sec"><h3 class="mt-g">Estilo</h3><div class="mt-estilos" role="group" aria-label="Estilo del mapa">${MAPA_ESTILOS.map(([v, t]) => `<button type="button" class="mt-estilo" data-mest="${v}" aria-pressed="${settings.mapStyle === v}">${miniMapaSVG(v)}<span>${t}</span></button>`).join('')}</div></section>
+    ${MAPA_CAPAS.map(([g, capas]) => `<section class="mt-sec"><h3 class="mt-g">${g}</h3><div class="mt-tiles">${capas.map(([k, t, d, ic]) => `<button type="button" class="mt-tile" data-mcapa="${k}" aria-pressed="${capaMapaOn(k)}">${ic}<h3 class="mt-t">${t}</h3><small>${d}</small></button>`).join('')}</div></section>`).join('')}`;
+}
+function bindMapaAjustes(root, bm) {
+  root.querySelectorAll('[data-mest]').forEach((b) => { b.onclick = () => {
+    settings.mapStyle = b.dataset.mest; saveSettings(); applyTheme(); vibrar(10);
+    root.querySelectorAll('[data-mest]').forEach((x) => x.setAttribute('aria-pressed', x === b));
+  }; });
+  root.querySelectorAll('[data-mcapa]').forEach((b) => { b.onclick = () => {
+    const k = b.dataset.mcapa;
+    if (k === 'liveLines' && active?.name === 'mapa' && $('#btn-buses')?.onclick) $('#btn-buses').onclick();   // en el mapa hace lo mismo que su botón
+    else { settings[k] = !capaMapaOn(k); saveSettings(); vibrar(10); aplicarCapasMapa(bm); }
+    b.setAttribute('aria-pressed', String(capaMapaOn(k)));
+  }; });
+}
+/* Ajustes del mapa a mano desde el propio mapa */
 function ajustesMapa(bm) {
-  const ESTILOS = [['oscuro', 'Oscuro'], ['claro', 'Claro'], ['tema', 'Como el tema'], ['satelite', 'Satélite']];
-  const CAPAS = [
-    ['mapaParadas', 'Paradas', 'Los puntos de las paradas.', true],
-    ['mapaRecorridos', 'Recorridos', 'La línea del autobús cuando eliges una.', true],
-    ['mapaCalles', 'Nombres de calles', 'Las etiquetas de calles y sitios del mapa.', true],
-    ['mapaMetro', 'Metro de Sevilla', 'La línea 1 y sus estaciones, con los próximos trenes.', false],
-    ['mapaRenfe', 'Cercanías Renfe', 'Las líneas C1 a C5 y sus estaciones, con los próximos trenes.', false],
-    ['mapaSevici', 'Bicis Sevici', 'Las estaciones con bicis y huecos libres ahora mismo.', false],
-  ];
-  const on = (k, def) => (def ? settings[k] !== false : settings[k] === true);
-  openModal(`<h2>Ajustes del mapa</h2>
-    <div class="set-group"><h3>Estilo</h3><div class="seg" role="group">${ESTILOS.map(([v, t]) => `<button type="button" data-mest="${v}" aria-pressed="${settings.mapStyle === v}">${t}</button>`).join('')}</div>
-      <h3 style="margin-top:14px">Qué ver en el mapa</h3>
-      ${CAPAS.map(([k, t, d, def]) => `<div class="switch-row"><div><h3>${t}</h3><p>${d}</p></div><input class="switch" type="checkbox" data-mcapa="${k}" ${on(k, def) ? 'checked' : ''} aria-label="${esc(t)}"></div>`).join('')}
-      <p class="help">Es lo mismo que en Ajustes → Mapa: lo que cambies aquí se cambia también allí.</p></div>
+  openModal(`<h2>Ajustes del mapa</h2><div class="mt-caja">${mapaAjustesHTML()}</div>
+    <p class="help">Es lo mismo que en Ajustes → Mapa: lo que cambies aquí se cambia también allí.</p>
     <div class="actions"><button class="btn" type="button" id="ma-ok">Listo</button></div>`, (m, close) => {
-    m.querySelectorAll('[data-mest]').forEach((b) => { b.onclick = () => {
-      settings.mapStyle = b.dataset.mest; saveSettings(); applyTheme(); vibrar(10);
-      m.querySelectorAll('[data-mest]').forEach((x) => x.setAttribute('aria-pressed', x === b));
-    }; });
-    m.querySelectorAll('[data-mcapa]').forEach((b) => { b.onchange = () => {
-      settings[b.dataset.mcapa] = b.checked; saveSettings(); vibrar(10); aplicarCapasMapa(bm);
-    }; });
+    bindMapaAjustes(m, bm);
     $('#ma-ok', m).onclick = close;
   });
 }
@@ -3284,19 +3325,19 @@ const iconoAppSVG = (k) => `<svg viewBox="18 18 72 72" aria-hidden="true">${ICON
 /* Ajustes por categorías: la portada enseña la lista y cada una abre su página (#ajustes-apariencia…) */
 const AJ_IC = (d) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
 const AJ_CATS = [
-  { id: 'apariencia', nombre: 'Apariencia', pista: 'Tema, color, fondo, icono, fiestas y cielo', ic: AJ_IC('<circle cx="12" cy="12" r="8.5"/><circle cx="8.5" cy="10" r="1.2"/><circle cx="12" cy="7.5" r="1.2"/><circle cx="15.5" cy="10" r="1.2"/><path d="M12 20.5a2.5 2.5 0 0 1 0-5h2.5"/>') },
-  { id: 'favoritas', nombre: 'Favoritas y Pasaporte', pista: 'Consejos, la más cercana arriba y contar viajes', ic: AJ_IC('<path d="m12 3.5 2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9Z"/>') },
-  { id: 'mapa', nombre: 'Mapa', pista: 'Estilo, paradas, recorridos, Metro, Cercanías y Sevici', ic: AJ_IC('<path d="m3 6 6-2.5 6 2.5 6-2.5v14.5L15 20.5 9 18l-6 2.5Z M9 3.5V18M15 6v14.5"/>') },
-  { id: 'avisos', nombre: 'Tiempos y avisos', pista: 'Actualizar, batería, datos, sonido y avisos de TUSSAM', ic: AJ_IC('<path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15Z"/><path d="M10 20.5a2 2 0 0 0 4 0"/>') },
-  { id: 'accesibilidad', nombre: 'Accesibilidad', pista: 'Voz, tamaño del texto, contraste y vibración', ic: AJ_IC('<circle cx="12" cy="4.5" r="1.8"/><path d="M5 8.5l7 1.5 7-1.5M12 10v4.5l-3 6M12 14.5l3 6"/>') },
-  { id: 'datos', nombre: 'Datos y versión', pista: 'Actualizaciones, copia de seguridad y privacidad', ic: AJ_IC('<ellipse cx="12" cy="6" rx="7" ry="2.8"/><path d="M5 6v12c0 1.5 3.1 2.8 7 2.8s7-1.3 7-2.8V6M5 12c0 1.5 3.1 2.8 7 2.8s7-1.3 7-2.8"/>') },
+  { id: 'apariencia', grupo: 'Personalizar', nombre: 'Apariencia', pista: 'Tema, color, fondo, icono, fiestas y cielo', ic: AJ_IC('<path d="M18.5 3.5a2.1 2.1 0 0 1 3 3L12 16l-4 1 1-4Z"/><path d="M8 17c-1.5 0-3 1-3 3 0 .6-.5 1-1 1 2 1.5 6 1 6-2.5"/>') },
+  { id: 'favoritas', grupo: 'Personalizar', nombre: 'Favoritas y Pasaporte', pista: 'Consejos, la más cercana arriba y contar viajes', ic: AJ_IC('<path d="m12 3.5 2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9Z"/>') },
+  { id: 'mapa', grupo: 'Personalizar', nombre: 'Mapa', pista: 'Estilo, paradas, recorridos, Metro, Cercanías y Sevici', ic: AJ_IC('<path d="m3 6 6-2.5 6 2.5 6-2.5v14.5L15 20.5 9 18l-6 2.5Z M9 3.5V18M15 6v14.5"/>') },
+  { id: 'avisos', grupo: 'Funcionamiento', nombre: 'Tiempos y avisos', pista: 'Actualizar, batería, datos, sonido y avisos de TUSSAM', ic: AJ_IC('<path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15Z"/><path d="M10 20.5a2 2 0 0 0 4 0"/>') },
+  { id: 'accesibilidad', grupo: 'Funcionamiento', nombre: 'Accesibilidad', pista: 'Voz, tamaño del texto, contraste y vibración', ic: AJ_IC('<circle cx="12" cy="4.5" r="1.8"/><path d="M5 8.5l7 1.5 7-1.5M12 10v4.5l-3 6M12 14.5l3 6"/>') },
+  { id: 'datos', grupo: 'Sobre la app', nombre: 'Datos y versión', pista: 'Actualizaciones, copia de seguridad y privacidad', ic: AJ_IC('<ellipse cx="12" cy="6" rx="7" ry="2.8"/><path d="M5 6v12c0 1.5 3.1 2.8 7 2.8s7-1.3 7-2.8V6M5 12c0 1.5 3.1 2.8 7 2.8s7-1.3 7-2.8"/>') },
 ];
 let buscarAj = '', irAjuste = '';
 /* Títulos de todos los ajustes (para el buscador de la portada) */
 function indiceAjustes(S) {
   const out = [], vistos = new Set();
   for (const k of AJ_CATS) {
-    for (const m of S[k.id]().matchAll(/<h3[^>]*>([\s\S]*?)<\/h3>/g)) {
+    for (const m of S[k.id]().matchAll(/<h3(?![^>]*mt-g)[^>]*>([\s\S]*?)<\/h3>/g)) {
       const t = m[1].replace(/<[^>]+>/g, '').replace(/&[a-z]+;/g, ' ').trim();
       if (t && !t.includes('${') && !vistos.has(t)) { vistos.add(t); out.push({ t, cat: k.id }); }
     }
@@ -3345,16 +3386,7 @@ views.ajustes = (el, cat) => {
         <p>Ojo: al cambiarlo, Android quita BusSev de la pantalla de inicio y hay que volver a ponerlo (la app sigue en el cajón de aplicaciones). Es cosa de Android y no se puede evitar.</p></div>` : ''}`,
       favoritas: () => `<div class="set-group"><h3>Favoritas</h3>${sw('consejos', settings.consejos !== false, 'Consejos', 'De vez en cuando (como mucho uno al día) una tarjetita en Favoritas con algo que la app hace y quizá no sabes.')}${sw('favsCerca', settings.favsCerca === true, 'La más cercana, arriba', 'Tus favoritas se ordenan solas según dónde estés: en casa sale primero «Casa» y en el trabajo, «Trabajo». Si una está en un grupo, sube el grupo entero. Usa la última ubicación del móvil, sin preguntar; si no la hay, se queda tu orden.')}</div>
       <div class="set-group"><h3>Pasaporte de Sevilla</h3>${sw('contarViajes', settings.contarViajes !== false, 'Contar mis viajes', 'Al abrir una parada estando en ella (o yendo hacia ella), BusSev sigue tu viaje unos minutos con la ubicación: la notificación te enseña cuánto le falta a tu bus y si llegas andando, y si te subes, el viaje cuenta para el Pasaporte. Solo usa el permiso de ubicación «mientras usas la app» y todo se queda en tu móvil.')}${settings.contarViajes !== false && plugin('BusSevViaje') ? `${sw('contarConAviso', settings.contarConAviso === true, 'Contar también con el aviso de llegada', 'Cuando falten pocos minutos para el autobús de tu aviso, BusSev empieza a seguir el viaje aunque no abras la app: si te subes, cuenta. Si estás lejos de la parada, se para solo en un minuto. Necesita la ubicación «Permitir todo el tiempo».')}<div id="perm-siempre"></div>` : ''}</div>`,
-      mapa: () => `<div class="set-group"><h3>Mapa</h3>${segBtns('mapStyle', [['oscuro', 'Oscuro'], ['claro', 'Claro'], ['tema', 'Como el tema'], ['satelite', 'Satélite']], settings.mapStyle)}
-        <h3 style="margin-top:14px">Qué ver en el mapa</h3>
-        ${sw('mapaParadas', settings.mapaParadas !== false, 'Paradas', 'Los puntos de las paradas.')}
-        ${sw('mapaRecorridos', settings.mapaRecorridos !== false, 'Recorridos', 'La línea del autobús cuando eliges una.')}
-        ${sw('mapaCalles', settings.mapaCalles !== false, 'Nombres de calles', 'Las etiquetas de calles y sitios del mapa.')}
-        ${sw('mapaMetro', settings.mapaMetro === true, 'Metro de Sevilla', 'La línea 1 y sus estaciones (toca una para ver los próximos trenes).')}
-        ${sw('mapaRenfe', settings.mapaRenfe === true, 'Cercanías Renfe', 'Las líneas C1 a C5 y sus estaciones, con los próximos trenes.')}
-        ${sw('mapaSevici', settings.mapaSevici === true, 'Bicis Sevici', 'Las estaciones con las bicis y los huecos libres en este momento.')}
-        <p class="help">Los autobuses en directo se encienden con el botón <img class="lg-busimg" src="${busImg()}" alt="autobús" style="height:18px;vertical-align:-4px"> del mapa.</p></div>
-      <div class="set-group">${sw('liveLines', settings.liveLines, 'Autobuses en directo en el mapa', 'Muestra dónde va cada autobús (en las líneas y en la zona del mapa que miras). También se activa con el botón ' + busIco() + ' del mapa.')}</div>`,
+      mapa: () => mapaAjustesHTML(),
       avisos: () => `<div class="set-group"><h3>Actualizar los tiempos</h3>${segBtns('refresh', [[30, 'Cada 30 s'], [60, 'Cada minuto'], [0, 'Al pulsar ⟳']], settings.refresh)}
         <p>Cuanto menos a menudo, menos batería y datos. Con la app en segundo plano nunca se actualiza, y si la dejas abierta sin tocarla va más despacio (cada 2 min, y pasado un cuarto de hora cada 5): en cuanto la tocas, se actualiza al momento.</p></div>
       <div class="set-group"><h3>Ahorro de batería</h3>${segBtns('ahorroBateria', [['auto', 'Automático'], ['siempre', 'Siempre'], ['nunca', 'Nunca']], settings.ahorroBateria || 'auto')}
@@ -3427,7 +3459,11 @@ views.ajustes = (el, cat) => {
       // Portada: las categorías, cada una con lo que lleva dentro, y un buscador de ajustes
       const lista = () => {
         const q = norm(buscarAj);
-        if (q.length < 2) return `<div class="list aj-cats">${AJ_CATS.map((k) => `<a class="row" href="#ajustes-${k.id}"><span class="aj-ic" aria-hidden="true">${k.ic}</span><div class="row-main"><b>${k.nombre}</b><span>${k.pista}</span></div>${ICON.chev}</a>`).join('')}</div>`;
+        if (q.length < 2) {
+          // Agrupadas: pegadas dentro de su grupo y con hueco y título entre grupos
+          const grupos = [...new Set(AJ_CATS.map((k) => k.grupo))];
+          return grupos.map((g) => `<section class="aj-grupo"><h2 class="aj-grupo-t">${g}</h2><div class="aj-cats">${AJ_CATS.filter((k) => k.grupo === g).map((k) => `<a class="row" href="#ajustes-${k.id}"><span class="aj-ic" aria-hidden="true">${k.ic}</span><div class="row-main"><b>${k.nombre}</b><span>${k.pista}</span></div>${ICON.chev}</a>`).join('')}</div></section>`).join('');
+        }
         const hits = indiceAjustes(S).filter((x) => norm(x.t).includes(q)).slice(0, 12);
         return hits.length ? `<div class="list">${hits.map((x) => `<a class="row" href="#ajustes-${x.cat}" data-ir="${esc(x.t)}"><div class="row-main"><b>${esc(x.t)}</b><span>${esc(AJ_CATS.find((k) => k.id === x.cat).nombre)}</span></div>${ICON.chev}</a>`).join('')}</div>`
           : '<p class="help" style="margin:0 2px">No hay ningún ajuste con ese nombre.</p>';
@@ -3448,11 +3484,12 @@ views.ajustes = (el, cat) => {
       ${backHead(`<div class="grow"><h2>${c.nombre}</h2></div>`)}
       ${S[c.id]()}
     </div>`;
+    if (c.id === 'mapa') bindMapaAjustes(el, mapState.bm);
     if (irAjuste) {
       // Desde el buscador: se baja hasta ese ajuste y se marca un momento
       const t = irAjuste; irAjuste = '';
       const h = [...el.querySelectorAll('h3')].find((x) => x.textContent.trim() === t);
-      const caja = h?.closest('.switch-row') || h?.closest('.set-group');
+      const caja = h?.closest('.switch-row') || h?.closest('.mt-tile') || h?.closest('.set-group');
       if (caja) requestAnimationFrame(() => { caja.scrollIntoView({ block: 'center' }); caja.classList.add('aj-marca'); setTimeout(() => caja.classList.remove('aj-marca'), 1600); });
     }
     $('.back-btn', el).onclick = goBack;
