@@ -347,7 +347,9 @@ function previsionHTML(p) {
   const pronto = p.quedan < 4;
   return `<p class="sg-prev${pronto ? ' mal' : ''}">A tu ritmo (unos <b>${semana} a la semana</b>), te quedas sin saldo ${p.quedan < 1 ? '<b>hoy o mañana</b>' : `hacia el <b>${dia}</b>`}.${pronto ? ' Recarga antes.' : ''}</p>`;
 }
-/* Gráfica: escalones (el saldo no cambia entre consultas), recargas en verde */
+/* Gráfica: escalones (el saldo no cambia entre consultas), recargas en verde y gastos en rojo.
+   Al pasar el dedo por encima, arriba se lee el saldo de ese día y qué pasó (ver tocarGrafica). */
+const fechaCorta = (t) => new Date(t).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }).replace('.', '');
 function graficaSaldoHTML(h, color) {
   if (h.length < 2) return '';
   const ahora = Date.now();
@@ -356,7 +358,7 @@ function graficaSaldoHTML(h, color) {
   const antes = h.filter((x) => x[0] < t0).at(-1);
   const pts = antes ? [[t0, antes[1]], ...vis] : vis;
   if (pts.length < 2 && !antes) return '';
-  const W = 320, H = 130, L = 34, R = 8, T = 12, B = 22;
+  const W = 320, H = 136, L = 34, R = 10, T = 16, B = 24;
   const max = Math.max(1, ...pts.map((x) => x[1])) * 1.12;
   const X = (t) => L + ((t - t0) / Math.max(1, ahora - t0)) * (W - L - R);
   const Y = (v) => T + (1 - v / max) * (H - T - B);
@@ -364,26 +366,81 @@ function graficaSaldoHTML(h, color) {
   for (let i = 1; i < pts.length; i++) d += ` H${X(pts[i][0]).toFixed(1)} V${Y(pts[i][1]).toFixed(1)}`;
   d += ` H${X(ahora).toFixed(1)}`;
   const area = `${d} V${Y(0)} H${X(pts[0][0]).toFixed(1)} Z`;
-  const subidas = pts.slice(1).map((x, i) => [x, x[1] - pts[i][1]]).filter(([, dif]) => dif > 0.005);
-  const fecha = (t) => new Date(t).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }).replace('.', '');
+  const cambios = pts.slice(1).map((x, i) => [x, x[1] - pts[i][1]]).filter(([, dif]) => Math.abs(dif) > 0.005);
   const marcas = [0, max / 1.12 / 2, max / 1.12].map((v) => `<text x="${L - 5}" y="${(Y(v) + 3.5).toFixed(1)}" text-anchor="end">${Math.round(v)} €</text><line x1="${L}" x2="${W - R}" y1="${Y(v).toFixed(1)}" y2="${Y(v).toFixed(1)}"/>`).join('');
-  return `<figure class="saldo-graf" style="--c:${color}"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Saldo en los últimos ${Math.round((ahora - t0) / 86400_000)} días">
-      <g class="sg-ejes">${marcas}<text x="${L}" y="${H - 6}">${fecha(t0)}</text><text x="${W - R}" y="${H - 6}" text-anchor="end">Hoy</text></g>
+  // Cinco fechas repartidas por el eje (no solo el principio y hoy)
+  const n = (ahora - t0) / 86400_000 >= 8 ? 4 : 1;
+  const fechas = Array.from({ length: n + 1 }, (_, k) => {
+    const t = t0 + ((ahora - t0) * k) / n, x = X(t).toFixed(1);
+    return `<line class="sg-tic" x1="${x}" x2="${x}" y1="${H - B}" y2="${H - B + 3}"/><text x="${x}" y="${H - 7}" text-anchor="${k === 0 ? 'start' : k === n ? 'end' : 'middle'}">${k === n ? 'Hoy' : fechaCorta(t)}</text>`;
+  }).join('');
+  const datos = esc(JSON.stringify({ t0, ahora, max, W, L, R, T, B, H, pts }));
+  return `<figure class="saldo-graf" style="--c:${color}" data-sg="${datos}">
+      <div class="sg-lect" aria-live="polite"><b class="sg-val">${fmtEuro(pts.at(-1)[1])}</b><span class="sg-dia">Hoy</span><small class="sg-que">Pasa el dedo por la gráfica</small></div>
+      <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Saldo en los últimos ${Math.round((ahora - t0) / 86400_000)} días">
+      <g class="sg-ejes">${marcas}${fechas}</g>
       <path class="sg-area" d="${area}"/><path class="sg-linea" d="${d}"/>
-      ${subidas.map(([x, dif]) => `<g class="sg-recarga"><circle cx="${X(x[0]).toFixed(1)}" cy="${Y(x[1]).toFixed(1)}" r="3.6"/><text x="${X(x[0]).toFixed(1)}" y="${(Y(x[1]) - 7).toFixed(1)}" text-anchor="middle">+${Math.round(dif)} €</text></g>`).join('')}
-      <circle class="sg-hoy" cx="${X(ahora).toFixed(1)}" cy="${Y(pts.at(-1)[1]).toFixed(1)}" r="4"/></svg></figure>`;
+      ${cambios.map(([x, dif]) => dif > 0
+        ? `<g class="sg-recarga"><circle cx="${X(x[0]).toFixed(1)}" cy="${Y(x[1]).toFixed(1)}" r="3.6"/><text x="${X(x[0]).toFixed(1)}" y="${(Y(x[1]) - 7).toFixed(1)}" text-anchor="middle">+${Math.round(dif)} €</text></g>`
+        : `<circle class="sg-gasto" cx="${X(x[0]).toFixed(1)}" cy="${Y(x[1]).toFixed(1)}" r="2.6"/>`).join('')}
+      <circle class="sg-hoy" cx="${X(ahora).toFixed(1)}" cy="${Y(pts.at(-1)[1]).toFixed(1)}" r="4"/>
+      <g class="sg-cursor" hidden><line class="sg-cl" y1="${T - 6}" y2="${H - B}"/><circle class="sg-cc" r="5"/></g></svg></figure>`;
 }
-function historialSaldoHTML(c) {
+/* Dedo sobre la gráfica: el saldo de ese día y, si estás encima de un cambio, la recarga o el gasto */
+function tocarGrafica(fig) {
+  if (!fig || fig.__sg) return;
+  fig.__sg = true;
+  let g; try { g = JSON.parse(fig.dataset.sg); } catch { return; }
+  const svg = fig.querySelector('svg'), cur = fig.querySelector('.sg-cursor'), cl = fig.querySelector('.sg-cl'), cc = fig.querySelector('.sg-cc');
+  const val = fig.querySelector('.sg-val'), dia = fig.querySelector('.sg-dia'), que = fig.querySelector('.sg-que');
+  const X = (t) => g.L + ((t - g.t0) / Math.max(1, g.ahora - g.t0)) * (g.W - g.L - g.R);
+  const Y = (v) => g.T + (1 - v / g.max) * (g.H - g.T - g.B);
+  const precio = Number(fig.closest('[data-precio]')?.dataset.precio) || 0;
+  const mover = (e) => {
+    const r = svg.getBoundingClientRect();
+    const px = ((e.clientX - r.left) / r.width) * g.W;
+    const t = Math.min(g.ahora, Math.max(g.t0, g.t0 + ((px - g.L) / (g.W - g.L - g.R)) * (g.ahora - g.t0)));
+    let i = 0; while (i + 1 < g.pts.length && g.pts[i + 1][0] <= t) i++;
+    const v = g.pts[i][1];
+    cur.hidden = false;
+    cl.setAttribute('x1', X(t)); cl.setAttribute('x2', X(t)); cc.setAttribute('cx', X(t)); cc.setAttribute('cy', Y(v));
+    val.textContent = fmtEuro(v); dia.textContent = fechaCorta(t);
+    const k = g.pts.findIndex((p, j) => j > 0 && Math.abs(X(p[0]) - X(t)) < 6 && Math.abs(p[1] - g.pts[j - 1][1]) > 0.005);
+    que.className = 'sg-que';
+    if (k > 0) {
+      const dif = g.pts[k][1] - g.pts[k - 1][1];
+      que.classList.add(dif > 0 ? 'sube' : 'baja');
+      que.textContent = dif > 0 ? `Recarga de ${fmtEuro(dif)} el ${fechaCorta(g.pts[k][0])}`
+        : `Gastaste ${fmtEuro(-dif)}${precio ? ` (unos ${Math.max(1, Math.round(-dif / precio))} viajes)` : ''} hasta el ${fechaCorta(g.pts[k][0])}`;
+    } else que.textContent = 'Saldo de ese día';
+  };
+  const fin = () => { cur.hidden = true; val.textContent = fmtEuro(g.pts.at(-1)[1]); dia.textContent = 'Hoy'; que.className = 'sg-que'; que.textContent = 'Pasa el dedo por la gráfica'; };
+  svg.addEventListener('pointerdown', (e) => { try { svg.setPointerCapture(e.pointerId); } catch { /* nada */ } mover(e); });
+  svg.addEventListener('pointermove', (e) => { if (e.pointerType === 'mouse' || svg.hasPointerCapture?.(e.pointerId)) mover(e); });
+  svg.addEventListener('pointerup', (e) => { if (e.pointerType !== 'mouse') fin(); });
+  svg.addEventListener('pointercancel', fin);
+  svg.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse') fin(); });
+}
+/* Movimientos: cada recarga (cuánto y qué día) y cada gasto (cuánto y entre qué días; el saldo solo se sabe al consultar) */
+function movimientosHTML(h, precio, todos = false) {
+  const m = h.slice(1).map((x, i) => [x[0], x[1] - h[i][1], h[i][0]]).filter(([, d]) => Math.abs(d) > 0.005).reverse();
+  if (!m.length) return '';
+  const dia = (t) => new Date(t).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
+  const filas = (todos ? m : m.slice(0, 6)).map(([t, d, ta]) => d > 0
+    ? `<li class="mv-r"><i aria-hidden="true">+</i><span>Recarga<small>${dia(t)}</small></span><b>+${fmtEuro(d)}</b></li>`
+    : `<li class="mv-g"><i aria-hidden="true">−</i><span>Gasto${precio ? ` · unos ${Math.max(1, Math.round(-d / precio))} ${Math.round(-d / precio) > 1 ? 'viajes' : 'viaje'}` : ''}<small>${fechaCorta(ta) === fechaCorta(t) ? `El ${fechaCorta(t)}` : `Entre el ${fechaCorta(ta)} y el ${fechaCorta(t)}`}</small></span><b>−${fmtEuro(-d)}</b></li>`).join('');
+  return `<div class="movs"><h3>Movimientos</h3><ul>${filas}</ul>${!todos && m.length > 6 ? `<button type="button" class="btn ghost sm" data-movs-todos>Ver los ${m.length}</button>` : ''}</div>`;
+}
+function historialSaldoHTML(c, precio = 0, todos = false) {
   const h = historialDe(c);
   if (!h.length) return '';
   const color = /^#[0-9a-f]{6}$/i.test(c.color || '') ? c.color : 'var(--accent)';
   const p = previsionSaldo(h);
-  const recargas = h.slice(1).map((x, i) => [x[0], x[1] - h[i][1]]).filter(([, d]) => d > 0.005).slice(-3).reverse();
-  return `<div class="set-group saldo-hist"><h3>Tu saldo</h3>${graficaSaldoHTML(h, color)}${previsionHTML(p)}
-    ${recargas.length ? `<p class="sg-rec">Recargas: ${recargas.map(([t, d]) => `<b>+${fmtEuro(d)}</b> el ${new Date(t).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }).replace('.', '')}`).join(' · ')}</p>` : ''}
-    <p class="small muted" style="margin:6px 0 0">Se apunta cada vez que consultas la tarjeta. TUSSAM tarda hasta 24 h en descontar los viajes.</p></div>`;
+  return `<div class="set-group saldo-hist" data-precio="${precio || ''}"><h3>Tu saldo</h3>${graficaSaldoHTML(h, color)}${previsionHTML(p)}
+    <p class="small muted" style="margin:6px 0 0">Se apunta cada vez que consultas la tarjeta. TUSSAM tarda hasta 24 h en descontar los viajes.</p></div>
+    ${movimientosHTML(h, precio, todos) ? `<div class="set-group">${movimientosHTML(h, precio, todos)}</div>` : ''}`;
 }
-window.saldoHist = { historialDe, conPunto, previsionSaldo, graficaSaldoHTML, historialSaldoHTML };
+window.saldoHist = { historialDe, conPunto, previsionSaldo, graficaSaldoHTML, historialSaldoHTML, movimientosHTML };
 
 /* Guarda el resultado de una consulta en la tarjeta y lanza los avisos */
 function aplicarConsulta(num, res) {
@@ -406,6 +463,7 @@ let nfcUltimo = null;
 views.tarjeta = (el) => {
   let ultIncl = null;   // última inclinación del móvil (para el brillo holográfico)
   let detalle = null;   // { num, res, loading, err, code }
+  let pestana = 'resumen', verTodos = false;   // pestaña abierta dentro de la tarjeta
   let lectorActivo = false, dead = false;
   const alCambiarNfc = (e) => {
     if (dead || detalle) return;
@@ -471,6 +529,7 @@ views.tarjeta = (el) => {
     openWeb(tarjeta.url(num));
   }
   function abrir(num, { consultar: c = false } = {}) {
+    pestana = 'resumen'; verTodos = false;
     detalle = { num, res: null, loading: false };
     pintar();
     el.scrollTop = 0;
@@ -523,17 +582,26 @@ views.tarjeta = (el) => {
           `Página: ${res.diag?.texto || '(vacía)'}`,
           `Respuesta: ${res.diag?.html || '(vacía)'}`,
         ].join('\n'))}</div></details></div>` : ''}
-      <div class="kv">${filas.map(([k, v]) => `<div><span>${esc(k)}</span><b>${esc(v)}</b></div>`).join('')}
+      ${(() => {
+        // Pestañas: Resumen (datos y botones), Saldo (gráfica y movimientos) y Avisos. Solo las que tengan algo.
+        const conHist = !!(c && llevaSaldo(tipoId, u?.saldo) && !u?.sinSaldoWeb && historialDe(c).length);
+        const avisos = c ? avisosHTML(c, u) : '';
+        const tabs = [['resumen', 'Resumen'], ...(conHist ? [['saldo', 'Saldo']] : []), ...(avisos ? [['avisos', 'Avisos']] : [])];
+        if (!tabs.some(([k]) => k === pestana)) pestana = 'resumen';
+        const resumen = `<div class="kv">${filas.map(([k, v]) => `<div><span>${esc(k)}</span><b>${esc(v)}</b></div>`).join('')}
         ${precio ? `<div><span>Cada viaje cuesta</span><b>${fmtEuro(precio)}${infoViaje.conDescuento ? ` <small class="muted">(con descuento; sin él ${fmtEuro(infoViaje.normal)})</small>` : ''}</b></div>` : ''}
         ${viajes != null ? `<div><span>Viajes que te quedan</span><b>${viajes} ${viajes === 1 ? 'viaje' : 'viajes'}</b></div>` : ''}</div>
-      ${c && llevaSaldo(tipoId, u?.saldo) && !u?.sinSaldoWeb ? historialSaldoHTML(c) : '<p class="small muted" style="margin:0">TUSSAM tarda hasta 24 h en descontar viajes y sumar recargas.</p>'}
-      <button class="btn block" type="button" id="t-oficial">🌐 Ver el saldo en la web de TUSSAM</button>
-      <p class="small muted" style="margin:-6px 0 0">Se abre la web de recargas de TUSSAM con tu tarjeta, por si quieres recargar o ver el saldo oficial.</p>
-      <div class="btn-row">
-        <button class="btn ghost" type="button" id="t-again" ${loading ? 'disabled' : ''}>Actualizar</button>
-        ${c ? '<button class="btn ghost" type="button" id="t-edit">Personalizar</button>' : '<button class="btn" type="button" id="t-save">Guardar tarjeta</button>'}
+      <div class="t-acciones">
+        <button class="t-acc" type="button" id="t-again" ${loading ? 'disabled' : ''}><i aria-hidden="true">${ICON.actualizar}</i>Actualizar</button>
+        <button class="t-acc" type="button" id="t-oficial"><i aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.5 3.5 5.5 3.5 9s-1 6.5-3.5 9c-2.5-2.5-3.5-5.5-3.5-9s1-6.5 3.5-9Z"/></svg></i>Web de TUSSAM</button>
+        ${c ? `<button class="t-acc" type="button" id="t-edit"><i aria-hidden="true">${ICON.edit}</i>Personalizar</button>` : `<button class="t-acc" type="button" id="t-save"><i aria-hidden="true">${ICON.star}</i>Guardar</button>`}
       </div>
-      ${c ? avisosHTML(c, u) : '<p class="small muted" style="margin:0">Guárdala para verla siempre aquí y activar avisos de saldo bajo y de caducidad.</p>'}`;
+      <p class="small muted" style="margin:0">«Web de TUSSAM» abre la web de recargas con tu tarjeta, por si quieres recargar o ver el saldo oficial. TUSSAM tarda hasta 24 h en descontar viajes y sumar recargas.</p>
+      ${c ? '' : '<p class="small muted" style="margin:0">Guárdala para verla siempre aquí y activar avisos de saldo bajo y de caducidad.</p>'}`;
+        const cuerpo = pestana === 'saldo' ? historialSaldoHTML(c, precio, verTodos) : pestana === 'avisos' ? avisos : resumen;
+        return `${tabs.length > 1 ? `<div class="seg t-tabs" role="tablist" aria-label="Datos de la tarjeta">${tabs.map(([k, t]) => `<button type="button" role="tab" data-tab-t="${k}" aria-selected="${k === pestana}" aria-pressed="${k === pestana}">${t}</button>`).join('')}</div>` : ''}
+      <div class="t-panel" role="tabpanel">${cuerpo}</div>`;
+      })()}`;
   }
   /* El reverso: banda magnética, saldo, viajes que quedan y caducidad (del color de la tarjeta, oscurecido) */
   function reversoHTML(num, c, u, tipoId, viajes) {
@@ -598,12 +666,15 @@ views.tarjeta = (el) => {
     }
     const num = detalle.num;
     $('#t-back', el).onclick = cerrarDetalle;
-    $('#t-again', el).onclick = () => consultar(num);
+    $('#t-again', el)?.addEventListener('click', () => consultar(num));
     $('#t-again2', el)?.addEventListener('click', () => consultar(num));
     $('#t-cf', el)?.addEventListener('click', () => consultar(num, { visible: true }));
     $('#t-ver', el)?.addEventListener('click', () => consultar(num, { visible: true }));
     el.querySelectorAll('[data-web]').forEach((b) => { b.onclick = () => abrirOficial(num); });
-    $('#t-oficial', el).onclick = () => abrirOficial(num);
+    $('#t-oficial', el)?.addEventListener('click', () => abrirOficial(num));
+    el.querySelectorAll('[data-tab-t]').forEach((b) => { b.onclick = () => { if (pestana === b.dataset.tabT) return; pestana = b.dataset.tabT; vibrar(8); pintar(); }; });
+    $('[data-movs-todos]', el)?.addEventListener('click', () => { verTodos = true; pintar(); });
+    el.querySelectorAll('.saldo-graf[data-sg]').forEach(tocarGrafica);
     $('#t-save', el)?.addEventListener('click', () => editCard(num, true));
     $('#t-edit', el)?.addEventListener('click', () => editCard(num));
     $('#t-menu', el)?.addEventListener('click', () => menuTarjeta(num));
