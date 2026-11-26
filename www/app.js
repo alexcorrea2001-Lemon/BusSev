@@ -2378,7 +2378,7 @@ const cercania = {
 };
 window.cercaniaFavs = cercania;
 /* Para otras pantallas (p. ej. «¿Dónde te bajas?» en extras.js) */
-window.cargarMapa = cargarMapa; window.crearMapa = createMap; window.MarkerSetMapa = MarkerSet;
+window.cargarMapa = cargarMapa; window.crearMapa = createMap; window.MarkerSetMapa = MarkerSet; window.formaRecorrido = getShape;
 
 /* Consejos: como mucho uno al día en Favoritas, de lo que la app hace y quizá no sabes. «Entendido» y no vuelve. */
 const CONSEJOS = [
@@ -2475,7 +2475,7 @@ views.favoritas = (el) => {
           // Anillo: los minutos que le faltan al autobús y cuánto se ha cerrado (lleno = llegando)
           const falta = Math.max(0, Math.round((a.at + a.antes * 60000 - Date.now()) / 60000));
           const lleno = Math.round(Math.max(0.04, Math.min(1, 1 - falta / 20)) * 100);
-          return `<div class="fav-av"><span class="fav-av-anillo" style="--p:${lleno}%" aria-label="Le faltan ${falta} minutos"><b>${falta}′</b></span>
+          return `<div class="fav-av"><span class="fav-av-anillo" style="--p:${lleno}%" aria-label="Le faltan ${falta} minutos"><b>${falta}<small>min</small></b></span>
             <a class="av-ll-link" href="#parada-${esc(a.codigo)}">${badge(a.linea, lineaFor(a.linea)?.color, { sm: true })}<div style="flex:1;min-width:0"><b>${esc(a.parada)}</b><p class="help">Te aviso a ${a.antes} min · ${new Date(a.at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}</p></div></a>
             <button class="fav-av-x" type="button" data-av-del="${a.id}" aria-label="Quitar aviso">${ICON.close}</button></div>`;
         }).join('')}</div></div>` : ''}

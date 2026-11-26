@@ -405,7 +405,19 @@ const bajada = {
         if (gMapa === g.k) return;
         gMapa = g.k;
         const cods = [String(codigo), ...g.resto], pts = cods.map(pos).filter(Boolean);
-        bm.source('bj-linea', { type: 'FeatureCollection', features: [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: pts.map(([la, lo]) => [lo, la]) } }] });
+        // La línea va por las calles (el trazado del recorrido), no en recta de parada a parada
+        let camino = pts;
+        try {
+          const [l, sen] = g.k.split('|');
+          const seq = indiceRecorridos().seqs.get(g.k) || [];
+          const paradas = seq.map((c) => { const p = pos(c); return p ? { codigo: c, latitud: p[0], longitud: p[1] } : null; });
+          if (paradas.every(Boolean)) {
+            const sh = window.formaRecorrido?.(l, sen, paradas);
+            const i0 = seq.length - g.resto.length - 1;
+            if (sh?.porCalle && sh.idx[i0] != null) camino = sh.pts.slice(sh.idx[i0], sh.idx[seq.length - 1] + 1);
+          }
+        } catch { /* sin trazado: en recta */ }
+        bm.source('bj-linea', { type: 'FeatureCollection', features: [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: camino.map(([la, lo]) => [lo, la]) } }] });
         marcas.clear();
         cods.forEach((c, i) => {
           const p = pos(c); if (!p) return;

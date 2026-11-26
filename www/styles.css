@@ -1788,15 +1788,6 @@ html[data-vt="atras"]::view-transition-new(root) { animation-name: vt-entra-izq;
 .t-res-pie { margin: -2px 4px 0; font-size: 13px; color: var(--muted); }
 .t-bajo { color: var(--warn); }
 .t-res-vacio { width: 100%; border: 1.5px dashed var(--line); background: none; border-radius: 14px; padding: 14px; color: var(--muted); font: 700 15px/1.2 var(--font-body); cursor: pointer; }
-.t-mes { background: var(--surface); border-radius: 14px; box-shadow: var(--shadow); padding: 12px; display: grid; gap: 10px; }
-.t-mes-cab { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
-.t-mes-cab b { font-size: 15px; }
-.t-mes-cab span { font-size: 14px; color: var(--muted); text-align: right; }
-.t-mes-barras { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 8px; height: 64px; }
-.t-mes-barras > div { display: grid; grid-template-rows: 1fr auto; gap: 4px; justify-items: center; min-width: 0; }
-.t-mes-barras i { align-self: end; width: 100%; max-width: 34px; border-radius: 5px 5px 2px 2px; background: color-mix(in srgb, var(--accent) 55%, transparent); }
-.t-mes-barras .ahora i { background: var(--accent); }
-.t-mes-barras small { font-size: 12px; color: var(--muted); }
 a.t-acc { text-decoration: none; }
 
 /* Líneas: cada línea en su propia tarjeta, con un hueco entre ellas */
@@ -1914,6 +1905,7 @@ a.t-acc { text-decoration: none; }
 .fav-av .av-ll-link { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; color: inherit; text-decoration: none; }
 .fav-av .help { margin: 2px 0 0; }
 .fav-av-anillo { flex: none; width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; background: conic-gradient(var(--accent) var(--p), color-mix(in srgb, var(--muted) 22%, transparent) 0); }
-.fav-av-anillo b { width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; background: var(--surface); font: 700 18px/1 var(--font-board); }
+.fav-av-anillo b { width: 40px; height: 40px; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; background: var(--surface); font: 700 19px/0.9 var(--font-board); font-variant-numeric: tabular-nums; }
+.fav-av-anillo small { font: 700 9px/1 var(--font-body); color: var(--muted); letter-spacing: .02em; }
 .fav-av-x { flex: none; width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--line); background: none; color: var(--muted); display: grid; place-items: center; cursor: pointer; }
 .fav-av-x svg { width: 16px; height: 16px; }

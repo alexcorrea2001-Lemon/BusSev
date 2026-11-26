@@ -661,27 +661,7 @@ views.tarjeta = (el) => {
     const t2 = ['Caduca', u.sinCaducidad ? 'No caduca' : (u.caducidad || '—')];
     const bajo = c.avisoSaldo?.on && u.saldo != null && u.saldo < Number(c.avisoSaldo.importe);
     return `<div class="t-res">${[t1, t2].map(([k, v]) => `<div><small>${k}</small><b>${esc(v)}</b></div>`).join('')}</div>
-      <p class="t-res-pie">${bajo ? '<b class="t-bajo">⚠ Saldo bajo</b> · ' : ''}Actualizada ${haceCuanto(u.fecha)}</p>
-      ${gastoMesHTML(c, precio)}`;
-  }
-  /* Lo que llevas gastado este mes, con una barrita por semana */
-  function gastoMesHTML(c, precio) {
-    const h = historialDe(c);
-    if (h.length < 2) return '';
-    const hoy = new Date(), ini = new Date(hoy.getFullYear(), hoy.getMonth(), 1).getTime();
-    const sem = [0, 0, 0, 0, 0];
-    let total = 0;
-    for (let i = 1; i < h.length; i++) {
-      const d = h[i - 1][1] - h[i][1];
-      if (d <= 0.005 || h[i][0] < ini) continue;
-      total += d;
-      sem[Math.min(4, Math.floor((new Date(h[i][0]).getDate() - 1) / 7))] += d;
-    }
-    const semanas = Math.ceil(new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0).getDate() / 7);
-    const max = Math.max(...sem, 0.01), estaSem = Math.floor((hoy.getDate() - 1) / 7);
-    const mes = hoy.toLocaleDateString('es-ES', { month: 'long' });
-    return `<div class="t-mes"><div class="t-mes-cab"><b>Este mes</b><span>${total > 0.005 ? `−${fmtEuro(total)}${precio ? ` · unos ${Math.round(total / precio)} viajes` : ''}` : `Sin gastos en ${mes}`}</span></div>
-      <div class="t-mes-barras" aria-hidden="true">${sem.slice(0, semanas).map((v, i) => `<div class="${i === estaSem ? 'ahora' : ''}"><i style="height:${Math.max(4, Math.round((v / max) * 100))}%${v <= 0.005 ? ';opacity:.35' : ''}"></i><small>Sem ${i + 1}</small></div>`).join('')}</div></div>`;
+      <p class="t-res-pie">${bajo ? '<b class="t-bajo">⚠ Saldo bajo</b> · ' : ''}Actualizada ${haceCuanto(u.fecha)}</p>`;
   }
   function inicioHTML() {
     const cards = tarjeta.list();
