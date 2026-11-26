@@ -2896,8 +2896,19 @@ const FAMILIAS = [
   { id: 'nocturnas', label: 'Nocturnas', test: (l) => l.nocturna || /^A\d/.test(l.numero) },
   { id: 'otras', label: 'Especiales y tranvía', test: (l) => !/^\d/.test(l.numero) && !/^C\d/.test(l.numero) && !/^A\d/.test(l.numero) },
 ];
+/* Las dos primeras veces, la fila de filtros se mueve un poco y vuelve: así se ve que se puede deslizar */
+function asomarFiltros(fila) {
+  const n = store.get('filtrosAsomados', 0);
+  if (!fila || n >= 2 || settings.menosAnimaciones || quieto()) return;
+  setTimeout(() => {
+    if (!fila.isConnected || fila.scrollWidth - fila.clientWidth < 8 || fila.scrollLeft > 0) return;
+    store.set('filtrosAsomados', n + 1);
+    fila.scrollTo({ left: Math.min(70, fila.scrollWidth - fila.clientWidth), behavior: 'smooth' });
+    setTimeout(() => { if (fila.isConnected) fila.scrollTo({ left: 0, behavior: 'smooth' }); }, 700);
+  }, 600);
+}
 views.lineas = (el) => {
-  let fam = store.get('fam', 'todas');
+  let fam = store.get('fam', 'todas'), filaX = 0;
   async function load() {
     el.innerHTML = skeletons(2);
     try {
@@ -2907,12 +2918,19 @@ views.lineas = (el) => {
         const rows = lineas.filter(f.test).map((l) => `<a class="row" href="#linea-${esc(l.numero)}">${badge(l.numero, l.color)}
             <div class="row-main"><b>${esc(l.nombre)}</b><span>${(() => { const h = horasHoy(l); return h.ini && h.fin ? (textoUltimo(h).todaNoche ? `Hoy circula toda la noche` : `Primer y último bus${NOMBRE_TIPO[h.tipo] ? ` (${NOMBRE_TIPO[h.tipo].toLowerCase()})` : ''}: ${esc(h.ini)}–${esc(h.fin)}`) : h.noHoy ? `Hoy no circula` : 'Consulta el recorrido'; })()}</span></div>${ICON.chev}</a>`).join('');
         el.innerHTML = `<div class="stack"><div class="page-head"><h1>Líneas</h1><p>Recorrido, horario y autobuses en directo.</p></div>
-          <div class="filters" role="group" aria-label="Tipo de línea">${FAMILIAS.map((x) => `<button class="chip" type="button" data-fam="${x.id}" aria-pressed="${x.id === fam}">${x.label}</button>`).join('')}</div>
+          <div class="filters desliza" role="group" aria-label="Tipo de línea">${FAMILIAS.map((x) => `<button class="chip" type="button" data-fam="${x.id}" aria-pressed="${x.id === fam}">${x.label}</button>`).join('')}</div>
           <div class="list">${rows || '<div class="board-empty">No hay líneas en este grupo.</div>'}</div>
           <p class="updated">${lineas.length} líneas de TUSSAM</p></div>`;
-        el.querySelectorAll('[data-fam]').forEach((b) => { b.onclick = () => { fam = b.dataset.fam; store.set('fam', fam); render(); }; });
+        const fila = $('.filters', el);
+        fila.scrollLeft = filaX;
+        el.querySelectorAll('[data-fam]').forEach((b) => { b.onclick = () => {
+          fam = b.dataset.fam; store.set('fam', fam); filaX = fila.scrollLeft; render();
+          // La elegida se ve entera aunque estuviera medio escondida en el borde
+          $(`[data-fam="${fam}"]`, el)?.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: settings.menosAnimaciones ? 'auto' : 'smooth' });
+        }; });
       };
       render();
+      asomarFiltros($('.filters', el));
     } catch (e) { el.innerHTML = errorHTML(e, 'retry-lin'); $('#retry-lin', el).onclick = load; }
   }
   load();
@@ -3366,6 +3384,104 @@ function indiceAjustes(S) {
   }
   return out;
 }
+/* Páginas de Ajustes: cada caja con su icono y una explicación de una línea; el texto largo, en «Más info» */
+const AJ_P = (d) => `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
+const AJ_ICONOS = {
+  'Tema': '<path d="M12 3a9 9 0 1 0 0 18Z" fill="currentColor"/><circle cx="12" cy="12" r="9"/>',
+  'Temáticas en fechas festivas': '<path d="M5 21V4M5 4h11l-2 4 2 4H5"/>',
+  'Vehículos de fiesta en el mapa': '<rect x="5" y="3" width="14" height="14" rx="3"/><path d="M5 10h14M8 20v-3M16 20v-3M10 6.5h4"/>',
+  'Color de la app': '<path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11Z"/>',
+  'Cielo de Sevilla': '<path d="M7 18h10a4 4 0 0 0 .5-8 6 6 0 0 0-11.5 1.5A3.3 3.3 0 0 0 7 18Z"/>',
+  'Color de fondo': '<rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 15l6-6 12 12"/>',
+  'Icono de la app': '<rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><rect x="13" y="13" width="7" height="7" rx="2"/>',
+  'Favoritas': '<path d="m12 3.5 2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9Z"/>',
+  'Pasaporte de Sevilla': '<rect x="5" y="3" width="14" height="18" rx="2"/><circle cx="12" cy="10" r="3"/><path d="M9 17h6"/>',
+  'Actualizar los tiempos': '<path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5"/>',
+  'Ahorro de batería': '<rect x="3" y="7" width="16" height="10" rx="2"/><path d="M21 11v2M7 10v4"/>',
+  'Ahorro de datos': '<path d="M8 20V8M4 12l4-4 4 4M16 4v12M12 12l4 4 4-4"/>',
+  'Revisar al abrir la app': '<rect x="2.5" y="5" width="19" height="14" rx="2.5"/><path d="M2.5 9.5h19M6 15h4"/>',
+  'Sonido del aviso de llegada': '<path d="M5 9v6h4l5 4V5L9 9Z"/><path d="M17 9a4 4 0 0 1 0 6"/>',
+  'Avisos que se repiten': '<path d="M17 2l3 3-3 3M4 11V9a4 4 0 0 1 4-4h12M7 22l-3-3 3-3M20 13v2a4 4 0 0 1-4 4H4"/>',
+  'Avisos de TUSSAM (desvíos, obras, horarios especiales)': '<path d="M12 3 2 20h20Z"/><path d="M12 10v4M12 17h.01"/>',
+  'Tarifas y títulos de viaje': '<circle cx="12" cy="12" r="9"/><path d="M15 8.5a4 4 0 1 0 0 7M7.5 11h6M7.5 13.5h6"/>',
+  'Leer en voz alta': '<path d="M5 9v6h4l5 4V5L9 9Z"/><path d="M17 9a4 4 0 0 1 0 6M19.5 6.5a8 8 0 0 1 0 11"/>',
+  'Leer al abrir una parada': '<path d="M4 4h16v12H8l-4 4Z"/><path d="M8 9h8M8 12h5"/>',
+  'Modo sencillo': '<circle cx="12" cy="12" r="9"/><path d="M8 12h8"/>',
+  'Tamaño del texto': '<path d="M4 18 9 6l5 12M5.5 14h7M15 18l3-7 3 7M16 16h4"/>',
+  'Botones más grandes': '<path d="M9 11V5a2 2 0 0 1 4 0v6M13 10a2 2 0 0 1 4 0v1a2 2 0 0 1 3 1.5V16a6 6 0 0 1-6 6h-1a6 6 0 0 1-5-2.7L5 16a2 2 0 0 1 3-2.5L9 15"/>',
+  'Alto contraste': '<circle cx="12" cy="12" r="9"/><path d="M12 3v18" /><path d="M12 3a9 9 0 0 1 0 18Z" fill="currentColor"/>',
+  'Reducir animaciones': '<path d="M3 12h4l3-7 4 14 3-7h4"/>',
+  'Vibración': '<rect x="8" y="4" width="8" height="16" rx="2"/><path d="M4 9v6M20 9v6M1.5 11v2M22.5 11v2"/>',
+  'Copia de seguridad': '<path d="M7 18a5 5 0 0 1-.8-9.9 6.5 6.5 0 0 1 12.6 1.4A4 4 0 0 1 18 18"/><path d="M12 12v9M9 15l3-3 3 3"/>',
+  'Tu servidor: saldo y tiempos (avanzado)': '<rect x="4" y="3" width="16" height="7" rx="2"/><rect x="4" y="14" width="16" height="7" rx="2"/><path d="M8 6.5h.01M8 17.5h.01"/>',
+  'Privacidad y seguridad': '<path d="M12 3 5 6v6c0 4.5 3 7.5 7 9 4-1.5 7-4.5 7-9V6Z"/><path d="m9 12 2 2 4-4"/>',
+  'Datos de líneas y paradas': '<circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8.5 6H15a3 3 0 0 1 0 6H9a3 3 0 0 0 0 6h6.5"/>',
+};
+const AJ_CORTO = {
+  'Tema': 'Automático sigue el modo claro u oscuro de tu móvil.',
+  'Temáticas en fechas festivas': 'Cambia sola en Navidad, Semana Santa, Feria y Halloween.',
+  'Vehículos de fiesta en el mapa': 'Los autobuses del mapa, vestidos para cada fiesta.',
+  'El cielo de Sevilla arriba': 'La barra de arriba con el cielo real de Sevilla.',
+  'Color de fondo': 'Los cuatro primeros son claros y el resto, oscuros.',
+  'Icono de la app': 'Al cambiarlo hay que volver a ponerlo en la pantalla de inicio.',
+  'Consejos': 'Como mucho, un truco de la app al día en Favoritas.',
+  'La más cercana, arriba': 'Tus favoritas se ordenan solas según dónde estés.',
+  'Contar mis viajes': 'Si abres una parada estando en ella, tu viaje cuenta.',
+  'Contar también con el aviso de llegada': 'Cuenta el viaje aunque no abras la app.',
+  'Actualizar los tiempos': 'Menos a menudo gasta menos batería y datos.',
+  'Ahorro de batería': 'Se pone solo cuando le queda poca batería al móvil.',
+  'Ahorro de datos': 'Sigue al «Ahorro de datos» de Android.',
+  'Revisar al abrir la app': 'Mira el saldo y la caducidad de tus tarjetas.',
+  'Avisos de TUSSAM (desvíos, obras, horarios especiales)': 'Te avisa cuando TUSSAM publica un desvío o una obra.',
+  '🌙 Silencio de noche': 'Los avisos de noche te llegan por la mañana.',
+  'Copia de seguridad': 'Tus favoritas, tarjetas y ajustes en un archivo.',
+  'Tu servidor: saldo y tiempos (avanzado)': 'Solo si has montado tu propio servidor del saldo.',
+  'Pedir también los tiempos a mi servidor': 'Normalmente no funciona: TUSSAM lo bloquea.',
+  'Privacidad y seguridad': 'Sin anuncios ni seguimiento: todo se queda en tu móvil.',
+  'Datos de líneas y paradas': 'Paradas y recorridos oficiales de TUSSAM.',
+};
+const ajCorto = (t) => AJ_CORTO[t] ?? (/^BusSev /.test(t || '') ? 'Cada versión nueva trae los horarios y recorridos más recientes.' : null);
+function ajIcono(h) {
+  const t = h?.textContent.trim();
+  if (!h || !AJ_ICONOS[t] || h.querySelector('.aj-hic')) return;
+  h.insertAdjacentHTML('afterbegin', `<span class="aj-hic">${AJ_P(AJ_ICONOS[t])}</span>`);
+  h.classList.add('aj-tit');
+}
+/* Pone la explicación corta delante de esos nodos y los esconde tras «Más info» */
+function ajMasInfo(nodos, corto, clave, abiertos) {
+  const primero = nodos[0];
+  const p = document.createElement('p');
+  p.className = 'aj-corto';
+  const lead = primero.firstElementChild?.tagName === 'B' && primero.firstChild === primero.firstElementChild ? primero.firstElementChild : null;
+  if (lead) { p.append(lead, ' '); }   // lo que está pasando ahora (p. ej. «Ahorrando ahora») se sigue viendo
+  p.append(corto + ' ');
+  const b = document.createElement('button');
+  b.type = 'button'; b.className = 'aj-mas';
+  const caja = document.createElement('div');
+  caja.className = 'aj-largo';
+  primero.before(p);
+  p.after(caja);
+  caja.append(...nodos);
+  const pintar = () => { const on = abiertos.has(clave); caja.hidden = !on; b.textContent = on ? 'Menos' : 'Más info'; b.setAttribute('aria-expanded', String(on)); };
+  b.onclick = () => { if (abiertos.has(clave)) abiertos.delete(clave); else abiertos.add(clave); pintar(); };
+  p.append(b);
+  pintar();
+}
+function ajOrdenar(el, abiertos) {
+  el.querySelectorAll('.set-group').forEach((g) => {
+    const tg = g.querySelector(':scope > h3');
+    ajIcono(tg);
+    if (!tg) g.querySelectorAll(':scope > .switch-row h3').forEach(ajIcono);   // cajas que son una lista de interruptores
+    g.querySelectorAll('.switch-row').forEach((r) => {
+      const t = r.querySelector('h3')?.textContent.trim(), p = r.querySelector('p'), c = ajCorto(t);
+      if (p && c) ajMasInfo([p], c, 'sw:' + t, abiertos);
+    });
+    const t = (tg || g.querySelector('.ver-fila h3'))?.textContent.trim(), c = ajCorto(t);
+    if (!c) return;
+    const largos = [...g.children].filter((x) => (x.matches('p:not(.datos-mes):not(.aj-corto)') && x.textContent.trim().length > 60) || x.matches('ul'));
+    if (largos.length) ajMasInfo(largos, c, 'g:' + t, abiertos);
+  });
+}
 views.ajustes = (el, cat) => {
   if (isNative() && window.Capacitor?.isPluginAvailable?.('BusSevApariencia')) {
     window.Capacitor.nativePromise('BusSevApariencia', 'getIcono', {}).then((r) => { if (r?.icono && r.icono !== iconoActual) { iconoActual = r.icono; el.__repintar?.(); } if (r?.icono && r.icono !== settings.iconoApp) { settings.iconoApp = r.icono; saveSettings(); applyTheme(); } }).catch(() => null);
@@ -3373,6 +3489,7 @@ views.ajustes = (el, cat) => {
   const segBtns = (name, opts, cur) => `<div class="seg" role="group">${opts.map(([v, t]) => `<button type="button" data-set="${name}" data-v="${v}" aria-pressed="${String(cur) === String(v)}">${t}</button>`).join('')}</div>`;
   const sw = (id, on, titulo, texto) => `<div class="switch-row"><div><h3>${titulo}</h3>${texto ? `<p>${texto}</p>` : ''}</div><input class="switch" type="checkbox" data-sw="${id}" ${on ? 'checked' : ''} aria-label="${esc(titulo)}"></div>`;
   const fechaCorta = (d) => d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+  const ajAbiertos = new Set();   // «Más info» abiertos (se mantienen al repintar)
   el.__repintar = () => render();
   function render() {
     const tem = tematicaActiva();
@@ -3507,6 +3624,7 @@ views.ajustes = (el, cat) => {
       ${S[c.id]()}
     </div>`;
     if (c.id === 'mapa') bindMapaAjustes(el, mapState.bm);
+    ajOrdenar(el, ajAbiertos);
     if (irAjuste) {
       // Desde el buscador: se baja hasta ese ajuste y se marca un momento
       const t = irAjuste; irAjuste = '';

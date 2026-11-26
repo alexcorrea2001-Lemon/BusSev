@@ -176,6 +176,9 @@ main { position: relative; overflow: hidden; min-height: 0; }
 
 .filters { display: flex; flex-wrap: wrap; gap: 8px; padding-bottom: 2px; scrollbar-width: none; }
 .filters::-webkit-scrollbar { display: none; }
+/* Filtros en una sola fila que se desliza hasta el borde de la pantalla (Líneas) */
+.filters.desliza { flex-wrap: nowrap; overflow-x: auto; overscroll-behavior-x: contain; margin-inline: calc(-1 * var(--gutter-l)) calc(-1 * var(--gutter-r)); padding-inline: var(--gutter-l) var(--gutter-r); scroll-padding-inline: var(--gutter-l) var(--gutter-r); }
+.filters.desliza .chip { flex: none; white-space: nowrap; }
 .chip { flex: none; height: 34px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); cursor: pointer; font-size: 14px; }
 .chip[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
 
@@ -1711,3 +1714,15 @@ html[data-vt="atras"]::view-transition-new(root) { animation-name: vt-entra-izq;
 .mt-tile[aria-pressed="true"] svg { color: var(--accent); }
 .mt-tile[aria-pressed="true"]::after { border-color: var(--accent); background: var(--accent) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='m6 12 4 4 8-8' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 14px no-repeat; }
 .modal .mt-tile { background: var(--surface); }
+
+/* Páginas de Ajustes: icono junto al título, explicación corta y «Más info» */
+.aj-tit { display: flex; align-items: center; gap: 10px; }
+.aj-hic { flex: none; width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); }
+.aj-hic svg { width: 17px; height: 17px; }
+:root[data-theme="dark"] .aj-hic { background: color-mix(in srgb, var(--accent) 16%, var(--surface-2)); }
+.set-group p.aj-corto { margin: 0; }
+.aj-mas { border: 0; background: none; padding: 6px 2px; margin: -6px 0; color: var(--accent); font: 700 14px/1.2 var(--font-body); cursor: pointer; white-space: nowrap; }
+.aj-largo { display: grid; gap: 8px; }
+.aj-largo[hidden] { display: none; }
+.switch-row .aj-largo p { margin: 0; }
+.switch-row > div:has(> .aj-tit) > :not(.aj-tit) { margin-left: 40px; }
